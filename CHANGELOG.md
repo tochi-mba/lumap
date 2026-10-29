@@ -23,6 +23,11 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   between the settings path and the PATH, and the show inspector says which copy is in use.
 - `lumap icon OUT` writes the app icon as a multi-size `.ico` (`cargo xtask icon` refreshes
   `assets/lumap.ico`).
+- In-app updates: lumap asks GitHub for the latest release once a day (never during a show or
+  with an output window open), offers it in the status bar, downloads the installer only when
+  the *Updates* setting or the user says so, verifies it against the published SHA-256, and
+  installs only on *Install and restart*. Later and Skip as you would expect; developer builds
+  never update. Settings: `update.mode` (`notify`, `download`, `off`).
 
 ## [0.2.0] - 2026-10-29
 

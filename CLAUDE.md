@@ -39,6 +39,12 @@ guide is `docs/manual.md`.
   other REX products). `scripts/check_site.py` is its gate, tested by `tests/site/`; the page
   script `site/app.js` is tested with `node --test`. `cargo xtask site` runs all three.
   `.portfolio/project.json` describes lumap to the REX portfolio.
+- `crates/lumap-app/src/update/`: the updater. `offer.rs` (release JSON to an offer, version
+  rules, SHA-256) and `flow.rs` (every decision over the persisted `UpdateSettings`) are pure
+  and fully unit-tested; `worker.rs` fetches through a `Fetcher` (the default runs `curl`, so
+  no HTTP crate) on a thread; `mod.rs` ties them to the editor. Rules: nothing happens during a
+  show or with an output window open, nothing in the first 45 s, installing always asks, only
+  installers hosted by this repository with a matching `.sha256` are ever run.
 - `installer/`: `build.ps1 -Version x.y.z` builds `dist\lumap-Setup-<version>.exe` (Inno Setup 6,
   `lumap.iss`) and the portable zip; `fetch-ffmpeg.ps1` downloads the pinned LGPL ffmpeg build
   it bundles (change `$Url` and `$Sha256` together); `smoke-test.ps1` installs, runs and

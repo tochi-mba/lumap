@@ -2,6 +2,7 @@
 
 use super::super::{AlignOp, Editor, MonitorInfo, Selection};
 use super::{describe, param_slider, param_toggle, rename_box, Actions, PanelState};
+use crate::update::flow::Mode;
 use eframe::egui::{self, Color32, RichText};
 use lumap_core::blend::BlendCurve;
 use lumap_core::midimap::MidiMode;
@@ -80,6 +81,33 @@ fn show_inspector(
     } else {
         "ffmpeg not found: install it or point lumap at it below.".to_string()
     });
+    ui.separator();
+    ui.horizontal(|ui| {
+        let mut mode = state.update_mode;
+        egui::ComboBox::from_label("Updates")
+            .selected_text(match mode {
+                Mode::Notify => "tell me",
+                Mode::Download => "download, then tell me",
+                Mode::Off => "never check",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut mode, Mode::Notify, "tell me");
+                ui.selectable_value(&mut mode, Mode::Download, "download, then tell me");
+                ui.selectable_value(&mut mode, Mode::Off, "never check");
+            });
+        if mode != state.update_mode {
+            state.update_mode = mode;
+            actions.update_mode = Some(mode);
+        }
+        if ui.button("Check now").clicked() {
+            actions.update = Some(crate::update::Request::CheckNow);
+        }
+    });
+    ui.label(
+        RichText::new("Never during a show. Installing always asks first.")
+            .weak()
+            .small(),
+    );
     ui.horizontal(|ui| {
         let label = ui.label("ffmpeg path");
         let r = ui

@@ -155,6 +155,18 @@ ships), then at the PATH. The show inspector says which one is in use. The bundl
 LGPL build; its licence and origin are in `ffmpeg\LICENSE.txt` and `ffmpeg\VERSION.txt` next
 to it.
 
+### Updates
+
+Once a day, and never while show mode is on or an output window is open, lumap asks GitHub
+whether a newer release exists. The show inspector's *Updates* setting decides what happens
+next: *tell me* (the default) shows a line in the status bar with Download, Later and Skip;
+*download, then tell me* fetches the installer first and offers *Install and restart* once it
+has been checked against the release's SHA-256; *never check* turns it off. *Check now* asks
+at once. Installing always asks: lumap saves, closes, the installer replaces it and opens it
+again. Later keeps the offer quiet for a day; Skip never offers that version again. Developer
+builds (any version that is not `x.y.z`) do not update. Downloads live in
+`%LOCALAPPDATA%\lumap\updates`.
+
 Projects are TOML with a `schema_version`; older files are migrated on load and
 `lumap migrate` rewrites them. Media paths are stored relative to the project file when
 possible. `lumap validate` reports every broken reference or degenerate warp.
