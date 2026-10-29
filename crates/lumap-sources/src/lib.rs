@@ -1,13 +1,15 @@
 //! Frame sources: where the pixels a surface samples come from.
 //!
 //! A [`Frame`] is a plain RGBA8 bitmap. Sources produce frames; the renderers consume them.
-//! Keeping this crate GPU-free means every source, including the Windows-only Spout receiver,
-//! has a mockable, testable interface.
+//! Keeping this crate GPU-free means every source, including the live inputs, has a mockable,
+//! testable interface. Platform-specific protocols live behind [`live_input`]; nothing else in
+//! the workspace mentions a platform.
 
 #![forbid(unsafe_code)]
 
 pub mod clock;
 pub mod generator;
+pub mod live_input;
 pub mod overlay;
 pub mod pattern;
 pub mod sequence;
@@ -179,7 +181,9 @@ pub fn open_source(source: &Source, base_dir: &Path) -> Result<Box<dyn FrameSour
         SourceKind::Image { path } => Ok(Box::new(StaticSource(Arc::new(Frame::load(&resolve(
             path, base_dir,
         ))?)))),
-        SourceKind::Spout { sender } => open_spout(&source.id, sender),
+        SourceKind::Spout { sender } => {
+            live_input::open(&source.id, live_input::Provider::Spout, sender)
+        }
         SourceKind::Video { path, playback } => Ok(Box::new(video::VideoSource::open(
             video::Tools::from_env(),
             &resolve(path, base_dir),
@@ -202,17 +206,6 @@ pub fn open_source(source: &Source, base_dir: &Path) -> Result<Box<dyn FrameSour
             *pattern, *speed, *color,
         ))),
     }
-}
-
-#[cfg(feature = "spout")]
-#[allow(clippy::unnecessary_wraps)]
-fn open_spout(_id: &str, sender: &str) -> Result<Box<dyn FrameSource>, SourceError> {
-    Ok(Box::new(spout::SpoutReceiver::new(sender)))
-}
-
-#[cfg(not(feature = "spout"))]
-fn open_spout(id: &str, _sender: &str) -> Result<Box<dyn FrameSource>, SourceError> {
-    Err(SourceError::Unavailable(id.to_string(), "spout"))
 }
 
 /// All of a project's sources, opened and ready to be polled each frame.

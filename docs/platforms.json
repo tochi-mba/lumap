@@ -1,0 +1,29 @@
+{
+  "_comment": "What lumap does on each platform. `cargo xtask platforms` renders docs/platforms.md from this file and CI checks that the two agree; every `supported` cell must name a test that exists in the tree (a `fn` in crates/ or tests/, or a file path). Values: supported | planned | n/a.",
+  "platforms": ["windows", "macos", "linux"],
+  "rows": [
+    { "id": "outputs", "capability": "Outputs: one borderless window per projector, placed on a monitor", "windows": "supported", "macos": "supported", "linux": "supported", "test": "output_inspector_places_and_opens_windows" },
+    { "id": "warps", "capability": "Corner-pin homographies and bicubic Bezier meshes", "windows": "supported", "macos": "supported", "linux": "supported", "test": "gpu_matches_software_oracle" },
+    { "id": "blend", "capability": "Edge blending in linear light, blend suggestion", "windows": "supported", "macos": "supported", "linux": "supported", "test": "gpu_matches_software_oracle" },
+    { "id": "overlays", "capability": "Calibration overlays (grid, crosshair, bars, grey steps, blend check)", "windows": "supported", "macos": "supported", "linux": "supported", "test": "gpu_matches_software_oracle" },
+    { "id": "images", "capability": "PNG and JPEG sources", "windows": "supported", "macos": "supported", "linux": "supported", "test": "image_round_trip_and_errors" },
+    { "id": "video", "capability": "Video through ffmpeg (bundled on Windows; PATH elsewhere)", "windows": "supported", "macos": "supported", "linux": "supported", "test": "ffmpeg_is_found_in_the_setting_then_beside_the_exe_then_on_the_path" },
+    { "id": "sequences", "capability": "Image sequences and GIFs", "windows": "supported", "macos": "supported", "linux": "supported", "test": "folder_and_gif_sources" },
+    { "id": "generators", "capability": "Six animated generators", "windows": "supported", "macos": "supported", "linux": "supported", "test": "every_generator_is_deterministic_and_consistent" },
+    { "id": "live-spout", "capability": "Live input from Spout senders", "windows": "supported", "macos": "n/a", "linux": "n/a", "test": "lifecycle" },
+    { "id": "live-syphon", "capability": "Live input from Syphon servers", "windows": "n/a", "macos": "planned", "linux": "n/a", "test": "" },
+    { "id": "osc", "capability": "OSC control and feedback", "windows": "supported", "macos": "supported", "linux": "supported", "test": "osc_patches_apply_live" },
+    { "id": "midi", "capability": "MIDI learn and control", "windows": "supported", "macos": "supported", "linux": "supported", "test": "control_section_learns_midi_and_runs_feedback_and_remote" },
+    { "id": "remote", "capability": "Phone remote over HTTP with a QR code", "windows": "supported", "macos": "supported", "linux": "supported", "test": "control_section_learns_midi_and_runs_feedback_and_remote" },
+    { "id": "cues", "capability": "Cues with crossfades", "windows": "supported", "macos": "supported", "linux": "supported", "test": "cue_panel_stores_fires_updates_and_reorders" },
+    { "id": "show-mode", "capability": "Locked show mode, autosave, crash recovery", "windows": "supported", "macos": "supported", "linux": "supported", "test": "show_mode_locks_edits_and_double_escape_exits" },
+    { "id": "watchdog", "capability": "Render-loop watchdog that relaunches the show", "windows": "supported", "macos": "supported", "linux": "supported", "test": "crates/lumap-app/src/watchdog.rs" },
+    { "id": "headless", "capability": "Headless render, validate, migrate, new", "windows": "supported", "macos": "supported", "linux": "supported", "test": "render_uses_the_gpu_when_one_is_available" },
+    { "id": "gpu-backend", "capability": "GPU backend (DirectX 12 / Metal / Vulkan)", "windows": "supported", "macos": "supported", "linux": "supported", "test": "windows_prefers_dx12_unless_the_environment_says_otherwise" },
+    { "id": "installer", "capability": "Installer (Inno Setup / .dmg / package)", "windows": "supported", "macos": "planned", "linux": "planned", "test": "installer/smoke-test.ps1" },
+    { "id": "file-association", "capability": "Open .lumap.toml projects from the file manager", "windows": "supported", "macos": "planned", "linux": "planned", "test": "installer/smoke-test.ps1" },
+    { "id": "path-command", "capability": "The lumap command on the PATH", "windows": "supported", "macos": "planned", "linux": "planned", "test": "installer/smoke-test.ps1" },
+    { "id": "updater", "capability": "In-app updates from GitHub Releases", "windows": "supported", "macos": "planned", "linux": "planned", "test": "notify_mode_checks_offers_downloads_on_request_and_installs_on_request" },
+    { "id": "ci", "capability": "Built and tested on every push", "windows": "supported", "macos": "supported", "linux": "supported", "test": ".github/workflows/ci.yml" }
+  ]
+}
