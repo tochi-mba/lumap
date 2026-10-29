@@ -1,0 +1,11 @@
+# Rust
+target/
+**/*.autosave
+tests/golden/*.diff.png
+tests/golden/*.actual.png
+**/proptest-regressions/
+lcov.info
+
+# IDE
+.idea/
+.vscode/
