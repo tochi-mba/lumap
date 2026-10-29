@@ -120,7 +120,7 @@ begin
   Result := '';
   ExtractTemporaryFile('prepare-upgrade.ps1');
   Arguments := ExpandConstant('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{tmp}\prepare-upgrade.ps1" -InstallDirectory "{app}"');
-  if not Exec(ExpandConstant('{sys}\WindowsPowerShell1.0\powershell.exe'),
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     Arguments, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     Result := 'Could not start upgrade preparation. Close lumap and retry.';
   if (Result = '') and (ResultCode <> 0) then
