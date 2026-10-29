@@ -95,6 +95,7 @@ fn has_subcommand(name: &str) -> bool {
 
 fn ci() -> anyhow::Result<()> {
     check_file_lengths()?;
+    platforms(false)?;
     run("fmt", cargo(&["fmt", "--all", "--check"]))?;
     run(
         "clippy",
@@ -290,12 +291,180 @@ fn site() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `docs/platforms.json`: what lumap does on each platform.
+#[derive(Debug, serde::Deserialize)]
+pub struct Platforms {
+    /// Column order.
+    pub platforms: Vec<String>,
+    /// One row per capability.
+    pub rows: Vec<PlatformRow>,
+}
+
+/// One capability and its state per platform.
+#[derive(Debug, serde::Deserialize)]
+pub struct PlatformRow {
+    /// Short id.
+    pub id: String,
+    /// What it is.
+    pub capability: String,
+    /// `supported`, `planned` or `n/a` on Windows.
+    pub windows: String,
+    /// The same on macOS.
+    pub macos: String,
+    /// The same on Linux.
+    pub linux: String,
+    /// The test (a `fn` name) or file that proves a `supported` cell; empty when nothing is
+    /// supported yet.
+    pub test: String,
+}
+
+impl PlatformRow {
+    fn cell(&self, platform: &str) -> &str {
+        match platform {
+            "windows" => &self.windows,
+            "macos" => &self.macos,
+            "linux" => &self.linux,
+            _ => "",
+        }
+    }
+}
+
+/// Renders the Markdown table for the platforms file.
+pub fn render_platforms(p: &Platforms) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::from(concat!(
+        "# Platforms
+
+",
+        "What lumap does on each platform, generated from `docs/platforms.json` by ",
+        "`cargo xtask platforms`; CI fails when this file is stale. A *supported* cell names the ",
+        "test or file that proves it; *planned* is on the way; *n/a* does not apply there.
+
+"
+    ));
+    let totals: Vec<String> = p
+        .platforms
+        .iter()
+        .map(|pl| {
+            let n = p.rows.iter().filter(|r| r.cell(pl) == "supported").count();
+            format!("{pl}: {n} supported")
+        })
+        .collect();
+    let _ = writeln!(
+        out,
+        "Totals: {}.
+",
+        totals.join(", ")
+    );
+    out.push_str(
+        "| Capability | Windows | macOS | Linux | Proof |
+|---|---|---|---|---|
+",
+    );
+    for r in &p.rows {
+        let _ = writeln!(
+            out,
+            "| {} | {} | {} | {} | `{}` |",
+            r.capability, r.windows, r.macos, r.linux, r.test
+        );
+    }
+    out
+}
+
+/// Every problem with the platforms file: unknown states, a `supported` cell without proof, a
+/// proof that is neither a `fn` in the tree nor a file.
+pub fn check_platforms(
+    p: &Platforms,
+    fn_exists: impl Fn(&str) -> bool,
+    file_exists: impl Fn(&str) -> bool,
+) -> Vec<String> {
+    let mut problems = Vec::new();
+    for r in &p.rows {
+        for pl in &p.platforms {
+            let cell = r.cell(pl);
+            if !matches!(cell, "supported" | "planned" | "n/a") {
+                problems.push(format!(
+                    "{}: {pl} is {cell:?}, not supported, planned or n/a",
+                    r.id
+                ));
+            }
+        }
+        let supported = p.platforms.iter().any(|pl| r.cell(pl) == "supported");
+        if supported && r.test.is_empty() {
+            problems.push(format!("{}: supported somewhere but names no proof", r.id));
+        }
+        if !r.test.is_empty() && !fn_exists(&r.test) && !file_exists(&r.test) {
+            problems.push(format!(
+                "{}: proof {:?} is neither a test fn nor a file",
+                r.id, r.test
+            ));
+        }
+    }
+    problems
+}
+
+fn load_platforms() -> anyhow::Result<Platforms> {
+    let path = root().join("docs/platforms.json");
+    let text =
+        std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
+    serde_json::from_str(&text).with_context(|| format!("parsing {}", path.display()))
+}
+
+/// Whether some Rust source under crates/ or tests/ defines `fn <name>(`.
+fn fn_in_tree(name: &str) -> bool {
+    let needle = format!("fn {name}(");
+    let mut stack = vec![root().join("crates"), root().join("tests")];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n != "target") {
+                    stack.push(path);
+                }
+            } else if path.extension().is_some_and(|e| e == "rs")
+                && std::fs::read_to_string(&path).is_ok_and(|s| s.contains(&needle))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// `cargo xtask platforms`: writes docs/platforms.md. `check-platforms`: verifies the json and
+/// that the Markdown is current.
+fn platforms(write: bool) -> anyhow::Result<()> {
+    let p = load_platforms()?;
+    let problems = check_platforms(&p, fn_in_tree, |f| root().join(f).exists());
+    if !problems.is_empty() {
+        bail!("docs/platforms.json: {}", problems.join("; "));
+    }
+    let md = render_platforms(&p);
+    let path = root().join("docs/platforms.md");
+    if write {
+        std::fs::write(&path, &md).with_context(|| format!("writing {}", path.display()))?;
+        println!("wrote {}", path.display());
+    } else {
+        let current = std::fs::read_to_string(&path).unwrap_or_default();
+        if current.replace("\r\n", "\n") != md {
+            bail!("docs/platforms.md is stale; run `cargo xtask platforms`");
+        }
+        println!("==> platforms table is current ({} rows)", p.rows.len());
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let task = std::env::args().nth(1).unwrap_or_default();
     match task.as_str() {
         "ci" => ci(),
         "file-lengths" => check_file_lengths(),
         "site" => site(),
+        "platforms" => platforms(true),
+        "check-platforms" => platforms(false),
         "icon" => run(
             "icon",
             cargo(&[
@@ -321,7 +490,7 @@ fn main() -> anyhow::Result<()> {
             );
             check_floors(&report)
         }
-        _ => bail!("usage: cargo xtask <ci|file-lengths|site|icon|coverage|check-coverage FILE>"),
+        _ => bail!("usage: cargo xtask <ci|file-lengths|site|platforms|check-platforms|icon|coverage|check-coverage FILE>"),
     }
 }
 
