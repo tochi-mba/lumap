@@ -6,6 +6,10 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
+The first release with an installer and an updater: from here on lumap keeps itself current.
+
 ### Added
 
 - Product site at <https://tochi-mba.github.io/lumap/>, in the REX Technologies style, with a
