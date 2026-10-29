@@ -82,7 +82,7 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
             wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(
                 eframe::egui_wgpu::WgpuSetupCreateNew {
                     instance_descriptor: lumap_render::gpu::instance_descriptor(),
-                    ..Default::default()
+                    ..eframe::egui_wgpu::WgpuSetupCreateNew::without_display_handle()
                 },
             ),
             ..Default::default()
