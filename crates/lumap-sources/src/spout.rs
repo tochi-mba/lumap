@@ -54,9 +54,9 @@ impl SpoutReceiver {
     fn poll_native(&mut self) {
         if let Some(n) = &mut self.native {
             match n.poll() {
-                Some(Some(frame)) => self.push_frame(frame),
-                Some(None) => {}
-                None => self.connected = false,
+                native::Polled::Frame(frame) => self.push_frame(frame),
+                native::Polled::Nothing => {}
+                native::Polled::Gone => self.connected = false,
             }
         }
     }
@@ -125,6 +125,16 @@ mod native {
         thread: Option<JoinHandle<()>>,
     }
 
+    /// What one poll of the receiver thread found.
+    pub enum Polled {
+        /// The newest frame since the last poll.
+        Frame(Frame),
+        /// Nothing new arrived.
+        Nothing,
+        /// The sender went away.
+        Gone,
+    }
+
     impl Native {
         pub fn open(sender: &str) -> Option<Self> {
             let name = sender.trim().to_string();
@@ -191,14 +201,13 @@ mod native {
             }
         }
 
-        /// `None` when the sender went away, `Some(None)` when nothing new arrived,
-        /// `Some(Some(frame))` for the newest frame since the last poll.
-        pub fn poll(&mut self) -> Option<Option<Frame>> {
-            let mut latest = Some(None);
+        /// The newest frame since the last poll, nothing new, or the sender went away.
+        pub fn poll(&mut self) -> Polled {
+            let mut latest = Polled::Nothing;
             loop {
                 match self.rx.try_recv() {
-                    Ok(Msg::Frame(f)) => latest = Some(Some(f)),
-                    Ok(Msg::Disconnected) => latest = None,
+                    Ok(Msg::Frame(f)) => latest = Polled::Frame(f),
+                    Ok(Msg::Disconnected) => latest = Polled::Gone,
                     Err(TryRecvError::Empty | TryRecvError::Disconnected) => return latest,
                 }
             }
