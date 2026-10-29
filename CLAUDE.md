@@ -39,6 +39,11 @@ guide is `docs/manual.md`.
   other REX products). `scripts/check_site.py` is its gate, tested by `tests/site/`; the page
   script `site/app.js` is tested with `node --test`. `cargo xtask site` runs all three.
   `.portfolio/project.json` describes lumap to the REX portfolio.
+- `installer/`: `build.ps1 -Version x.y.z` builds `dist\lumap-Setup-<version>.exe` (Inno Setup 6,
+  `lumap.iss`) and the portable zip; `fetch-ffmpeg.ps1` downloads the pinned LGPL ffmpeg build
+  it bundles (change `$Url` and `$Sha256` together); `smoke-test.ps1` installs, runs and
+  uninstalls an installer the way CI and the release job do. `assets/lumap.ico` comes from
+  `cargo xtask icon` (`lumap icon`), never from an image editor.
 - `xtask/`: `cargo xtask ci` = the CI gate; `check-coverage FILE` enforces floors;
   `file-lengths` rejects source files over 1000 lines.
 - `tests/golden/`: golden PNGs (256×144) and `cases/*.lumap.toml`.

@@ -70,6 +70,11 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+    /// Write the app icon as a Windows `.ico` (the installer and the executable use it).
+    Icon {
+        /// Destination `.ico`.
+        out: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -99,6 +104,7 @@ fn main() -> ExitCode {
         Some(Command::Validate { project }) => cli::validate(&project),
         Some(Command::Migrate { project, out }) => cli::migrate(&project, out.as_deref()),
         Some(Command::New { path, force }) => cli::new_project(&path, force),
+        Some(Command::Icon { out }) => cli::icon(&out),
     };
     match result {
         Ok(code) => code,

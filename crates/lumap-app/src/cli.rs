@@ -12,6 +12,9 @@ use lumap_sources::SourceSet;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+/// Sizes in the `.ico`: the ones Explorer, the taskbar and the installer wizard ask for.
+pub const ICON_SIZES: [u32; 5] = [16, 24, 32, 48, 256];
+
 /// Arguments for `lumap render`.
 #[derive(Debug, Args)]
 pub struct RenderArgs {
@@ -91,6 +94,32 @@ pub fn migrate(path: &Path, out: Option<&Path>) -> anyhow::Result<ExitCode> {
         target.display(),
         lumap_core::project::SCHEMA_VERSION
     );
+    Ok(ExitCode::SUCCESS)
+}
+
+/// `lumap icon OUT`: the app icon, drawn by [`crate::theme::icon`], as a multi-size `.ico`.
+pub fn icon(out: &Path) -> anyhow::Result<ExitCode> {
+    use image::codecs::ico::{IcoEncoder, IcoFrame};
+    let frames = ICON_SIZES
+        .iter()
+        .map(|&size| {
+            IcoFrame::as_png(
+                &crate::theme::icon(size),
+                size,
+                size,
+                image::ExtendedColorType::Rgba8,
+            )
+            .with_context(|| format!("encoding the {size} px icon"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+    }
+    let file = std::fs::File::create(out).with_context(|| format!("creating {}", out.display()))?;
+    IcoEncoder::new(std::io::BufWriter::new(file))
+        .encode_images(&frames)
+        .with_context(|| format!("writing {}", out.display()))?;
+    println!("wrote {} ({} sizes)", out.display(), frames.len());
     Ok(ExitCode::SUCCESS)
 }
 

@@ -143,6 +143,8 @@ pub struct PanelState {
     pub thumbs: Thumbnails,
     /// Whether ffmpeg was found at startup.
     pub ffmpeg_ok: bool,
+    /// Where the ffmpeg lumap uses came from.
+    pub ffmpeg_origin: lumap_sources::video::Origin,
     /// ffmpeg path field.
     pub ffmpeg_path: String,
     /// Name for the next stored cue.
@@ -163,6 +165,7 @@ pub struct PanelState {
 
 impl Default for PanelState {
     fn default() -> Self {
+        let (ffmpeg_tools, ffmpeg_origin) = lumap_sources::video::Tools::discover();
         Self {
             dialogs: Box::new(NativeDialogs),
             welcome: false,
@@ -173,7 +176,8 @@ impl Default for PanelState {
             error: None,
             rename: None,
             thumbs: Thumbnails::default(),
-            ffmpeg_ok: lumap_sources::video::Tools::from_env().available(),
+            ffmpeg_ok: ffmpeg_tools.available(),
+            ffmpeg_origin,
             ffmpeg_path: std::env::var("LUMAP_FFMPEG").unwrap_or_default(),
             cue_name: String::new(),
             cue_fade: 2.0,
