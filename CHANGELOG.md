@@ -6,6 +6,8 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-29
+
 ### Fixed
 
 - lumap no longer dies silently on launch on PCs whose Intel Vulkan driver crashes when wgpu
