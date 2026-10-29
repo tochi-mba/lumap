@@ -158,9 +158,13 @@ jobs:
         with:
           toolchain: 1.97.0
       - uses: Swatinem/rust-cache@v2
+      - name: Read the version from the workspace manifest
+        id: version
+        shell: bash
+        run: echo "version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
       - name: Build the installer and the portable zip
         shell: pwsh
-        run: ./installer/build.ps1 -Version 0.0.0-ci
+        run: ./installer/build.ps1 -Version "${{ steps.version.outputs.version }}"
       - name: Install silently, run the installed app, uninstall
         shell: pwsh
         run: ./installer/smoke-test.ps1 -Installer (Get-Item dist/lumap-Setup-*.exe).FullName
@@ -180,3 +184,37 @@ jobs:
             echo
             echo "The **lumap-windows-x64** artifact holds the installer and the portable zip, each with its SHA-256."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish a new version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, deny, test, coverage, msrv, site, build-windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumap-windows-x64
+          path: dist
+      - name: Publish when the version has no release yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          tag="v$version"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::$tag is already released; bump the version in Cargo.toml to publish again."
+            exit 0
+          fi
+          cd dist
+          sha256sum --check "lumap-Setup-$version.exe.sha256"
+          sha256sum --check "lumap-$version-windows-x64.zip.sha256"
+          # The same installer under a name that never changes, so .../releases/latest/download/lumap-Setup.exe
+          # (the website's download button and the in-app updater's fallback) is always the newest.
+          cp "lumap-Setup-$version.exe" lumap-Setup.exe
+          gh release create "$tag" lumap-Setup-*.exe lumap-Setup-*.exe.sha256 lumap-Setup.exe lumap-*-windows-x64.zip lumap-*-windows-x64.zip.sha256             --repo "$GITHUB_REPOSITORY"             --target "$GITHUB_SHA"             --title "lumap $version"             --generate-notes             --latest
+          echo "### Published lumap $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"

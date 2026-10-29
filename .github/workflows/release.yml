@@ -1,13 +1,9 @@
-# Publishes lumap for Windows as a GitHub Release: a per-user installer with ffmpeg inside, the
-# same installer under the fixed name lumap-Setup.exe (what the website's download button and
-# releases/latest/download point at), a portable zip, and a SHA-256 file beside each.
-#   push a v* tag       -> release with that exact version
-#   workflow_dispatch   -> build-<run number> pre-release from any branch
+# Pre-releases on demand. Real releases are published by the CI workflow (publish job) on every
+# green push to main whose Cargo.toml version has no release yet; this workflow builds a
+# build-<run number> pre-release from any branch when started by hand.
 name: Release lumap
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -39,12 +35,8 @@ jobs:
       - name: Work out the version
         id: version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            tag="${GITHUB_REF#refs/tags/}"; name="${tag#v}"; prerelease=false
-          else
-            crate=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-            name="${crate}-build.${GITHUB_RUN_NUMBER}"; tag="build-${GITHUB_RUN_NUMBER}"; prerelease=true
-          fi
+          crate=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          name="${crate}-build.${GITHUB_RUN_NUMBER}"; tag="build-${GITHUB_RUN_NUMBER}"; prerelease=true
           {
             echo "name=$name"
             echo "tag=$tag"

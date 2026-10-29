@@ -5,8 +5,8 @@ reference renderer that the GPU is tested against, and a headless CLI. Windows i
 platform for shows; everything builds and tests on Linux too, which is how this container and
 CI exercise it.
 
-Cargo root is the repository root. The workflows are `.github/workflows/ci.yml` and
-`release.yml` (tags `v*`), the Claude skill is `.claude/skills/lumap-render/`, and the user
+Cargo root is the repository root. The workflows are `.github/workflows/ci.yml` (which also
+publishes `v<version>` from main when the version is new) and `release.yml` (pre-releases on demand), the Claude skill is `.claude/skills/lumap-render/`, and the user
 guide is `docs/manual.md`.
 
 ## Layout

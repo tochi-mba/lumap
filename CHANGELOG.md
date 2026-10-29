@@ -6,6 +6,14 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Changed
+
+- CI publishes releases: every green push to main whose `Cargo.toml` version has no release
+  yet becomes `v<version>` on GitHub Releases, with the installer, its fixed-name copy, the
+  portable zip and the SHA-256 files from the same run that installed and tested them. Bumping
+  the version is the release; tags are no longer pushed by hand. `release.yml` only builds
+  pre-releases on demand.
+
 ## [0.3.1] - 2026-10-29
 
 ### Fixed
