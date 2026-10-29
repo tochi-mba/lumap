@@ -6,6 +6,12 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Fixed
+
+- lumap no longer dies silently on launch on PCs whose Intel Vulkan driver crashes when wgpu
+  creates the device: on Windows it now uses DirectX 12 unless `WGPU_BACKEND` says otherwise,
+  in the window and in `lumap render` alike.
+
 ### Changed
 
 - The REX Technologies look: the ink, panel, raised and line greys of the REX product sites,

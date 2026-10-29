@@ -78,6 +78,15 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([800.0, 500.0]),
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: eframe::egui_wgpu::WgpuConfiguration {
+            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(
+                eframe::egui_wgpu::WgpuSetupCreateNew {
+                    instance_descriptor: lumap_render::gpu::instance_descriptor(),
+                    ..Default::default()
+                },
+            ),
+            ..Default::default()
+        },
         ..Default::default()
     };
     let launch_for_app = launch.clone();

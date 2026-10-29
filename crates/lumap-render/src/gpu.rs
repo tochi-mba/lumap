@@ -43,12 +43,50 @@ pub struct GpuContext {
     pub queue: wgpu::Queue,
 }
 
+/// The backends lumap lets wgpu choose from: `WGPU_BACKEND` when set, otherwise DirectX 12
+/// alone on Windows and wgpu's primary backends elsewhere.
+///
+/// wgpu lists Vulkan before DirectX 12 on Windows, and some Intel Vulkan drivers crash the
+/// process (an access violation, no message) when the device is created, which took the
+/// 0.3.0 installer down on first launch. DirectX 12 is present on every Windows 10 and 11
+/// and renders the same pixels (the golden tests prove it), so it is the one to trust.
+#[must_use]
+pub fn preferred_backends() -> wgpu::Backends {
+    preferred_backends_for(std::env::var("WGPU_BACKEND").ok().as_deref(), cfg!(windows))
+}
+
+/// [`preferred_backends`] with its inputs passed in.
+#[must_use]
+pub fn preferred_backends_for(env: Option<&str>, windows: bool) -> wgpu::Backends {
+    if let Some(names) = env.filter(|s| !s.trim().is_empty()) {
+        let backends = wgpu::Backends::from_comma_list(names);
+        if !backends.is_empty() {
+            return backends;
+        }
+    }
+    if windows {
+        wgpu::Backends::DX12
+    } else {
+        wgpu::Backends::PRIMARY
+    }
+}
+
+/// The instance descriptor every lumap instance is created from: [`preferred_backends`] and
+/// wgpu's other environment overrides.
+#[must_use]
+pub fn instance_descriptor() -> wgpu::InstanceDescriptor {
+    wgpu::InstanceDescriptor {
+        backends: preferred_backends(),
+        ..wgpu::InstanceDescriptor::new_without_display_handle_from_env()
+    }
+}
+
 impl GpuContext {
     /// Creates a context with no surface, suitable for headless rendering. Honours the
-    /// `WGPU_BACKEND` and `WGPU_ADAPTER_NAME` environment variables like wgpu's own examples.
+    /// `WGPU_BACKEND` and `WGPU_ADAPTER_NAME` environment variables like wgpu's own examples,
+    /// and prefers DirectX 12 on Windows (see [`preferred_backends`]).
     pub fn headless() -> Result<Self, GpuError> {
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
+        let instance = wgpu::Instance::new(instance_descriptor());
         Self::with_instance(instance, None)
     }
 
@@ -860,5 +898,30 @@ mod tests {
                 assert_ne!(states[i], states[j]);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_prefers_dx12_unless_the_environment_says_otherwise() {
+        assert_eq!(preferred_backends_for(None, true), wgpu::Backends::DX12);
+        assert_eq!(preferred_backends_for(Some(""), true), wgpu::Backends::DX12);
+        assert_eq!(
+            preferred_backends_for(Some("nonsense"), true),
+            wgpu::Backends::DX12
+        );
+        assert_eq!(
+            preferred_backends_for(Some("vulkan"), true),
+            wgpu::Backends::VULKAN
+        );
+        assert_eq!(
+            preferred_backends_for(Some("vulkan,dx12"), false),
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        );
+        assert_eq!(preferred_backends_for(None, false), wgpu::Backends::PRIMARY);
+        assert!(!instance_descriptor().backends.is_empty());
     }
 }
