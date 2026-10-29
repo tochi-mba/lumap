@@ -2,11 +2,13 @@
 //!
 //! `ffprobe` reports the stream size and rate; `ffmpeg` decodes to raw RGBA on its stdout
 //! while a reader thread slices it into frames. Nothing links against ffmpeg, so lumap stays
-//! MIT/Apache and any build of ffmpeg on the PATH (or named by `LUMAP_FFMPEG`) works.
+//! MIT/Apache and any build of ffmpeg works: the one named by `LUMAP_FFMPEG` (the settings),
+//! the one the installer ships next to the executable, or the one on the PATH, in that order.
 
 use crate::clock::Transport;
 use crate::{Frame, FrameSource, SourceError};
 use lumap_core::project::Playback;
+use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -27,14 +29,75 @@ pub struct Tools {
     pub ffprobe: PathBuf,
 }
 
+/// Where the ffmpeg binaries came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Origin {
+    /// `LUMAP_FFMPEG`: the ffmpeg path in the settings, or the shell.
+    Setting,
+    /// `ffmpeg/ffmpeg` or `ffmpeg` beside the lumap executable: the copy the installer ships.
+    Bundled,
+    /// A bare `ffmpeg`, resolved through the PATH.
+    Path,
+}
+
+impl Origin {
+    /// A few words for the settings panel.
+    #[must_use]
+    pub fn describe(self) -> &'static str {
+        match self {
+            Self::Setting => "from the ffmpeg path setting",
+            Self::Bundled => "bundled with lumap",
+            Self::Path => "from the PATH",
+        }
+    }
+}
+
 impl Tools {
-    /// Uses `LUMAP_FFMPEG` / `LUMAP_FFPROBE` when set, else the PATH.
+    /// The binaries lumap will use: `LUMAP_FFMPEG` / `LUMAP_FFPROBE` when set, else the copy
+    /// beside the executable, else the PATH.
     pub fn from_env() -> Self {
-        let ffmpeg =
-            std::env::var_os("LUMAP_FFMPEG").map_or_else(|| PathBuf::from("ffmpeg"), PathBuf::from);
-        let ffprobe = std::env::var_os("LUMAP_FFPROBE")
-            .map_or_else(|| sibling(&ffmpeg, "ffprobe"), PathBuf::from);
-        Self { ffmpeg, ffprobe }
+        Self::discover().0
+    }
+
+    /// [`Tools::from_env`] and where it looked.
+    pub fn discover() -> (Self, Origin) {
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(Path::to_path_buf));
+        Self::locate(
+            exe_dir.as_deref(),
+            |key| std::env::var_os(key),
+            Path::is_file,
+        )
+    }
+
+    /// The lookup itself, with the environment and the filesystem passed in so it is testable:
+    /// `env` reads a variable, `exists` says whether a candidate file is there.
+    pub fn locate(
+        exe_dir: Option<&Path>,
+        env: impl Fn(&str) -> Option<OsString>,
+        exists: impl Fn(&Path) -> bool,
+    ) -> (Self, Origin) {
+        let suffix = std::env::consts::EXE_SUFFIX;
+        let bundled = || {
+            let dir = exe_dir?;
+            [
+                dir.join("ffmpeg").join(format!("ffmpeg{suffix}")),
+                dir.join(format!("ffmpeg{suffix}")),
+            ]
+            .into_iter()
+            .find(|candidate| exists(candidate))
+        };
+        let (ffmpeg, origin) = match env("LUMAP_FFMPEG") {
+            Some(path) => (PathBuf::from(path), Origin::Setting),
+            None => match bundled() {
+                Some(path) => (path, Origin::Bundled),
+                None => (PathBuf::from("ffmpeg"), Origin::Path),
+            },
+        };
+        let ffprobe =
+            env("LUMAP_FFPROBE").map_or_else(|| sibling(&ffmpeg, "ffprobe"), PathBuf::from);
+        (Self { ffmpeg, ffprobe }, origin)
     }
 
     /// True when `ffmpeg -version` runs.
@@ -407,11 +470,56 @@ mod tests {
             ffprobe: PathBuf::from("/definitely/missing/ffprobe"),
         };
         assert!(!tools.available());
+        let (discovered, _) = Tools::discover();
+        assert_eq!(discovered, Tools::from_env());
         assert!(probe(&tools, Path::new("x.mp4"))
             .unwrap_err()
             .to_string()
             .contains("cannot run"));
         assert!(VideoSource::open(tools, Path::new("x.mp4"), Playback::default()).is_err());
+    }
+
+    #[test]
+    fn ffmpeg_is_found_in_the_setting_then_beside_the_exe_then_on_the_path() {
+        let suffix = std::env::consts::EXE_SUFFIX;
+        let exe_dir = Path::new("/apps/lumap");
+        let in_folder = exe_dir.join("ffmpeg").join(format!("ffmpeg{suffix}"));
+        let beside = exe_dir.join(format!("ffmpeg{suffix}"));
+        let none = |_: &str| None;
+
+        let (tools, origin) = Tools::locate(Some(exe_dir), none, |_| false);
+        assert_eq!(origin, Origin::Path);
+        assert_eq!(tools.ffmpeg, PathBuf::from("ffmpeg"));
+        assert_eq!(tools.ffprobe, PathBuf::from("ffprobe"));
+
+        let (tools, origin) = Tools::locate(Some(exe_dir), none, |p| p == beside);
+        assert_eq!(origin, Origin::Bundled);
+        assert_eq!(tools.ffmpeg, beside);
+        assert_eq!(tools.ffprobe, sibling(&beside, "ffprobe"));
+
+        let (tools, origin) = Tools::locate(Some(exe_dir), none, |_| true);
+        assert_eq!((origin, tools.ffmpeg), (Origin::Bundled, in_folder.clone()));
+        assert_eq!(tools.ffprobe, sibling(&in_folder, "ffprobe"));
+
+        let (tools, origin) = Tools::locate(None, none, |_| true);
+        assert_eq!(
+            (origin, tools.ffmpeg),
+            (Origin::Path, PathBuf::from("ffmpeg"))
+        );
+
+        let env = |key: &str| match key {
+            "LUMAP_FFMPEG" => Some(OsString::from("/custom/ffmpeg")),
+            "LUMAP_FFPROBE" => Some(OsString::from("/elsewhere/ffprobe")),
+            _ => None,
+        };
+        let (tools, origin) = Tools::locate(Some(exe_dir), env, |_| true);
+        assert_eq!(origin, Origin::Setting);
+        assert_eq!(tools.ffmpeg, PathBuf::from("/custom/ffmpeg"));
+        assert_eq!(tools.ffprobe, PathBuf::from("/elsewhere/ffprobe"));
+
+        assert_eq!(Origin::Setting.describe(), "from the ffmpeg path setting");
+        assert_eq!(Origin::Bundled.describe(), "bundled with lumap");
+        assert_eq!(Origin::Path.describe(), "from the PATH");
     }
 
     /// A stand-in for ffmpeg/ffprobe written in shell: probe prints a fixed stream, decode

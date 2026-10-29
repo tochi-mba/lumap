@@ -13,6 +13,16 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   by `scripts/check_site.py` and its tests (`cargo xtask site`, also on CI) and published by the
   Pages workflow.
 - `.portfolio/project.json`, so the REX portfolio lists lumap.
+- Windows installer `lumap-Setup-<version>.exe` (Inno Setup, per user, no administrator
+  prompt): bundles ffmpeg and ffprobe (a pinned LGPL build, verified by SHA-256), the demo
+  project, the manual and the licences; offers a desktop shortcut, the `lumap` command on the
+  PATH and opening `.lumap.toml` projects with lumap. Every release also publishes it under the
+  fixed name `lumap-Setup.exe`, so `releases/latest/download/lumap-Setup.exe` is always the
+  newest. CI installs, runs and uninstalls it on every push.
+- lumap finds ffmpeg beside its own executable (`ffmpeg\ffmpeg.exe`, then `ffmpeg.exe`)
+  between the settings path and the PATH, and the show inspector says which copy is in use.
+- `lumap icon OUT` writes the app icon as a multi-size `.ico` (`cargo xtask icon` refreshes
+  `assets/lumap.ico`).
 
 ## [0.2.0] - 2026-10-29
 

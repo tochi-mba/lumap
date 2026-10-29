@@ -54,7 +54,7 @@ files anywhere on the window.
 | Test pattern | Grid, bars, checker, ramp. The grid has a crosshair and a circle to reveal aspect errors |
 | Solid | Colour with alpha |
 | Image | PNG, JPEG |
-| Video | Any format `ffmpeg` decodes. If `ffmpeg` is not on the path, set it in the show inspector (saved in settings) |
+| Video | Any format `ffmpeg` decodes. The installer bundles ffmpeg; see "Where ffmpeg comes from" in section 7 |
 | Sequence | Folder of numbered PNG/JPEG frames, or a GIF, with a frame rate |
 | Generator | Plasma, noise, colour cycle, strobe, radar sweep, grid pulse; speed and tint |
 | Spout | Windows builds: any Spout sender by name (empty = the active sender) |
@@ -145,6 +145,15 @@ Preferences live in `settings.toml` in the OS config directory (`%APPDATA%\lumap
 Windows; `LUMAP_CONFIG_DIR` overrides): recent files, OSC port, MIDI port, OSC feedback
 target, remote port, grid, snap, edit-on-wall, autosave interval, ffmpeg path and whether to
 skip the welcome screen.
+
+### Where ffmpeg comes from
+
+Video needs `ffmpeg` and `ffprobe`. lumap looks, in order, at the ffmpeg path in the settings
+(the `LUMAP_FFMPEG` environment variable; `LUMAP_FFPROBE` names ffprobe separately), then at
+`ffmpeg\ffmpeg.exe` or `ffmpeg.exe` beside its own executable (the copy the Windows installer
+ships), then at the PATH. The show inspector says which one is in use. The bundled copy is an
+LGPL build; its licence and origin are in `ffmpeg\LICENSE.txt` and `ffmpeg\VERSION.txt` next
+to it.
 
 Projects are TOML with a `schema_version`; older files are migrated on load and
 `lumap migrate` rewrites them. Media paths are stored relative to the project file when

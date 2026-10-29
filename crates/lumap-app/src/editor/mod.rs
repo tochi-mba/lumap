@@ -193,11 +193,18 @@ impl LumapApp {
         }
     }
 
+    /// Looks ffmpeg up again after its path changed and remembers whether and where it was found.
+    fn refresh_ffmpeg(&mut self) {
+        let (tools, origin) = lumap_sources::video::Tools::discover();
+        self.panels.ffmpeg_ok = tools.available();
+        self.panels.ffmpeg_origin = origin;
+    }
+
     /// Applies loaded preferences to the live state.
     pub fn apply_settings(&mut self, settings: Settings) {
         if !settings.ffmpeg_path.is_empty() {
             apply_ffmpeg_path(&settings.ffmpeg_path);
-            self.panels.ffmpeg_ok = lumap_sources::video::Tools::from_env().available();
+            self.refresh_ffmpeg();
             self.panels.ffmpeg_path.clone_from(&settings.ffmpeg_path);
         }
         if !settings.midi_port.is_empty() {
@@ -679,7 +686,7 @@ impl LumapApp {
                 self.settings.ffmpeg_path.clone_from(&path);
                 self.settings.save();
                 apply_ffmpeg_path(&path);
-                self.panels.ffmpeg_ok = lumap_sources::video::Tools::from_env().available();
+                self.refresh_ffmpeg();
                 self.editor.reload_sources();
             }
         }

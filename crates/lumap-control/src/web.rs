@@ -156,6 +156,8 @@ impl RemoteServer {
     /// Binds `0.0.0.0:port` (`0` picks a free port) and serves on a background thread.
     pub fn bind(port: u16) -> Result<Self, String> {
         let server = tiny_http::Server::http(("0.0.0.0", port)).map_err(|e| e.to_string())?;
+        // On Windows the IP arm is the only one, which clippy would rather see as a `let`.
+        #[allow(clippy::infallible_destructuring_match)]
         let addr = match server.server_addr() {
             tiny_http::ListenAddr::IP(a) => a,
             #[cfg(unix)]

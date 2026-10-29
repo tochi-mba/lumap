@@ -149,7 +149,7 @@ jobs:
           RUSTUP_TOOLCHAIN: ${{ steps.msrv.outputs.version }}
 
   build-windows:
-    name: Windows release build
+    name: Windows installer
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -158,17 +158,25 @@ jobs:
         with:
           toolchain: 1.97.0
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release -p lumap-app --features spout
+      - name: Build the installer and the portable zip
+        shell: pwsh
+        run: ./installer/build.ps1 -Version 0.0.0-ci
+      - name: Install silently, run the installed app, uninstall
+        shell: pwsh
+        run: ./installer/smoke-test.ps1 -Installer (Get-Item dist/lumap-Setup-*.exe).FullName
       - uses: actions/upload-artifact@v4
         with:
           name: lumap-windows-x64
           if-no-files-found: error
-          path: target/release/lumap.exe
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.sha256
       - name: Summary
         shell: bash
         run: |
           {
             echo "### lumap build ${{ github.run_id }}"
             echo
-            echo "Download the **lumap-windows-x64** artifact for a portable \`lumap.exe\`."
+            echo "The **lumap-windows-x64** artifact holds the installer and the portable zip, each with its SHA-256."
           } >> "$GITHUB_STEP_SUMMARY"

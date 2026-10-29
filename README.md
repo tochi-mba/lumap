@@ -39,8 +39,10 @@ differences from the usual tools:
 
 ## Two-minute start
 
-1. Download `lumap-<version>-windows-x64.zip` from the releases (tags `v*`), unzip, run
-   `lumap.exe`. Or build: `cargo build --release -p lumap-app --features spout`.
+1. Download and run [`lumap-Setup.exe`](https://github.com/tochi-mba/lumap/releases/latest/download/lumap-Setup.exe)
+   (installs for you only, no administrator prompt, ffmpeg included). Prefer no installer? Each
+   release also has `lumap-<version>-windows-x64.zip`: unzip and run `lumap.exe`. Or build:
+   `cargo build --release -p lumap-app --features spout`.
 2. The welcome screen lists your displays. Click **Create N output(s) with a test grid**: each
    secondary display gets a borderless output window showing an alignment grid.
 3. Press **I** to flash each output's name on its projector. Drag the four corner handles on

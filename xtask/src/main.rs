@@ -296,6 +296,18 @@ fn main() -> anyhow::Result<()> {
         "ci" => ci(),
         "file-lengths" => check_file_lengths(),
         "site" => site(),
+        "icon" => run(
+            "icon",
+            cargo(&[
+                "run",
+                "-q",
+                "-p",
+                "lumap-app",
+                "--",
+                "icon",
+                "assets/lumap.ico",
+            ]),
+        ),
         "coverage" => coverage(),
         "check-coverage" => {
             let path = std::env::args()
@@ -309,7 +321,7 @@ fn main() -> anyhow::Result<()> {
             );
             check_floors(&report)
         }
-        _ => bail!("usage: cargo xtask <ci|file-lengths|site|coverage|check-coverage FILE>"),
+        _ => bail!("usage: cargo xtask <ci|file-lengths|site|icon|coverage|check-coverage FILE>"),
     }
 }
 

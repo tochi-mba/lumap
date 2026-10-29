@@ -73,9 +73,12 @@ fn show_inspector(
     });
     ui.separator();
     ui.label(if state.ffmpeg_ok {
-        "ffmpeg found: video sources play."
+        format!(
+            "ffmpeg found ({}): video sources play.",
+            state.ffmpeg_origin.describe()
+        )
     } else {
-        "ffmpeg not found: install it or point lumap at it below."
+        "ffmpeg not found: install it or point lumap at it below.".to_string()
     });
     ui.horizontal(|ui| {
         let label = ui.label("ffmpeg path");

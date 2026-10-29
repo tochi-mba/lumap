@@ -14,7 +14,9 @@ ignore = []
 [licenses]
 version = 2
 # Permissive licences only. GPL/AGPL/LGPL code must not enter the dependency graph because
-# the application ships under MIT OR Apache-2.0.
+# the application ships under MIT OR Apache-2.0. (The Windows installer ships an LGPL ffmpeg as
+# separate executables that lumap runs as a child process; nothing here links against it, and
+# installer/fetch-ffmpeg.ps1 keeps its licence and origin beside it.)
 allow = [
   "MIT",
   "Apache-2.0",

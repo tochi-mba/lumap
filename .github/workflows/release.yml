@@ -1,4 +1,6 @@
-# Publishes lumap for Windows as a GitHub Release.
+# Publishes lumap for Windows as a GitHub Release: a per-user installer with ffmpeg inside, the
+# same installer under the fixed name lumap-Setup.exe (what the website's download button and
+# releases/latest/download point at), a portable zip, and a SHA-256 file beside each.
 #   push a v* tag       -> release with that exact version
 #   workflow_dispatch   -> build-<run number> pre-release from any branch
 name: Release lumap
@@ -16,7 +18,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PROJECT_SLUG: "lumap"
   CARGO_TERM_COLOR: always
 
 defaults:
@@ -25,7 +26,7 @@ defaults:
 
 jobs:
   release:
-    name: Build and publish Windows binary
+    name: Build, install, publish
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -42,7 +43,7 @@ jobs:
             tag="${GITHUB_REF#refs/tags/}"; name="${tag#v}"; prerelease=false
           else
             crate=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-            name="${crate}-build.${GITHUB_RUN_NUMBER}-${GITHUB_REF_NAME//\//-}"; tag="build-${GITHUB_RUN_NUMBER}"; prerelease=true
+            name="${crate}-build.${GITHUB_RUN_NUMBER}"; tag="build-${GITHUB_RUN_NUMBER}"; prerelease=true
           fi
           {
             echo "name=$name"
@@ -51,20 +52,16 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "version $name, tag $tag, prerelease=$prerelease"
 
-      - name: Build
-        run: cargo build --release -p lumap-app --features spout --locked
+      - name: Build the installer and the portable zip
+        shell: pwsh
+        run: ./installer/build.ps1 -Version "${{ steps.version.outputs.name }}"
 
-      - name: Package
-        env:
-          NAME: ${{ steps.version.outputs.name }}
-        run: |
-          mkdir -p dist/stage
-          cp target/release/lumap.exe dist/stage/
-          cp README.md CHANGELOG.md LICENSE-MIT LICENSE-APACHE dist/stage/
-          cp -r examples dist/stage/examples
-          (cd dist/stage && 7z a -tzip "../${PROJECT_SLUG}-${NAME}-windows-x64.zip" ./* > /dev/null)
-          rm -rf dist/stage
-          (cd dist && sha256sum ./* > SHA256SUMS.txt && cat SHA256SUMS.txt)
+      - name: Install silently, run the installed app, uninstall
+        shell: pwsh
+        run: ./installer/smoke-test.ps1 -Installer (Get-Item dist/lumap-Setup-*.exe).FullName
+
+      - name: Fixed-name copy of the installer
+        run: cp "dist/lumap-Setup-${{ steps.version.outputs.name }}.exe" dist/lumap-Setup.exe
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -73,7 +70,12 @@ jobs:
           name: lumap ${{ steps.version.outputs.name }}
           prerelease: ${{ steps.version.outputs.prerelease }}
           generate_release_notes: true
-          files: dist/*
+          files: |
+            dist/lumap-Setup-*.exe
+            dist/lumap-Setup-*.exe.sha256
+            dist/lumap-Setup.exe
+            dist/lumap-*-windows-x64.zip
+            dist/lumap-*-windows-x64.zip.sha256
           fail_on_unmatched_files: true
 
       - name: Summary
@@ -85,4 +87,6 @@ jobs:
             echo "### Published lumap $NAME"
             echo
             echo "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+            echo
+            echo "The website's button points at the fixed name: https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/lumap-Setup.exe"
           } >> "$GITHUB_STEP_SUMMARY"
