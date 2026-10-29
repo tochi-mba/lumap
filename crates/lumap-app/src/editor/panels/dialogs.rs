@@ -3,7 +3,7 @@
 use super::super::{Editor, MonitorInfo, Pending};
 use super::{Actions, PanelState, SHORTCUTS};
 use crate::settings::Settings;
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 
 /// Modal prompts: autosave recovery, unsaved changes, welcome and the cheat sheet.
 #[allow(clippy::too_many_lines)]
@@ -28,7 +28,7 @@ pub fn dialogs(
                     if ui.button("Recover").clicked() {
                         editor.recover();
                     }
-                    if ui.button("Discard").clicked() {
+                    if crate::theme::danger_button(ui, "Discard").clicked() {
                         editor.discard_recovery();
                     }
                 });
@@ -50,7 +50,7 @@ pub fn dialogs(
                         actions.save = true;
                         actions.resolve_pending = Some(true);
                     }
-                    if ui.button("Discard changes").clicked() {
+                    if crate::theme::danger_button(ui, "Discard changes").clicked() {
                         actions.resolve_pending = Some(true);
                     }
                     if ui.button("Cancel").clicked() {
@@ -62,12 +62,23 @@ pub fn dialogs(
     if state.welcome && !editor.show_mode {
         egui::Window::new("Welcome to lumap").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
             ui.set_min_width(380.0);
-            ui.label("Map images onto walls, objects and screens with one or many projectors.");
+            ui.label(
+                RichText::new("REX TECHNOLOGIES")
+                    .size(10.5)
+                    .family(crate::theme::strong_family())
+                    .color(crate::theme::SIGNAL),
+            );
+            ui.label(
+                RichText::new("lumap")
+                    .size(26.0)
+                    .family(crate::theme::strong_family()),
+            );
+            ui.label(RichText::new("Map images onto walls, objects and screens with one or many projectors.").weak());
             ui.add_space(8.0);
             let secondary = monitors.len().saturating_sub(1);
             if monitors.len() > 1 {
                 ui.label(format!("{} displays detected. Make each extra display a projector output?", monitors.len()));
-                if ui.button(format!("Create {secondary} output(s) with a test grid")).clicked() {
+                if crate::theme::primary_button(ui, &format!("Create {secondary} output(s) with a test grid")).clicked() {
                     actions.create_outputs = true;
                 }
             } else {
@@ -136,7 +147,7 @@ pub fn dialogs(
             .collapsible(false)
             .resizable(false)
             .show(ctx, |ui| {
-                ui.colored_label(Color32::LIGHT_RED, &e);
+                ui.colored_label(crate::theme::LIVE, &e);
                 if ui.button("Dismiss").clicked() {
                     state.error = None;
                 }

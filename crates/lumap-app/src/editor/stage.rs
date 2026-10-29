@@ -128,13 +128,13 @@ pub fn show(
             let overlap = a.intersect(*b);
             if overlap.is_positive() {
                 let so = to_screen(origin, scale, overlap);
-                painter.rect_filled(so, 0.0, Color32::from_rgba_unmultiplied(255, 200, 0, 60));
+                painter.rect_filled(so, 0.0, crate::theme::SIGNAL.linear_multiply(0.2));
                 painter.text(
                     so.center(),
                     egui::Align2::CENTER_CENTER,
                     format!("{}x{}", overlap.width() as i32, overlap.height() as i32),
                     egui::FontId::monospace(11.0),
-                    Color32::from_rgb(255, 220, 120),
+                    crate::theme::SIGNAL,
                 );
             }
         }
@@ -147,7 +147,7 @@ pub fn show(
             Stroke::new(
                 if is_sel { 2.0 } else { 1.0 },
                 if is_sel {
-                    Color32::from_rgb(80, 180, 255)
+                    crate::theme::SIGNAL
                 } else {
                     Color32::from_gray(160)
                 },

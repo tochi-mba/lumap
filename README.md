@@ -37,6 +37,10 @@ differences from the usual tools:
 |---|---|
 | ![generators](docs/images/generators.png) | ![overlay](docs/images/overlay-grid.png) |
 
+| The editor on the demo project | The welcome screen |
+|---|---|
+| ![editor](docs/images/editor.png) | ![welcome](docs/images/welcome.png) |
+
 ## Two-minute start
 
 1. Download and run [`lumap-Setup.exe`](https://github.com/tochi-mba/lumap/releases/latest/download/lumap-Setup.exe)

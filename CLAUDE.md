@@ -39,6 +39,13 @@ guide is `docs/manual.md`.
   other REX products). `scripts/check_site.py` is its gate, tested by `tests/site/`; the page
   script `site/app.js` is tested with `node --test`. `cargo xtask site` runs all three.
   `.portfolio/project.json` describes lumap to the REX portfolio.
+- `crates/lumap-app/src/theme.rs`: the REX palette (`INK`, `PANEL`, `RAISED`, `LINE`, `TEXT`,
+  `MUTED`, `SIGNAL`, `LIVE`), the embedded Inter fonts (`assets/fonts/`, OFL), the egui visuals,
+  and the branded widgets (`section_header`, `primary_button`, `danger_button`, `pill`,
+  `empty_state`). Signal is the only accent; live is for show mode, blackout and destructive
+  choices; never add a third colour. `LumapApp::frame` applies the theme on its first frame.
+  Visual changes: rerun the ignored `render_doc_screenshots` test (DX12 locally) and commit the
+  images.
 - `crates/lumap-app/src/update/`: the updater. `offer.rs` (release JSON to an offer, version
   rules, SHA-256) and `flow.rs` (every decision over the persisted `UpdateSettings`) are pure
   and fully unit-tested; `worker.rs` fetches through a `Fetcher` (the default runs `curl`, so

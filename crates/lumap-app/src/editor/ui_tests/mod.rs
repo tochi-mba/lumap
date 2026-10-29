@@ -705,3 +705,28 @@ fn snapping_locking_and_click_to_select_on_the_canvas() {
 mod control_tests;
 mod show_tests;
 mod update_tests;
+
+/// Renders the welcome screen and the editor on the demo project to `docs/images/`, through
+/// the same harness the UI tests use, so the README and the website show the real app. Ignored
+/// by default because it writes into the repository; run it on purpose after a visual change:
+/// `WGPU_BACKEND=dx12 cargo test -p lumap-app -- --ignored render_doc_screenshots`.
+#[test]
+#[ignore = "writes docs/images; run on purpose after a visual change"]
+fn render_doc_screenshots() {
+    let _settings = settings_guard();
+    let _dir = config_dir();
+    let out = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/images");
+    let mut h = Harness::builder()
+        .with_size(egui::Vec2::new(1400.0, 860.0))
+        .with_pixels_per_point(1.0)
+        .renderer(egui_kittest::wgpu::WgpuTestRenderer::default())
+        .build_ui_state(
+            |ui, app: &mut LumapApp| app.frame(ui),
+            app(Editor::new(demo_project(), None)),
+        );
+    h.run_steps(4);
+    h.render().unwrap().save(out.join("editor.png")).unwrap();
+    h.state_mut().panels.welcome = true;
+    h.run_steps(4);
+    h.render().unwrap().save(out.join("welcome.png")).unwrap();
+}
