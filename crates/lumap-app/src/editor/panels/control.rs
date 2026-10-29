@@ -14,7 +14,7 @@ pub(super) fn control_section(
     actions: &mut Actions,
 ) {
     ui.heading("Control");
-    ui.label(RichText::new("MIDI").strong());
+    crate::theme::section_header(ui, "MIDI");
     ui.horizontal(|ui| {
         egui::ComboBox::from_label("MIDI port")
             .selected_text(if state.midi_port.is_empty() {
@@ -63,7 +63,10 @@ pub(super) fn control_section(
     });
     if let Some((address, _)) = editor.midi_learn.clone() {
         ui.horizontal(|ui| {
-            ui.colored_label(Color32::YELLOW, format!("move a control for {address}"));
+            ui.colored_label(
+                crate::theme::SIGNAL,
+                format!("move a control for {address}"),
+            );
             if ui.button("Cancel learn").clicked() {
                 editor.midi_learn = None;
             }
@@ -79,8 +82,7 @@ pub(super) fn control_section(
             }
         });
     }
-    ui.separator();
-    ui.label(RichText::new("OSC feedback").strong());
+    crate::theme::section_header(ui, "OSC feedback");
     let label = ui.label("Feedback host:port");
     ui.text_edit_singleline(&mut state.feedback_target)
         .labelled_by(label.id)
@@ -94,8 +96,7 @@ pub(super) fn control_section(
             None => ui.label(RichText::new("feedback off").weak()),
         };
     });
-    ui.separator();
-    ui.label(RichText::new("Phone remote").strong());
+    crate::theme::section_header(ui, "Phone remote");
     ui.horizontal(|ui| {
         let label = ui.label("Remote port");
         ui.add(egui::DragValue::new(&mut state.remote_port).range(0..=65535))
@@ -165,8 +166,7 @@ pub fn cue_panel(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState,
                     editor.store_cue(&state.cue_name.clone(), state.cue_fade);
                     state.cue_name.clear();
                 }
-                if ui
-                    .button("GO")
+                if crate::theme::primary_button(ui, "GO")
                     .on_hover_text("Fade to the next cue (Space)")
                     .clicked()
                 {
@@ -209,6 +209,11 @@ pub fn cue_panel(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState,
                             i + 1,
                             cue.fade_seconds
                         );
+                        let text = if current {
+                            RichText::new(text).color(crate::theme::SIGNAL)
+                        } else {
+                            RichText::new(text)
+                        };
                         if ui.selectable_label(selected, text).clicked() {
                             editor.selected_cue = Some(i);
                         }

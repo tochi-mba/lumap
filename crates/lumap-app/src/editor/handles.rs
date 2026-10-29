@@ -229,13 +229,13 @@ pub fn interact(
         let is_selected = selected.as_ref().is_some_and(|(s, _)| s == id);
         let is_extra = extra.contains(id);
         let color = if is_selected {
-            Color32::from_rgb(90, 200, 255)
+            crate::theme::SIGNAL
         } else if is_extra {
-            Color32::from_rgb(90, 200, 255).gamma_multiply(0.6)
+            crate::theme::SIGNAL.gamma_multiply(0.6)
         } else if *locked {
             Color32::from_rgba_unmultiplied(200, 200, 200, 50)
         } else {
-            Color32::from_rgba_unmultiplied(90, 200, 255, 60)
+            crate::theme::SIGNAL.linear_multiply(0.25)
         };
         draw_wireframe(
             &painter,
@@ -269,7 +269,7 @@ pub fn interact(
             pos,
             if active { 6.0 } else { 4.5 },
             if active {
-                Color32::YELLOW
+                crate::theme::SIGNAL
             } else {
                 Color32::WHITE
             },

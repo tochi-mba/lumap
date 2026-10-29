@@ -253,6 +253,12 @@ pub fn top_bar(
 ) {
     egui::Panel::top("lumap-top").show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
+            ui.label(
+                RichText::new("lumap")
+                    .family(crate::theme::strong_family())
+                    .color(crate::theme::SIGNAL),
+            );
+            ui.separator();
             ui.menu_button("File", |ui| {
                 if ui.button("New  (Ctrl+N)").clicked() {
                     actions.new = true;
@@ -378,13 +384,16 @@ pub fn top_bar(
             let blackout = editor.project.blackout;
             if ui
                 .add(
-                    egui::Button::new(if blackout { "BLACKOUT" } else { "Blackout" }).fill(
-                        if blackout {
-                            Color32::from_rgb(120, 20, 20)
-                        } else {
-                            Color32::TRANSPARENT
-                        },
-                    ),
+                    egui::Button::new(if blackout {
+                        RichText::new("BLACKOUT").color(crate::theme::LIVE)
+                    } else {
+                        RichText::new("Blackout")
+                    })
+                    .fill(if blackout {
+                        crate::theme::LIVE.linear_multiply(0.2)
+                    } else {
+                        Color32::TRANSPARENT
+                    }),
                 )
                 .on_hover_text("All outputs black (B)")
                 .clicked()
@@ -416,12 +425,13 @@ pub fn status_bar(
                 ui.label(RichText::new(format!("{} surfaces selected", selected.len())).weak());
             }
             ui.separator();
-            ui.label(
-                RichText::new(match &editor.osc {
+            crate::theme::pill(
+                ui,
+                &match &editor.osc {
                     Some(s) => format!("OSC {}", s.local_addr().port()),
                     None => "OSC off".into(),
-                })
-                .weak(),
+                },
+                false,
             );
             if let Some(p) = &editor.last_patch {
                 ui.label(RichText::new(p).weak().small());
@@ -432,13 +442,14 @@ pub fn status_bar(
                 ui.label(RichText::new(format!("{:.0}%", canvas.zoom * 100.0)).weak())
                     .on_hover_text("Scroll to zoom, middle-drag to pan, 0 to fit");
                 ui.separator();
-                ui.label(
-                    RichText::new(if canvas.handles.snap {
+                crate::theme::pill(
+                    ui,
+                    if canvas.handles.snap {
                         "snap on"
                     } else {
                         "snap off"
-                    })
-                    .weak(),
+                    },
+                    false,
                 );
                 ui.separator();
                 if editor.dirty {
@@ -449,7 +460,7 @@ pub fn status_bar(
                         } else {
                             "unsaved".into()
                         })
-                        .weak(),
+                        .color(crate::theme::SIGNAL),
                     );
                 } else {
                     ui.label(RichText::new("saved").weak());
@@ -600,6 +611,9 @@ pub fn left_panel(
                 });
             });
             let sources: Vec<_> = editor.project.sources.iter().map(|s| (s.id.clone(), describe(&s.kind))).collect();
+            if sources.is_empty() {
+                crate::theme::empty_state(ui, "No sources yet", "Add media, a generator or a test pattern.");
+            }
             for (id, desc) in sources {
                 let selected = editor.selection == Selection::Source(id.clone());
                 ui.horizontal(|ui| {
@@ -761,26 +775,33 @@ pub fn drop_overlay(ctx: &egui::Context) {
         rect.center(),
         egui::Align2::CENTER_CENTER,
         "Drop to add as sources",
-        egui::FontId::proportional(28.0),
-        Color32::WHITE,
+        egui::FontId::new(28.0, crate::theme::strong_family()),
+        crate::theme::TEXT,
     );
 }
 
 pub fn show_mode_screen(ui: &mut egui::Ui, editor: &Editor, fps: f32) {
     egui::CentralPanel::default()
-        .frame(egui::Frame::NONE.fill(Color32::BLACK))
+        .frame(egui::Frame::NONE.fill(crate::theme::INK))
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space(ui.available_height() * 0.3);
                 ui.label(
+                    RichText::new("REX TECHNOLOGIES")
+                        .size(11.0)
+                        .family(crate::theme::strong_family())
+                        .color(crate::theme::SIGNAL),
+                );
+                ui.label(
                     RichText::new("SHOW MODE")
                         .size(32.0)
-                        .color(Color32::from_gray(200)),
+                        .family(crate::theme::strong_family())
+                        .color(crate::theme::TEXT),
                 );
                 ui.label(
                     RichText::new(&editor.project.name)
                         .size(18.0)
-                        .color(Color32::from_gray(150)),
+                        .color(crate::theme::MUTED),
                 );
                 ui.add_space(12.0);
                 ui.label(
@@ -788,20 +809,26 @@ pub fn show_mode_screen(ui: &mut egui::Ui, editor: &Editor, fps: f32) {
                         "{} output window(s) · {fps:.0} fps",
                         editor.open_outputs.len()
                     ))
-                    .color(Color32::from_gray(120)),
+                    .color(crate::theme::MUTED),
                 );
                 ui.label(
                     RichText::new(match &editor.osc {
                         Some(s) => format!("OSC on {}", s.local_addr()),
                         None => "OSC off".into(),
                     })
-                    .color(Color32::from_gray(120)),
+                    .color(crate::theme::MUTED),
                 );
                 if editor.project.blackout {
-                    ui.label(RichText::new("BLACKOUT").color(Color32::LIGHT_RED));
+                    crate::theme::pill(ui, "BLACKOUT", true);
                 }
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new("Locked · press Escape twice to leave")
+                        .small()
+                        .color(crate::theme::MUTED),
+                );
                 ui.add_space(12.0);
-                ui.label(RichText::new(&editor.status).color(Color32::from_gray(100)));
+                ui.label(RichText::new(&editor.status).color(crate::theme::MUTED));
             });
         });
 }

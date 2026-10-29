@@ -6,6 +6,16 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Changed
+
+- The REX Technologies look: the ink, panel, raised and line greys of the REX product sites,
+  signal (`#D7FF3F`) as the one accent for selection, handles, the active cue and primary
+  buttons, live (`#FF774D`) for show mode, blackout and destructive choices, and Inter
+  (OFL 1.1, embedded) for every label. Welcome screen, toolbar, status bar, cue panel, show
+  screen, dialogs, inspectors, handles and the stage view were tidied to match; the layout is
+  unchanged and every button keeps its name. `docs/images/editor.png` and `welcome.png` are
+  rendered by an ignored UI test (`render_doc_screenshots`).
+
 ## [0.3.0] - 2026-10-29
 
 The first release with an installer and an updater: from here on lumap keeps itself current.

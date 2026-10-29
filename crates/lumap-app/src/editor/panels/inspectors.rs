@@ -126,7 +126,7 @@ fn show_inspector(
         });
     }
     if let Some(e) = &state.error {
-        ui.colored_label(Color32::LIGHT_RED, e);
+        ui.colored_label(crate::theme::LIVE, e);
     }
     ui.separator();
     super::control::control_section(ui, editor, state, actions);
@@ -617,7 +617,7 @@ fn surface_inspector(
         editor.delete_selection();
     }
     if let Some(e) = &state.error {
-        ui.colored_label(Color32::LIGHT_RED, e);
+        ui.colored_label(crate::theme::LIVE, e);
     }
 }
 
@@ -755,7 +755,7 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
             ui.label(format!("Path: {path}"));
             if matches!(source.kind, SourceKind::Video { .. }) && !state.ffmpeg_ok {
                 ui.colored_label(
-                    Color32::LIGHT_RED,
+                    crate::theme::LIVE,
                     "ffmpeg not found: this video cannot play. Set the path in the Show panel.",
                 );
             }
@@ -832,12 +832,11 @@ fn crop_preview(
     ui.painter().rect_stroke(
         box_rect,
         0.0,
-        egui::Stroke::new(1.5, Color32::from_rgb(255, 200, 60)),
+        egui::Stroke::new(1.5, crate::theme::SIGNAL),
         egui::StrokeKind::Outside,
     );
     for p in [box_rect.min, box_rect.max] {
-        ui.painter()
-            .circle_filled(p, 5.0, Color32::from_rgb(255, 200, 60));
+        ui.painter().circle_filled(p, 5.0, crate::theme::SIGNAL);
     }
     if response.dragged() {
         if let Some(pos) = response.interact_pointer_pos() {

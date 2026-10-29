@@ -150,6 +150,8 @@ pub struct LumapApp {
     started: Instant,
     /// Keeps lumap current, quietly.
     updater: crate::update::Updater,
+    /// The theme (fonts included) has been applied to the context.
+    themed: bool,
 }
 
 impl LumapApp {
@@ -193,6 +195,7 @@ impl LumapApp {
             drop_hover: false,
             started: Instant::now(),
             updater: crate::update::Updater::new(),
+            themed: false,
         }
     }
 
@@ -604,9 +607,19 @@ impl LumapApp {
         clock
     }
 
+    /// Fonts and visuals before anything is laid out; idempotent, so the launcher's own call
+    /// does no harm.
+    fn ensure_themed(&mut self, ctx: &egui::Context) {
+        if !self.themed {
+            crate::theme::apply(ctx);
+            self.themed = true;
+        }
+    }
+
     /// One frame of the whole application: input, panels, canvas, output windows.
     pub fn frame(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
+        self.ensure_themed(&ctx);
         self.heartbeat.beat();
         let now = Instant::now();
         let clock = self.tick(&ctx, now);
