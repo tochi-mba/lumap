@@ -6,6 +6,14 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Added
+
+- Product site at <https://tochi-mba.github.io/lumap/>, in the REX Technologies style, with a
+  download button that follows the visitor's platform and the latest release. `site/` is checked
+  by `scripts/check_site.py` and its tests (`cargo xtask site`, also on CI) and published by the
+  Pages workflow.
+- `.portfolio/project.json`, so the REX portfolio lists lumap.
+
 ## [0.2.0] - 2026-10-29
 
 First release under the lumap name, as a REX Technologies product, in its own repository.

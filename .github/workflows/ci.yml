@@ -40,6 +40,22 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+  site:
+    name: Website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check the site and its checker
+        run: |
+          python3 scripts/check_site.py
+          python3 -m unittest discover -s tests/site -p "test_*.py"
+      - name: Test the page script
+        run: node --test tests/site/app.test.mjs
+
   deny:
     name: Licences and advisories
     runs-on: ubuntu-latest
