@@ -36,11 +36,12 @@ impl Provider {
         }
     }
 
-    /// Whether this build can open the provider: the platform's protocol, compiled in.
+    /// Whether this build can open the provider. Spout is compiled in with the `spout` feature
+    /// (native on Windows, a never-connected stand-in elsewhere so a show file still opens).
     #[must_use]
     pub fn available(self) -> bool {
         match self {
-            Self::Spout => cfg!(all(windows, feature = "spout")),
+            Self::Spout => cfg!(feature = "spout"),
             Self::Syphon => false,
         }
     }
@@ -63,7 +64,7 @@ pub fn open(
     sender: &str,
 ) -> Result<Box<dyn FrameSource>, SourceError> {
     match provider {
-        #[cfg(all(windows, feature = "spout"))]
+        #[cfg(feature = "spout")]
         Provider::Spout => Ok(Box::new(crate::spout::SpoutReceiver::new(sender))),
         _ => {
             let _ = sender;
@@ -81,10 +82,7 @@ mod tests {
         assert_eq!(Provider::Spout.name(), "spout");
         assert_eq!(Provider::Syphon.platform(), "macOS");
         assert!(!Provider::Syphon.available());
-        assert_eq!(
-            Provider::Spout.available(),
-            cfg!(all(windows, feature = "spout"))
-        );
+        assert_eq!(Provider::Spout.available(), cfg!(feature = "spout"));
         let here = available();
         assert!(here.iter().all(|p| p.available()));
         assert!(!here.contains(&Provider::Syphon));
