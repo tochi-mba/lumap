@@ -1,6 +1,6 @@
 # lumap
 
-AREX Technologies' projection-mapping app: a Rust workspace with an egui editor, a wgpu renderer, a CPU
+REX Technologies' projection-mapping app: a Rust workspace with an egui editor, a wgpu renderer, a CPU
 reference renderer that the GPU is tested against, and a headless CLI. Windows is the target
 platform for shows; everything builds and tests on Linux too, which is how this container and
 CI exercise it.

@@ -237,12 +237,17 @@ fn settings_open_controllers_and_show_launch_takes_a_remote_port() {
     assert_eq!(a.panels.remote_port, free);
     drop(a);
 
+    // A fresh port: Windows keeps the one the dropped app bound busy for a while.
+    let fresh = {
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        l.local_addr().unwrap().port()
+    };
     let launch = Launch {
         project: None,
         osc_port: 0,
         show: true,
         restart_on_stall: None,
-        remote_port: Some(free),
+        remote_port: Some(fresh),
     };
     let app = LumapApp::new(
         Editor::new(demo_project(), None),

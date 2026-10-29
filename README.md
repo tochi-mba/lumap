@@ -1,6 +1,6 @@
 # lumap
 
-**An AREX Technologies product.** Projection mapping that you can trust on show day, and
+**A REX Technologies product.** Projection mapping that you can trust on show day, and
 that a first-timer can run in two minutes.
 
 lumap maps video, images, loops and live inputs onto physical surfaces through one or many
@@ -153,4 +153,4 @@ mapping, output windows on macOS and Linux with per-monitor DPI.
 
 ## Licence
 
-Copyright AREX Technologies. MIT OR Apache-2.0, at your option. Spout2 (vendored by `spout2-rs`) is BSD-2-Clause.
+Copyright REX Technologies. MIT OR Apache-2.0, at your option. Spout2 (vendored by `spout2-rs`) is BSD-2-Clause.

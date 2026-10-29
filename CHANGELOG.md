@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to lumap, an AREX Technologies product, are documented here. The format follows
+All notable changes to lumap, a REX Technologies product, are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
@@ -8,7 +8,7 @@ All notable changes to lumap, an AREX Technologies product, are documented here.
 
 ## [0.2.0] - 2026-10-29
 
-First release under the lumap name, as an AREX Technologies product, in its own repository.
+First release under the lumap name, as a REX Technologies product, in its own repository.
 
 ### Added
 
