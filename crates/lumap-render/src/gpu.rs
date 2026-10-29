@@ -899,11 +899,6 @@ mod tests {
             }
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn windows_prefers_dx12_unless_the_environment_says_otherwise() {
