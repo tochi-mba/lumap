@@ -1,6 +1,6 @@
 //! Developer tasks: `cargo xtask ci` runs the same gate as the CI workflow, locally.
 //!
-//! Steps: file-length check (no source file over 1000 lines), fmt check, clippy (all targets, all features, warnings denied), rustdoc, cargo-deny,
+//! Steps: file-length check (no source file over 1000 lines), fmt check, clippy (all targets, all features, warnings denied), rustdoc, the website checks, cargo-deny,
 //! tests (nextest when installed, `cargo test` otherwise) and, when `cargo-llvm-cov` is
 //! installed, a coverage report with the same floors CI enforces.
 
@@ -111,6 +111,7 @@ fn ci() -> anyhow::Result<()> {
     let mut doc = cargo(&["doc", "--workspace", "--no-deps", "--all-features"]);
     doc.env("RUSTDOCFLAGS", "-D warnings");
     run("doc", doc)?;
+    site()?;
     if has_subcommand("deny") {
         run("deny", cargo(&["deny", "check"]))?;
     } else {
@@ -243,11 +244,58 @@ pub fn check_floors(r: &CoverageReport) -> anyhow::Result<()> {
     }
 }
 
+/// First of `names` that runs with `--version`, so `python3` on Linux and `python` on Windows
+/// are both found.
+fn tool(names: &[&str]) -> Option<String> {
+    names
+        .iter()
+        .find(|name| {
+            Command::new(name)
+                .arg("--version")
+                .output()
+                .is_ok_and(|o| o.status.success())
+        })
+        .map(ToString::to_string)
+}
+
+/// Checks the GitHub Pages site the way the Pages workflow does: the checker, its tests, and
+/// the page script's tests. Python is required; Node is used when present.
+fn site() -> anyhow::Result<()> {
+    let python = tool(&["python3", "python"]).context("python is needed to check the site")?;
+    let mut check = Command::new(&python);
+    check.arg("scripts/check_site.py").current_dir(root());
+    run("site check", check)?;
+    let mut tests = Command::new(&python);
+    tests
+        .args([
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests/site",
+            "-p",
+            "test_*.py",
+        ])
+        .current_dir(root());
+    run("site checker tests", tests)?;
+    if let Some(node) = tool(&["node"]) {
+        let mut script = Command::new(node);
+        script
+            .args(["--test", "tests/site/app.test.mjs"])
+            .current_dir(root());
+        run("site script tests", script)?;
+    } else {
+        println!("==> site script tests skipped (node not installed)");
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let task = std::env::args().nth(1).unwrap_or_default();
     match task.as_str() {
         "ci" => ci(),
         "file-lengths" => check_file_lengths(),
+        "site" => site(),
         "coverage" => coverage(),
         "check-coverage" => {
             let path = std::env::args()
@@ -261,7 +309,7 @@ fn main() -> anyhow::Result<()> {
             );
             check_floors(&report)
         }
-        _ => bail!("usage: cargo xtask <ci|file-lengths|coverage|check-coverage FILE>"),
+        _ => bail!("usage: cargo xtask <ci|file-lengths|site|coverage|check-coverage FILE>"),
     }
 }
 

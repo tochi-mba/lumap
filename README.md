@@ -1,7 +1,7 @@
 # lumap
 
 **A REX Technologies product.** Projection mapping that you can trust on show day, and
-that a first-timer can run in two minutes.
+that a first-timer can run in two minutes. Website: <https://tochi-mba.github.io/lumap/>.
 
 lumap maps video, images, loops and live inputs onto physical surfaces through one or many
 projectors. It is a native Rust application (egui editor, wgpu renderer) with a few deliberate

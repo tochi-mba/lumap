@@ -35,6 +35,10 @@ guide is `docs/manual.md`.
   `control.rs` cue panel and controller section, `dialogs.rs`), `canvas.rs`, `stage.rs`,
   `handles.rs`, `outputs.rs` (output windows), `thumbs.rs`, `ui_tests/` (egui_kittest drives
   the real UI).
+- `site/`: the GitHub Pages site (static, no build step; REX ink/signal style shared with the
+  other REX products). `scripts/check_site.py` is its gate, tested by `tests/site/`; the page
+  script `site/app.js` is tested with `node --test`. `cargo xtask site` runs all three.
+  `.portfolio/project.json` describes lumap to the REX portfolio.
 - `xtask/`: `cargo xtask ci` = the CI gate; `check-coverage FILE` enforces floors;
   `file-lengths` rejects source files over 1000 lines.
 - `tests/golden/`: golden PNGs (256×144) and `cases/*.lumap.toml`.
