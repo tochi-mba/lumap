@@ -119,6 +119,10 @@ pub struct Actions {
     pub feedback: Option<String>,
     /// Phone remote port (0 stops it).
     pub remote_port: Option<u16>,
+    /// A click on the update banner or the Check now button.
+    pub update: Option<crate::update::Request>,
+    /// A new update mode from the show inspector.
+    pub update_mode: Option<crate::update::flow::Mode>,
 }
 
 /// Transient UI state for the panels.
@@ -161,6 +165,8 @@ pub struct PanelState {
     pub feedback_target: String,
     /// Phone remote port field.
     pub remote_port: u16,
+    /// Update mode shown in the show inspector.
+    pub update_mode: crate::update::flow::Mode,
 }
 
 impl Default for PanelState {
@@ -186,6 +192,7 @@ impl Default for PanelState {
             midi_address: "/show/master".into(),
             feedback_target: String::new(),
             remote_port: 8080,
+            update_mode: crate::update::flow::Mode::default(),
         }
     }
 }
@@ -397,9 +404,12 @@ pub fn status_bar(
     canvas: &CanvasState,
     fps: f32,
     now: Instant,
+    banner: &crate::update::flow::Banner,
+    actions: &mut Actions,
 ) {
     egui::Panel::bottom("lumap-status").show(ui, |ui| {
         ui.horizontal(|ui| {
+            update_banner(ui, banner, actions);
             ui.label(RichText::new(&editor.status).weak());
             let selected = editor.selected_surfaces();
             if selected.len() > 1 {
@@ -447,6 +457,40 @@ pub fn status_bar(
             });
         });
     });
+}
+
+/// The update offer in the status bar: a line and the choices it allows. Quiet when there is
+/// nothing to say.
+fn update_banner(ui: &mut egui::Ui, banner: &crate::update::flow::Banner, actions: &mut Actions) {
+    use crate::update::flow::Banner;
+    use crate::update::Request;
+    let (text, choices): (&str, &[(&str, Request)]) = match banner {
+        Banner::None => return,
+        Banner::Available(t) => (
+            t,
+            &[
+                ("Download", Request::Download),
+                ("Later", Request::Later),
+                ("Skip", Request::Skip),
+            ],
+        ),
+        Banner::Downloading(t) => (t, &[]),
+        Banner::Ready(t) => (
+            t,
+            &[
+                ("Install and restart", Request::Install),
+                ("Later", Request::Later),
+                ("Skip", Request::Skip),
+            ],
+        ),
+    };
+    ui.label(RichText::new(text).color(crate::theme::ACCENT));
+    for (label, request) in choices {
+        if ui.small_button(*label).clicked() {
+            actions.update = Some(*request);
+        }
+    }
+    ui.separator();
 }
 
 /// Outputs, surfaces and sources tree.

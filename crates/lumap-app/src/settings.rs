@@ -38,6 +38,8 @@ pub struct Settings {
     pub midi_port: String,
     /// OSC feedback destination `host:port`; empty means off.
     pub osc_feedback: String,
+    /// How newer releases are treated, and the one lumap knows about.
+    pub update: crate::update::flow::UpdateSettings,
 }
 
 impl Default for Settings {
@@ -55,6 +57,7 @@ impl Default for Settings {
             remote_port: 0,
             midi_port: String::new(),
             osc_feedback: String::new(),
+            update: crate::update::flow::UpdateSettings::default(),
         }
     }
 }

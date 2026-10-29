@@ -148,6 +148,8 @@ pub struct LumapApp {
     drop_hover: bool,
     /// Frame clock origin.
     started: Instant,
+    /// Keeps lumap current, quietly.
+    updater: crate::update::Updater,
 }
 
 impl LumapApp {
@@ -190,7 +192,44 @@ impl LumapApp {
             close_confirmed: false,
             drop_hover: false,
             started: Instant::now(),
+            updater: crate::update::Updater::new(),
         }
+    }
+
+    /// One step of the updater: never during a show or on a projector. Saves the settings
+    /// when it changed them, and closes the app once an installer has been handed over.
+    fn update_tick(&mut self, now: Instant) {
+        let moment = self.updater.moment(
+            self.editor.show_mode,
+            !self.editor.open_outputs.is_empty(),
+            now,
+        );
+        let before = self.settings.update.clone();
+        if let Some(message) =
+            self.updater
+                .tick(&mut self.settings.update, moment, crate::update::now_unix())
+        {
+            self.editor.status = message;
+        }
+        if self.settings.update != before {
+            self.settings.save();
+        }
+        if self.updater.closing && !self.close_confirmed {
+            if self.editor.dirty && self.editor.path.is_some() {
+                self.save();
+            }
+            self.request(Pending::Close);
+        }
+    }
+
+    /// The update banner for this frame.
+    fn update_banner(&self, now: Instant) -> crate::update::flow::Banner {
+        let moment = self.updater.moment(
+            self.editor.show_mode,
+            !self.editor.open_outputs.is_empty(),
+            now,
+        );
+        crate::update::Updater::banner(&self.settings.update, moment, crate::update::now_unix())
     }
 
     /// Looks ffmpeg up again after its path changed and remembers whether and where it was found.
@@ -235,7 +274,12 @@ impl LumapApp {
         self.editor.edit_on_wall = settings.edit_on_wall;
         self.editor.autosave =
             crate::autosave::Autosave::new(Duration::from_secs(settings.autosave_seconds.max(2)));
+        self.panels.update_mode = settings.update.mode;
         self.settings = settings;
+        if let Some(news) = self.updater.startup(&mut self.settings.update) {
+            self.editor.status = news;
+            self.settings.save();
+        }
     }
 
     /// Copies live toggles back into the preferences and saves them.
@@ -566,6 +610,7 @@ impl LumapApp {
         self.heartbeat.beat();
         let now = Instant::now();
         let clock = self.tick(&ctx, now);
+        self.update_tick(now);
         self.editor.maybe_autosave(now);
         self.handle_close_request(&ctx);
         self.handle_dropped_files(&ctx);
@@ -588,7 +633,16 @@ impl LumapApp {
                 &mut self.canvas,
                 &mut actions,
             );
-            panels::status_bar(ui, &self.editor, &self.canvas, self.fps(), now);
+            let banner = self.update_banner(now);
+            panels::status_bar(
+                ui,
+                &self.editor,
+                &self.canvas,
+                self.fps(),
+                now,
+                &banner,
+                &mut actions,
+            );
             panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
             panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
             panels::inspector(
@@ -658,6 +712,20 @@ impl LumapApp {
     /// Runs the actions the panels asked for (they cannot borrow the app themselves).
     fn run_actions(&mut self, actions: panels::Actions, ctx: &egui::Context) {
         let _ = ctx;
+        if let Some(mode) = actions.update_mode {
+            self.settings.update.mode = mode;
+            self.settings.save();
+        }
+        if let Some(request) = actions.update {
+            if let Some(message) = self.updater.request(
+                &mut self.settings.update,
+                request,
+                crate::update::now_unix(),
+            ) {
+                self.editor.status = message;
+            }
+            self.settings.save();
+        }
         if actions.save {
             self.save();
         }
