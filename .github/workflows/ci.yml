@@ -34,6 +34,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
       - run: cargo run -p xtask -- file-lengths
+      - run: cargo run -p xtask -- check-platforms
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo doc --workspace --no-deps --all-features
@@ -74,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -84,6 +85,14 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
+      - name: ffmpeg for the video tests (macOS)
+        if: runner.os == 'macOS'
+        # Metal is available on GitHub's Mac runners; the golden tests then prove it against the
+        # oracle. Nothing is required yet: a runner without a usable adapter must not fail the
+        # matrix until a Mac build ships.
+        run: |
+          brew install ffmpeg
+          echo "LUMAP_REQUIRE_FFMPEG=1" >> "$GITHUB_ENV"
       - name: Install a software Vulkan driver (lavapipe) and require the GPU path
         if: runner.os == 'Linux'
         # Linux must prove the GPU path. Windows runners have no GPU driver, so there the GPU
@@ -184,6 +193,35 @@ jobs:
             echo
             echo "The **lumap-windows-x64** artifact holds the installer and the portable zip, each with its SHA-256."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  build-macos:
+    name: macOS build (universal, macOS 12 floor)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.0
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p lumap-app --target aarch64-apple-darwin --locked
+      - run: cargo build --release -p lumap-app --target x86_64-apple-darwin --locked
+      - name: Universal binary, ad-hoc signed
+        run: |
+          mkdir -p dist
+          lipo -create -output dist/lumap target/aarch64-apple-darwin/release/lumap target/x86_64-apple-darwin/release/lumap
+          codesign --sign - --force dist/lumap
+          lipo -info dist/lumap
+          dist/lumap --version
+          dist/lumap validate examples/two-projector-demo.lumap.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumap-macos-universal
+          if-no-files-found: error
+          path: dist/lumap
 
   publish:
     name: Publish a new version

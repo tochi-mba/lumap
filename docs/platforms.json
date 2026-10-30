@@ -10,6 +10,7 @@
     { "id": "video", "capability": "Video through ffmpeg (bundled on Windows; PATH elsewhere)", "windows": "supported", "macos": "supported", "linux": "supported", "test": "ffmpeg_is_found_in_the_setting_then_beside_the_exe_then_on_the_path" },
     { "id": "sequences", "capability": "Image sequences and GIFs", "windows": "supported", "macos": "supported", "linux": "supported", "test": "folder_and_gif_sources" },
     { "id": "generators", "capability": "Six animated generators", "windows": "supported", "macos": "supported", "linux": "supported", "test": "every_generator_is_deterministic_and_consistent" },
+    { "id": "looks", "capability": "Built-in looks (generators with colour, speed and blend)", "windows": "supported", "macos": "supported", "linux": "supported", "test": "applying_a_look_points_the_surface_at_it_and_is_idempotent" },
     { "id": "live-spout", "capability": "Live input from Spout senders", "windows": "supported", "macos": "n/a", "linux": "n/a", "test": "lifecycle" },
     { "id": "live-syphon", "capability": "Live input from Syphon servers", "windows": "n/a", "macos": "planned", "linux": "n/a", "test": "" },
     { "id": "osc", "capability": "OSC control and feedback", "windows": "supported", "macos": "supported", "linux": "supported", "test": "osc_patches_apply_live" },

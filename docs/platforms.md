@@ -2,7 +2,7 @@
 
 What lumap does on each platform, generated from `docs/platforms.json` by `cargo xtask platforms`; CI fails when this file is stale. A *supported* cell names the test or file that proves it; *planned* is on the way; *n/a* does not apply there.
 
-Totals: windows: 22 supported, macos: 17 supported, linux: 17 supported.
+Totals: windows: 23 supported, macos: 18 supported, linux: 18 supported.
 
 | Capability | Windows | macOS | Linux | Proof |
 |---|---|---|---|---|
@@ -14,6 +14,7 @@ Totals: windows: 22 supported, macos: 17 supported, linux: 17 supported.
 | Video through ffmpeg (bundled on Windows; PATH elsewhere) | supported | supported | supported | `ffmpeg_is_found_in_the_setting_then_beside_the_exe_then_on_the_path` |
 | Image sequences and GIFs | supported | supported | supported | `folder_and_gif_sources` |
 | Six animated generators | supported | supported | supported | `every_generator_is_deterministic_and_consistent` |
+| Built-in looks (generators with colour, speed and blend) | supported | supported | supported | `applying_a_look_points_the_surface_at_it_and_is_idempotent` |
 | Live input from Spout senders | supported | n/a | n/a | `lifecycle` |
 | Live input from Syphon servers | n/a | planned | n/a | `` |
 | OSC control and feedback | supported | supported | supported | `osc_patches_apply_live` |

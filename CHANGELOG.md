@@ -6,6 +6,10 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-30
+
+Looks: something worth seeing on the wall before you own a single clip.
+
 ### Added
 
 - Looks: seventeen ready-made animated looks that need no media, chosen from *Try a look* on the
@@ -17,6 +21,11 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   outline, scan), Facade (bricks, windows, blocks, wireframe), Nature (water, fire, aurora,
   stars), Party (disco, kaleidoscope) and Romance (hearts). All are drawn by the CPU reference
   renderer and proven against the GPU by a new golden case.
+- macOS groundwork: CI tests on macOS and builds a universal (Apple silicon + Intel),
+  ad-hoc-signed binary with a macOS 12 floor on every push; `docs/platforms.md` (from
+  `docs/platforms.json`, checked by `cargo xtask check-platforms`) says what works where and
+  which test proves it; live inputs go through `lumap_sources::live_input` (Spout on Windows,
+  Syphon planned), so a project naming a provider the platform lacks reports that plainly.
 
 ### Changed
 
