@@ -1,13 +1,20 @@
 //! The egui editor and show player.
 
+mod camera;
 mod canvas;
 mod handles;
+mod lab;
+mod live;
 mod outputs;
 mod panels;
+mod room;
+mod scan;
 mod shortcuts;
 mod stage;
 mod state;
 mod thumbs;
+mod vision;
+mod wall;
 #[cfg(test)]
 mod ui_tests;
 
@@ -37,6 +44,8 @@ pub struct Launch {
     pub restart_on_stall: Option<f64>,
     /// Phone remote port from the command line; `None` uses the saved setting.
     pub remote_port: Option<u16>,
+    /// Serve the lab's automation API on this local port (`0` = any free port).
+    pub lab: Option<u16>,
 }
 
 /// A monitor the OS reported at startup.
@@ -164,6 +173,20 @@ pub struct LumapApp {
     themed: bool,
     /// The step the canvas was last arranged for (stage view in Setup, the canvas elsewhere).
     arranged_for: Option<panels::shell::Step>,
+    /// The show's camera.
+    camera: camera::CameraHub,
+    /// A scan in progress, or just finished.
+    scan: Option<scan::ScanSession>,
+    /// The camera's live eyes, while something wants them.
+    vision: Option<vision::Vision>,
+    /// Live room and paint content.
+    room: room::Runtime,
+    /// The lab's automation API, once started.
+    lab: Option<lab::LabRuntime>,
+    /// Start the lab on this port on the first frame.
+    lab_port: Option<u16>,
+    /// Camera state between frames.
+    live: live::LiveState,
 }
 
 impl LumapApp {
@@ -209,6 +232,13 @@ impl LumapApp {
             updater: crate::update::Updater::new(),
             themed: false,
             arranged_for: None,
+            camera: camera::CameraHub::platform(),
+            scan: None,
+            vision: None,
+            room: room::Runtime::default(),
+            lab: None,
+            lab_port: launch.lab,
+            live: live::LiveState::default(),
         }
         .on_first_open_step()
     }
@@ -556,6 +586,8 @@ impl LumapApp {
                     ui,
                     &mut self.editor,
                     &self.monitors,
+                    &mut self.camera,
+                    &mut self.panels,
                     &mut actions,
                 );
             }
@@ -612,8 +644,12 @@ impl LumapApp {
             &mut self.editor,
             &mut self.panels,
             &self.monitors,
+            self.live.drift.as_deref(),
             &mut actions,
         );
+        if self.panels.scan_sheet {
+            panels::steps::camera::sheet(ctx, &self.editor, self.scan.as_ref(), &mut actions);
+        }
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
@@ -632,6 +668,7 @@ impl LumapApp {
         let now = Instant::now();
         let clock = self.tick(&ctx, now);
         self.update_tick(now);
+        self.tick_camera(&ctx, now);
         self.editor.maybe_autosave(now);
         self.handle_close_request(&ctx);
         self.handle_dropped_files(&ctx);
@@ -673,6 +710,8 @@ impl LumapApp {
         if !self.editor.sources.live_ids().is_empty()
             || self.editor.show_mode
             || self.editor.identify_until.is_some()
+            || self.scan.is_some()
+            || self.vision.is_some()
         {
             ctx.request_repaint_after(Duration::from_millis(16));
         }
@@ -700,10 +739,47 @@ impl LumapApp {
         }
     }
 
+    /// The camera features' part of a frame: the lab, scans, the vision worker, live room
+    /// content, and the camera picture panels asked for.
+    fn tick_camera(&mut self, ctx: &egui::Context, now: Instant) {
+        self.tick_lab(ctx, now);
+        self.tick_scan(now);
+        self.tick_vision(now);
+        let shared = self.vision.as_ref().map(vision::Vision::shared);
+        self.room.sync(&mut self.editor, shared.as_ref());
+        self.panels.seen = self.vision.as_ref().map(vision::Vision::seen);
+        if std::mem::take(&mut self.panels.want_camera) {
+            self.panels.camera_frame = self
+                .camera_device()
+                .and_then(|d| self.camera.latest(&d, now));
+        }
+        self.camera.tick(now);
+    }
+
+    /// The camera actions the panels asked for.
+    fn run_camera_actions(&mut self, actions: &panels::Actions) {
+        let now = Instant::now();
+        self.run_scan_action(actions.scan.clone(), now);
+        if actions.scan_cancel {
+            self.cancel_scan();
+        }
+        if actions.scan_close {
+            self.close_scan();
+        }
+        if actions.measured_blends {
+            let n = self.use_measured_blends();
+            self.editor.status = format!("Measured blends on {n} edge(s).");
+        }
+        if actions.review_found {
+            self.review_found();
+        }
+    }
+
     /// Runs the actions the panels asked for (they cannot borrow the app themselves).
     fn run_actions(&mut self, actions: panels::Actions, ctx: &egui::Context) {
         let _ = ctx;
         self.run_preference_actions(&actions);
+        self.run_camera_actions(&actions);
         if actions.save {
             self.save();
         }

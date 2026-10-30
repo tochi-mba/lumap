@@ -35,6 +35,12 @@ pub enum Tile {
     Pattern(TestPattern),
     /// Plain white.
     White,
+    /// A room effect, drawn from the projector's scan.
+    Room(lumap_core::project::RoomEffect),
+    /// Paint drawn on the wall with a light or a hand.
+    Paint(lumap_core::project::PaintInput),
+    /// The live camera.
+    Camera,
 }
 
 /// Which tiles the library shows.
@@ -95,6 +101,42 @@ pub fn apply_tile(editor: &mut Editor, tile: &Tile, surface: &str) {
             editor,
             &SourceKind::Solid {
                 color: [1.0, 1.0, 1.0, 1.0],
+            },
+        ),
+        Tile::Room(effect) => {
+            let Some(projector) = editor.project.surface(surface).map(|s| s.output.clone()) else {
+                return;
+            };
+            find_or_add(
+                editor,
+                &SourceKind::Room {
+                    projector,
+                    effect: *effect,
+                    color: [1.0, 1.0, 1.0, 1.0],
+                    speed: 1.0,
+                },
+            )
+        }
+        Tile::Paint(input) => {
+            let Some(projector) = editor.project.surface(surface).map(|s| s.output.clone()) else {
+                return;
+            };
+            find_or_add(
+                editor,
+                &SourceKind::Paint {
+                    projector,
+                    input: *input,
+                    brush: lumap_core::project::Brush::Neon,
+                    color: [0.84, 1.0, 0.25, 1.0],
+                    size: 12.0,
+                    fade_seconds: 0.0,
+                },
+            )
+        }
+        Tile::Camera => find_or_add(
+            editor,
+            &SourceKind::Camera {
+                device: String::new(),
             },
         ),
     };
@@ -237,6 +279,30 @@ pub fn library(
                             editor.add_source(SourceKind::Spout {
                                 sender: state.spout_sender.trim().to_string(),
                             });
+                        }
+                    });
+                }
+                if matches!(filter, Filter::All) {
+                    crate::theme::section_header(ui, "Room (needs a scan)");
+                    grid(ui, |ui| {
+                        for e in lumap_core::project::RoomEffect::ALL {
+                            let r = tile_response(ui, &Tile::Room(e), e.label(), e.blurb(), |_| None);
+                            if r.clicked() {
+                                clicked = Some(Tile::Room(e));
+                            }
+                        }
+                        for (input, name) in [
+                            (lumap_core::project::PaintInput::Light, "Paint with light"),
+                            (lumap_core::project::PaintInput::Hand, "Paint with your hand"),
+                        ] {
+                            let r = tile_response(ui, &Tile::Paint(input), name, input.label(), |_| None);
+                            if r.clicked() {
+                                clicked = Some(Tile::Paint(input));
+                            }
+                        }
+                        let r = tile_response(ui, &Tile::Camera, "Camera", "The camera, live", |_| None);
+                        if r.clicked() {
+                            clicked = Some(Tile::Camera);
                         }
                     });
                 }

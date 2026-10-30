@@ -13,12 +13,14 @@ pub fn sheet(
     editor: &mut Editor,
     state: &mut PanelState,
     monitors: &[MonitorInfo],
+    drift: Option<&[super::super::scan::DriftReport]>,
     actions: &mut Actions,
 ) {
     if !state.golive {
         return;
     }
-    let checks = editor.preflight(monitors, state.ffmpeg_ok);
+    let mut checks = editor.preflight(monitors, state.ffmpeg_ok);
+    checks.extend(editor.preflight_camera(drift));
     let ready = checks.iter().all(|c| c.ok);
     let mut fix = None;
     let mut go = false;
@@ -147,6 +149,15 @@ fn apply(
         Fix::Save => actions.save = true,
         Fix::StoreCue => {
             editor.store_cue("", state.cue_fade);
+        }
+        Fix::CheckDrift | Fix::Realign | Fix::Rescan => {
+            let kind = match fix {
+                Fix::CheckDrift => super::super::scan::Kind::Drift,
+                Fix::Realign => super::super::scan::Kind::Realign,
+                _ => super::super::scan::Kind::Full,
+            };
+            actions.scan = Some((kind, None));
+            state.golive = false;
         }
     }
 }

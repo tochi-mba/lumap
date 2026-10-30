@@ -325,6 +325,7 @@ fn starting_in_show_mode_and_osc_port_zero() {
         show: true,
         restart_on_stall: Some(60.0),
         remote_port: None,
+        lab: None,
     };
     let app = LumapApp::new(
         Editor::new(demo_project(), None),

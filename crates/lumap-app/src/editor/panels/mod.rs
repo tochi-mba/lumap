@@ -130,6 +130,16 @@ pub struct Actions {
     pub update_mode: Option<crate::update::flow::Mode>,
     /// A look picked on the start page, to put on every surface.
     pub look: Option<String>,
+    /// Start a scan, drift check or re-align (of one projector, or of all).
+    pub scan: Option<(crate::editor::scan::Kind, Option<String>)>,
+    /// Stop the running scan.
+    pub scan_cancel: bool,
+    /// Close the scan sheet.
+    pub scan_close: bool,
+    /// Put the scans' measured blend widths on the projectors.
+    pub measured_blends: bool,
+    /// Go to Map with the wall photo and the found surfaces showing.
+    pub review_found: bool,
 }
 
 /// Transient UI state for the panels.
@@ -197,6 +207,22 @@ pub struct PanelState {
     pub look: usize,
     /// The Content step's library.
     pub library: steps::content::LibraryState,
+    /// The scan sheet is up.
+    pub scan_sheet: bool,
+    /// Setup's camera card shows the live picture.
+    pub camera_preview: bool,
+    /// The camera picture's texture and when it was made.
+    pub camera_tex: Option<(f64, egui::TextureHandle)>,
+    /// A panel showed the camera picture this frame, so the app keeps it fresh.
+    pub want_camera: bool,
+    /// The newest camera picture, for panels that show it.
+    pub camera_frame: Option<std::sync::Arc<lumap_sources::Frame>>,
+    /// The camera's latest live report (zones, gestures), for meters.
+    pub seen: Option<crate::editor::vision::Seen>,
+    /// Zones are on screen with meters, so the camera should watch them.
+    pub camera_meters: bool,
+    /// Where a zone being drawn on the camera picture started.
+    pub zone_drag: Option<egui::Pos2>,
 }
 
 impl Default for PanelState {
@@ -234,6 +260,14 @@ impl Default for PanelState {
             update_mode: crate::update::flow::Mode::default(),
             look: 0,
             library: steps::content::LibraryState::default(),
+            scan_sheet: false,
+            camera_preview: false,
+            camera_tex: None,
+            want_camera: false,
+            camera_frame: None,
+            seen: None,
+            camera_meters: false,
+            zone_drag: None,
         }
     }
 }

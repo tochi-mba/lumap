@@ -82,6 +82,12 @@ pub enum Fix {
     Save,
     /// Store the live look as a cue.
     StoreCue,
+    /// Check with the camera that projectors are where they were scanned.
+    CheckDrift,
+    /// Move the surfaces of projectors that moved, using the camera.
+    Realign,
+    /// Scan the room again (the camera moved).
+    Rescan,
 }
 
 impl Fix {
@@ -95,6 +101,9 @@ impl Fix {
             Self::Settings => "Open Settings",
             Self::Save => "Save the show",
             Self::StoreCue => "Store the first cue",
+            Self::CheckDrift => "Check with the camera",
+            Self::Realign => "Re-align",
+            Self::Rescan => "Scan again",
         }
     }
 }
@@ -156,6 +165,42 @@ impl Editor {
             })
             .map(|o| o.id.clone())
             .collect()
+    }
+
+    /// The camera's line of the check, when any projector has a scan: not checked yet, where
+    /// it was scanned, moved (re-align), or the camera itself moved (scan again).
+    pub fn preflight_camera(&self, drift: Option<&[super::super::scan::DriftReport]>) -> Option<Check> {
+        let scanned = self
+            .project
+            .outputs
+            .iter()
+            .filter(|o| o.scan.is_some())
+            .count();
+        if scanned == 0 {
+            return None;
+        }
+        let Some(drift) = drift else {
+            return Some(Check::fix(
+                "Not checked with the camera since the scan",
+                Fix::CheckDrift,
+            ));
+        };
+        if drift
+            .iter()
+            .any(|d| d.camera_moved > super::super::scan::CAMERA_MOVED)
+        {
+            return Some(Check::fix("The camera moved since the scan", Fix::Rescan));
+        }
+        let moved: Vec<String> = drift
+            .iter()
+            .filter(|d| d.mean >= 2.0)
+            .map(|d| format!("{} ({:.0} px)", d.projector, d.mean))
+            .collect();
+        Some(if moved.is_empty() {
+            Check::ok("Every projector is where it was scanned")
+        } else {
+            Check::fix(format!("Moved since the scan: {}", names(&moved)), Fix::Realign)
+        })
     }
 
     /// Displays a projector could go on: connected, not the first one (the editor's), and not
@@ -307,6 +352,9 @@ mod tests {
             Fix::Settings,
             Fix::Save,
             Fix::StoreCue,
+            Fix::CheckDrift,
+            Fix::Realign,
+            Fix::Rescan,
         ] {
             assert!(!fix.label().is_empty());
         }
@@ -353,6 +401,29 @@ mod tests {
         assert_eq!(
             e.preflight(&three, true)[0].text,
             "1 projector on its display"
+        );
+    }
+
+    #[test]
+    fn the_camera_line_appears_with_a_scan_and_follows_the_drift_check() {
+        use super::super::super::scan::DriftReport;
+        let mut e = Editor::new(demo_project(), None);
+        assert_eq!(e.preflight_camera(None), None, "no scan, no camera line");
+        e.project.outputs[0].scan = Some("show.scan/left".into());
+        assert_eq!(e.preflight_camera(None).unwrap().fix, Some(Fix::CheckDrift));
+        let report = |mean: f64, camera_moved: f64| DriftReport {
+            projector: "left".into(),
+            mean,
+            max: mean,
+            camera_moved,
+        };
+        assert!(e.preflight_camera(Some(&[report(0.5, 0.0)])).unwrap().ok);
+        let moved = e.preflight_camera(Some(&[report(14.0, 0.0)])).unwrap();
+        assert_eq!(moved.text, "Moved since the scan: left (14 px)");
+        assert_eq!(moved.fix, Some(Fix::Realign));
+        assert_eq!(
+            e.preflight_camera(Some(&[report(0.0, 0.9)])).unwrap().fix,
+            Some(Fix::Rescan)
         );
     }
 

@@ -26,6 +26,7 @@ impl Editor {
                 true
             }
             ["cue", id, "go"] => self.cue_go_id(id, now),
+            ["paint", id, "clear"] => super::super::room::clear_paint(id),
             _ => match self.project.apply_patch(patch) {
                 Ok(()) => {
                     self.dirty = true;

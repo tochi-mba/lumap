@@ -28,6 +28,14 @@ struct Args {
     #[arg(long, default_value_t = 9000)]
     osc_port: u16,
 
+    /// Serve the lab: a local automation API for driving lumap from scripts (see docs/lab.md).
+    #[arg(long)]
+    lab: bool,
+
+    /// Port for the lab (with --lab).
+    #[arg(long, default_value_t = 7414)]
+    lab_port: u16,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -93,6 +101,7 @@ fn main() -> ExitCode {
             show: false,
             restart_on_stall: None,
             remote_port: None,
+            lab: args.lab.then_some(args.lab_port),
         }),
         Some(Command::Show {
             project,
@@ -105,6 +114,7 @@ fn main() -> ExitCode {
             show: true,
             restart_on_stall,
             remote_port,
+            lab: args.lab.then_some(args.lab_port),
         }),
         Some(Command::Render(render)) => cli::render(&render),
         Some(Command::Validate { project }) => cli::validate(&project),

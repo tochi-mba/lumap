@@ -36,8 +36,6 @@ pub struct LiveState {
     pub settled: bool,
     /// Drift reports from the last drift check, for the go-live check.
     pub drift: Option<Vec<scan::DriftReport>>,
-    /// Track hands so they can grab corners on the wall (Map step).
-    pub hands_map: bool,
 }
 
 impl LumapApp {
@@ -171,7 +169,7 @@ impl LumapApp {
             .iter()
             .any(|m| matches!(m.key, CamKey::Gesture { .. }));
         let learning = self.editor.cam_learn.is_some();
-        let hands = hand_paint || gesture_mapped || self.live.hands_map || learning;
+        let hands = hand_paint || gesture_mapped || self.canvas.hands_map || learning;
         let wanted = spot
             || hands
             || shadows
@@ -264,7 +262,7 @@ impl LumapApp {
             value: g.value,
         }));
         if let Some((address, mode)) = self.editor.cam_learn.clone() {
-            if let Some(e) = events.iter().find(|e| e.value >= 0.5 && !(e.key == CamKey::Gesture { gesture: Gesture::Pinch } && mode != MidiMode::Fader)) {
+            if let Some(e) = events.iter().find(|e| e.value >= 0.5) {
                 let key = e.key.clone();
                 let label = key.label();
                 self.editor.edit(move |p| p.camera.map.learn(key, &address, mode));
@@ -329,7 +327,7 @@ impl LumapApp {
                 on = Some((scan.projector.clone(), n));
             }
         }
-        if !(self.live.hands_map && self.editor.edit_on_wall && !self.editor.show_mode) {
+        if !(self.canvas.hands_map && self.editor.edit_on_wall && !self.editor.show_mode) {
             return;
         }
         let Some((projector, n)) = on else {
@@ -387,7 +385,7 @@ impl LumapApp {
         }
     }
 
-    /// Lets the panels see the step change when a scan finishes in Map.
+    /// The scan in progress or just finished.
     pub(crate) fn scan_session(&self) -> Option<&ScanSession> {
         self.scan.as_ref()
     }
