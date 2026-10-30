@@ -10,7 +10,7 @@
 
 use eframe::egui::{
     self, Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Response, RichText,
-    Stroke, TextStyle, Ui,
+    Sense, Stroke, TextStyle, Ui,
 };
 use std::sync::Arc;
 
@@ -206,6 +206,46 @@ pub fn pill(ui: &mut Ui, text: &str, live: bool) -> Response {
         .inner_margin(egui::Margin::symmetric(8, 2))
         .show(ui, |ui| ui.label(RichText::new(text).small().color(fg)))
         .inner
+}
+
+/// One of the numbered step tabs in the top bar ("1 Setup"). The current step is filled with
+/// signal; a finished step that is not current carries a small signal tick, painted so no
+/// glyph font is needed. The accessible name is the text, for example "2 Map".
+pub fn step_tab(ui: &mut Ui, number: usize, label: &str, current: bool, done: bool) -> Response {
+    let text = format!("{number} {label}");
+    let (fg, fill, stroke) = if current {
+        (INK, SIGNAL, Stroke::NONE)
+    } else {
+        (TEXT, Color32::TRANSPARENT, Stroke::new(1.0, LINE))
+    };
+    let r = ui.add(
+        egui::Button::new(RichText::new(text).color(fg).family(strong_family()))
+            .fill(fill)
+            .stroke(stroke)
+            .corner_radius(CornerRadius::same(13))
+            .min_size(egui::vec2(0.0, 26.0)),
+    );
+    if done && !current {
+        // Beside the tab, never over its text.
+        let (space, _) = ui.allocate_exact_size(egui::vec2(10.0, 26.0), Sense::hover());
+        let c = egui::pos2(space.center().x, space.center().y - 5.0);
+        let tick = [
+            c + egui::vec2(-3.5, 0.0),
+            c + egui::vec2(-1.0, 2.5),
+            c + egui::vec2(3.5, -2.5),
+        ];
+        ui.painter().line(tick.to_vec(), Stroke::new(1.8, SIGNAL));
+    }
+    r
+}
+
+/// A short message in the corner: info in the raised colour, errors outlined in live.
+pub fn toast_frame(error: bool) -> egui::Frame {
+    egui::Frame::new()
+        .fill(RAISED)
+        .stroke(Stroke::new(1.0, if error { LIVE } else { LINE }))
+        .corner_radius(CornerRadius::same(10))
+        .inner_margin(egui::Margin::symmetric(14, 10))
 }
 
 /// What an empty list says: a title in text and a hint in muted.

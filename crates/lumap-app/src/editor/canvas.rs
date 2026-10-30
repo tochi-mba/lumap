@@ -130,7 +130,7 @@ pub fn show(
     let Some(output_id) = state.output.clone() else {
         state.last_rect = None;
         ui.centered_and_justified(|ui| {
-            ui.label("Add an output to start mapping (or drop an image here).");
+            ui.label("Add a projector to start mapping (or drop an image here).");
         });
         return;
     };

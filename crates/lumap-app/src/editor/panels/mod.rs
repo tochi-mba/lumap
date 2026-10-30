@@ -1,4 +1,6 @@
-//! Toolbar, status bar, object tree, inspector, dialogs and the show-mode screen.
+//! The editor's panels: the shell (top bar, steps, coach line, toasts), the start page, the
+//! settings window, the status bar, the projector/surface/content tree, the inspector, the
+//! dialogs and the show-mode screen.
 
 use super::canvas::CanvasState;
 use super::thumbs::Thumbnails;
@@ -109,8 +111,10 @@ pub struct Actions {
     pub create_outputs: bool,
     /// The unsaved-changes prompt was answered: proceed or cancel.
     pub resolve_pending: Option<bool>,
-    /// Never show the welcome screen again.
-    pub skip_welcome: bool,
+    /// Show (true) or skip (false) the start page when lumap opens.
+    pub start_page: Option<bool>,
+    /// Leave the start page for the editor.
+    pub leave_home: bool,
     /// New ffmpeg path to remember and use.
     pub ffmpeg_path: Option<String>,
     /// MIDI input port to open (empty closes it).
@@ -123,16 +127,27 @@ pub struct Actions {
     pub update: Option<crate::update::Request>,
     /// A new update mode from the show inspector.
     pub update_mode: Option<crate::update::flow::Mode>,
-    /// A look picked on the welcome screen, to put on every surface.
+    /// A look picked on the start page, to put on every surface.
     pub look: Option<String>,
 }
 
 /// Transient UI state for the panels.
+#[allow(clippy::struct_excessive_bools)]
 pub struct PanelState {
     /// File dialogs (native, or scripted in tests).
     pub dialogs: Box<dyn FileDialogs>,
-    /// The welcome screen is up.
-    pub welcome: bool,
+    /// The start page is up instead of the editor.
+    pub home: bool,
+    /// The step the editor is on.
+    pub step: shell::Step,
+    /// The Settings window is open.
+    pub settings_open: bool,
+    /// Messages in the corner.
+    pub toasts: Vec<shell::Toast>,
+    /// The editor status last turned into a toast.
+    pub last_status: String,
+    /// The first status has been seen (it is not shown: it is the one lumap starts with).
+    pub status_seen: bool,
     /// The keyboard cheat sheet is up.
     pub help: bool,
     /// Text for a new Spout sender name.
@@ -178,7 +193,12 @@ impl Default for PanelState {
         let (ffmpeg_tools, ffmpeg_origin) = lumap_sources::video::Tools::discover();
         Self {
             dialogs: Box::new(NativeDialogs),
-            welcome: false,
+            home: false,
+            step: shell::Step::default(),
+            settings_open: false,
+            toasts: Vec::new(),
+            last_status: String::new(),
+            status_seen: false,
             help: false,
             spout_sender: String::new(),
             mesh_cols: 2,
@@ -205,7 +225,8 @@ impl Default for PanelState {
 impl std::fmt::Debug for PanelState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PanelState")
-            .field("welcome", &self.welcome)
+            .field("home", &self.home)
+            .field("step", &self.step)
             .field("help", &self.help)
             .finish_non_exhaustive()
     }
@@ -247,170 +268,6 @@ fn param_toggle(ui: &mut egui::Ui, editor: &mut Editor, label: &str, address: &s
     }
 }
 
-/// Toolbar.
-#[allow(clippy::too_many_lines)]
-pub fn top_bar(
-    ui: &mut egui::Ui,
-    editor: &mut Editor,
-    state: &mut PanelState,
-    canvas: &mut CanvasState,
-    actions: &mut Actions,
-) {
-    egui::Panel::top("lumap-top").show(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.label(
-                RichText::new("lumap")
-                    .family(crate::theme::strong_family())
-                    .color(crate::theme::SIGNAL),
-            );
-            ui.separator();
-            ui.menu_button("File", |ui| {
-                if ui.button("New  (Ctrl+N)").clicked() {
-                    actions.new = true;
-                    ui.close();
-                }
-                if ui.button("Open…  (Ctrl+O)").clicked() {
-                    actions.open = true;
-                    ui.close();
-                }
-                if ui.button("Save  (Ctrl+S)").clicked() {
-                    actions.save = true;
-                    ui.close();
-                }
-                if ui.button("Save As…  (Ctrl+Shift+S)").clicked() {
-                    actions.save_as = true;
-                    ui.close();
-                }
-                ui.separator();
-                if ui.button("Add media…").clicked() {
-                    actions.add_media = true;
-                    ui.close();
-                }
-                ui.separator();
-                if ui.button("Welcome screen").clicked() {
-                    state.welcome = true;
-                    ui.close();
-                }
-            });
-            ui.menu_button("Edit", |ui| {
-                if ui
-                    .add_enabled(
-                        editor.history.can_undo(),
-                        egui::Button::new("Undo  (Ctrl+Z)"),
-                    )
-                    .clicked()
-                {
-                    editor.undo();
-                    ui.close();
-                }
-                if ui
-                    .add_enabled(
-                        editor.history.can_redo(),
-                        egui::Button::new("Redo  (Ctrl+Y)"),
-                    )
-                    .clicked()
-                {
-                    editor.redo();
-                    ui.close();
-                }
-                ui.separator();
-                let has_surface = matches!(editor.selection, Selection::Surface { .. });
-                if ui
-                    .add_enabled(
-                        has_surface,
-                        egui::Button::new("Duplicate surface  (Ctrl+D)"),
-                    )
-                    .clicked()
-                {
-                    if let Selection::Surface { id, .. } = editor.selection.clone() {
-                        editor.duplicate_surface(&id);
-                    }
-                    ui.close();
-                }
-                if ui
-                    .add_enabled(
-                        editor.selection != Selection::None,
-                        egui::Button::new("Delete  (Del)"),
-                    )
-                    .clicked()
-                {
-                    editor.delete_selection();
-                    ui.close();
-                }
-            });
-            ui.menu_button("View", |ui| {
-                ui.checkbox(&mut canvas.stage, "Stage view  (T)")
-                    .on_hover_text("Every placed output on the virtual desktop");
-                ui.checkbox(&mut canvas.show_grid, "Grid  (G)");
-                ui.checkbox(&mut canvas.handles.snap, "Snap  (S)");
-                ui.checkbox(&mut editor.edit_on_wall, "Handles on output windows");
-                ui.add(
-                    egui::Slider::new(&mut canvas.grid_divisions, 2..=32).text("grid divisions"),
-                );
-                if ui.button("Fit view  (0)").clicked() {
-                    canvas.reset_view();
-                    ui.close();
-                }
-                if ui.button("Keyboard shortcuts  (?)").clicked() {
-                    state.help = true;
-                    ui.close();
-                }
-            });
-            ui.separator();
-            if ui
-                .add_enabled(editor.history.can_undo(), egui::Button::new("Undo"))
-                .on_hover_text("Ctrl+Z")
-                .clicked()
-            {
-                editor.undo();
-            }
-            if ui
-                .add_enabled(editor.history.can_redo(), egui::Button::new("Redo"))
-                .on_hover_text("Ctrl+Y")
-                .clicked()
-            {
-                editor.redo();
-            }
-            ui.separator();
-            if ui
-                .button("Identify")
-                .on_hover_text("Flash each output's name on its projector (I)")
-                .clicked()
-            {
-                editor.identify(Instant::now());
-            }
-            if ui
-                .button("Show mode")
-                .on_hover_text("Lock editing and open every output (F10)")
-                .clicked()
-            {
-                editor.enter_show_mode();
-            }
-            let blackout = editor.project.blackout;
-            if ui
-                .add(
-                    egui::Button::new(if blackout {
-                        RichText::new("BLACKOUT").color(crate::theme::LIVE)
-                    } else {
-                        RichText::new("Blackout")
-                    })
-                    .fill(if blackout {
-                        crate::theme::LIVE.linear_multiply(0.2)
-                    } else {
-                        Color32::TRANSPARENT
-                    }),
-                )
-                .on_hover_text("All outputs black (B)")
-                .clicked()
-            {
-                editor.set_param("/show/blackout", ParamValue::Bool(!blackout));
-                editor.commit();
-            }
-            param_slider(ui, editor, "Master", "/show/master", 0.0..=1.0);
-        });
-    });
-}
-
 /// Bottom status strip.
 pub fn status_bar(
     ui: &mut egui::Ui,
@@ -424,7 +281,6 @@ pub fn status_bar(
     egui::Panel::bottom("lumap-status").show(ui, |ui| {
         ui.horizontal(|ui| {
             update_banner(ui, banner, actions);
-            ui.label(RichText::new(&editor.status).weak());
             let selected = editor.selected_surfaces();
             if selected.len() > 1 {
                 ui.label(RichText::new(format!("{} surfaces selected", selected.len())).weak());
@@ -438,9 +294,6 @@ pub fn status_bar(
                 },
                 false,
             );
-            if let Some(p) = &editor.last_patch {
-                ui.label(RichText::new(p).weak().small());
-            }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(RichText::new(format!("{fps:.0} fps")).weak());
                 ui.separator();
@@ -520,8 +373,8 @@ pub fn left_panel(
     egui::Panel::left("lumap-left").default_size(240.0).show(ui, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.heading("Outputs");
-                if ui.small_button("+ output").on_hover_text("Add a projector").clicked() {
+                ui.heading("Projectors");
+                if ui.small_button("+ projector").on_hover_text("Add a projector").clicked() {
                     editor.add_output();
                 }
             });
@@ -585,8 +438,8 @@ pub fn left_panel(
             }
             ui.separator();
             ui.horizontal(|ui| {
-                ui.heading("Sources");
-                ui.menu_button("+ source", |ui| {
+                ui.heading("Content");
+                ui.menu_button("+ content", |ui| {
                     if ui.button("Media file…").clicked() {
                         actions.add_media = true;
                         ui.close();
@@ -612,7 +465,7 @@ pub fn left_panel(
             });
             let sources: Vec<_> = editor.project.sources.iter().map(|s| (s.id.clone(), describe(&s.kind))).collect();
             if sources.is_empty() {
-                crate::theme::empty_state(ui, "No sources yet", "Add media, a generator or a test pattern.");
+                crate::theme::empty_state(ui, "No content yet", "Add media, a look or a test pattern.");
             }
             for (id, desc) in sources {
                 let selected = editor.selection == Selection::Source(id.clone());
@@ -737,6 +590,7 @@ fn rename_box(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, id
 
 /// The cheat sheet.
 pub const SHORTCUTS: &[(&str, &str)] = &[
+    ("1 / 2 / 3 / 4", "Setup / Map / Content / Show"),
     ("Drag handle", "Move a corner, control point or mask point"),
     ("Shift+drag", "Move the whole surface or mask"),
     (
@@ -751,15 +605,15 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Delete", "Delete the selection"),
     ("Ctrl+Z / Ctrl+Y", "Undo / redo"),
     ("Ctrl+N / Ctrl+O / Ctrl+S", "New / open / save"),
-    ("I", "Identify: flash each output's name on its projector"),
+    ("I", "Identify: flash each projector's name on its wall"),
     ("B", "Blackout"),
-    ("T", "Stage view: every placed output on the desktop"),
+    ("T", "Stage view: every placed projector on the desktop"),
     (
         "[ / ]",
-        "Blend gamma of the shown output down / up (gamma match)",
+        "Blend gamma of the shown projector down / up (gamma match)",
     ),
     ("Space", "GO: fade to the next cue"),
-    ("F10", "Show mode; Escape twice leaves it"),
+    ("F10", "Go live; Escape twice leaves"),
     ("?", "This list"),
 ];
 
@@ -837,7 +691,12 @@ mod control;
 mod dialogs;
 mod inspectors;
 pub mod looks;
+mod settings;
+pub mod shell;
+mod start;
 
 pub use control::cue_panel;
 pub use dialogs::dialogs;
 pub use inspectors::inspector;
+pub use settings::settings_window;
+pub use start::start_page;

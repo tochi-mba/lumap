@@ -1,8 +1,8 @@
 //! The inspector: outputs, surfaces, sources, the show.
 
 use super::super::{AlignOp, Editor, MonitorInfo, Selection};
+use super::shell::Step;
 use super::{describe, param_slider, param_toggle, rename_box, Actions, PanelState};
-use crate::update::flow::Mode;
 use eframe::egui::{self, Color32, RichText};
 use lumap_core::blend::BlendCurve;
 use lumap_core::midimap::MidiMode;
@@ -23,7 +23,7 @@ pub fn inspector(
         .default_size(310.0)
         .show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| match editor.selection.clone() {
-                Selection::None => show_inspector(ui, editor, state, actions),
+                Selection::None => step_inspector(ui, editor, state, actions),
                 Selection::Output(id) => output_inspector(ui, editor, &id, monitors, state),
                 Selection::Surface { id, mask } => surface_inspector(ui, editor, &id, mask, state),
                 Selection::Source(id) => source_inspector(ui, editor, &id, state),
@@ -31,106 +31,97 @@ pub fn inspector(
         });
 }
 
-fn show_inspector(
+/// What the inspector shows with nothing selected: the step's own starting points. App
+/// settings (updates, ffmpeg) live in the Settings window; the show's name, blackout and master
+/// live in the top bar.
+fn step_inspector(
     ui: &mut egui::Ui,
     editor: &mut Editor,
     state: &mut PanelState,
     actions: &mut Actions,
 ) {
-    ui.heading("Show");
-    let mut name = editor.project.name.clone();
-    let label = ui.label("Name");
-    if ui
-        .text_edit_singleline(&mut name)
-        .labelled_by(label.id)
-        .lost_focus()
-        && name != editor.project.name
-    {
-        editor.edit(|p| p.name = name);
-    }
-    param_toggle(ui, editor, "Blackout", "/show/blackout");
-    param_slider(ui, editor, "Master", "/show/master", 0.0..=1.0);
-    if ui
-        .button("Suggest blends")
-        .on_hover_text("Set blend widths from where placed outputs overlap on the desktop")
-        .clicked()
-    {
-        editor.suggest_blends();
-    }
-    ui.separator();
-    ui.label(match &editor.osc {
-        Some(s) => format!("OSC listening on {}", s.local_addr()),
-        None => "OSC off (start with --osc-port)".into(),
-    });
-    ui.label(RichText::new("Addresses: /show/blackout, /show/master, /surface/<id>/opacity|visible|z|corner/<n>/x|y, /output/<id>/enabled|brightness|contrast|gamma|blend/<edge>/width").weak().small());
-    ui.separator();
-    ui.horizontal(|ui| {
-        if ui.button("Add media…").clicked() {
-            actions.add_media = true;
-        }
-        if ui.button("Add frame folder…").clicked() {
-            actions.add_folder = true;
-        }
-    });
-    ui.separator();
-    ui.label(if state.ffmpeg_ok {
-        format!(
-            "ffmpeg found ({}): video sources play.",
-            state.ffmpeg_origin.describe()
-        )
-    } else {
-        "ffmpeg not found: install it or point lumap at it below.".to_string()
-    });
-    ui.separator();
-    ui.horizontal(|ui| {
-        let mut mode = state.update_mode;
-        egui::ComboBox::from_label("Updates")
-            .selected_text(match mode {
-                Mode::Notify => "tell me",
-                Mode::Download => "download, then tell me",
-                Mode::Off => "never check",
-            })
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut mode, Mode::Notify, "tell me");
-                ui.selectable_value(&mut mode, Mode::Download, "download, then tell me");
-                ui.selectable_value(&mut mode, Mode::Off, "never check");
+    match state.step {
+        Step::Setup => {
+            ui.heading("Projectors");
+            crate::theme::empty_state(
+                ui,
+                "Select a projector",
+                "Its picture, edge blending and calibration appear here.",
+            );
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("Add projector").clicked() {
+                    editor.add_output();
+                }
+                if ui
+                    .button("Suggest blends")
+                    .on_hover_text("Set blend widths from where placed projectors overlap")
+                    .clicked()
+                {
+                    editor.suggest_blends();
+                }
             });
-        if mode != state.update_mode {
-            state.update_mode = mode;
-            actions.update_mode = Some(mode);
         }
-        if ui.button("Check now").clicked() {
-            actions.update = Some(crate::update::Request::CheckNow);
+        Step::Map => {
+            ui.heading("Surfaces");
+            crate::theme::empty_state(
+                ui,
+                "Select a surface",
+                "Click one on the canvas or in the list, then drag its corners onto the wall.",
+            );
+            if let Some(first) = editor.project.outputs.first().map(|o| o.id.clone()) {
+                if ui.button("Add surface").clicked() {
+                    editor.add_surface(&first);
+                }
+            }
         }
-    });
-    ui.label(
-        RichText::new("Never during a show. Installing always asks first.")
-            .weak()
-            .small(),
-    );
-    ui.horizontal(|ui| {
-        let label = ui.label("ffmpeg path");
-        let r = ui
-            .text_edit_singleline(&mut state.ffmpeg_path)
-            .labelled_by(label.id);
-        if r.lost_focus() {
-            actions.ffmpeg_path = Some(state.ffmpeg_path.trim().to_string());
+        Step::Content => {
+            ui.heading("Content");
+            crate::theme::empty_state(
+                ui,
+                "Select a surface",
+                "Then pick a look for it, or add your own video and images.",
+            );
+            ui.horizontal(|ui| {
+                if ui.button("Add media…").clicked() {
+                    actions.add_media = true;
+                }
+                if ui.button("Add frame folder…").clicked() {
+                    actions.add_folder = true;
+                }
+            });
+            crate::theme::section_header(ui, "Live input");
+            let label = ui.label("Spout sender");
+            ui.text_edit_singleline(&mut state.spout_sender)
+                .labelled_by(label.id)
+                .on_hover_text(
+                    "The name another app (Resolume, TouchDesigner…) shares its video as",
+                );
+            if ui.button("Add Spout receiver").clicked() {
+                editor.add_source(SourceKind::Spout {
+                    sender: state.spout_sender.trim().to_string(),
+                });
+            }
         }
-    });
-    let label = ui.heading("Add Spout source");
-    ui.text_edit_singleline(&mut state.spout_sender)
-        .labelled_by(label.id);
-    if ui.button("Add Spout receiver").clicked() {
-        editor.add_source(SourceKind::Spout {
-            sender: state.spout_sender.trim().to_string(),
-        });
+        Step::Show => {
+            ui.heading("Control");
+            ui.label(match &editor.osc {
+                Some(s) => format!("OSC listening on {}", s.local_addr()),
+                None => "OSC off (start with --osc-port)".into(),
+            });
+            ui.collapsing("OSC addresses", |ui| {
+                ui.label(
+                    RichText::new(
+                        "/show/blackout, /show/master, /cue/go, /cue/<id>/go, /cue/stop,                          /surface/<id>/opacity|visible|z|corner/<n>/x|y,                          /output/<id>/enabled|brightness|contrast|gamma|blend/<edge>/width,                          /source/<id>/play|loop|speed|restart",
+                    )
+                    .weak()
+                    .small(),
+                );
+            });
+            super::control::control_section(ui, editor, state, actions);
+        }
     }
-    if let Some(e) = &state.error {
-        ui.colored_label(crate::theme::LIVE, e);
-    }
-    ui.separator();
-    super::control::control_section(ui, editor, state, actions);
 }
+
 #[allow(clippy::too_many_lines)]
 fn output_inspector(
     ui: &mut egui::Ui,
@@ -139,7 +130,7 @@ fn output_inspector(
     monitors: &[MonitorInfo],
     state: &mut PanelState,
 ) {
-    ui.heading(format!("Output {id}"));
+    ui.heading(format!("Projector {id}"));
     if rename_box(ui, editor, state, id) {
         return;
     }
@@ -169,7 +160,7 @@ fn output_inspector(
     param_toggle(
         ui,
         editor,
-        "Enabled in show mode",
+        "On in show mode",
         &format!("/output/{id}/enabled"),
     );
     let open = editor.open_outputs.contains(&id.to_string());
@@ -625,7 +616,7 @@ fn surface_inspector(
 /// Inspector for a source: preview, transport, generator and file settings.
 #[allow(clippy::too_many_lines)]
 fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mut PanelState) {
-    ui.heading(format!("Source {id}"));
+    ui.heading(format!("Content {id}"));
     if rename_box(ui, editor, state, id) {
         return;
     }

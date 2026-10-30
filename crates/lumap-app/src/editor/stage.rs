@@ -215,7 +215,7 @@ pub fn show(
             avail.left_bottom() + Vec2::new(8.0, -8.0),
             egui::Align2::LEFT_BOTTOM,
             format!(
-                "Not placed: {} (use \"Fill monitor\" in the output inspector)",
+                "Not placed yet: {}. Select a projector and put it on a display.",
                 unplaced.join(", ")
             ),
             egui::FontId::proportional(12.0),

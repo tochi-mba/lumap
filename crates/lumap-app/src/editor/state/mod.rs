@@ -548,7 +548,10 @@ impl Editor {
 
 mod control;
 mod objects;
+mod readiness;
 mod session;
+
+pub use readiness::Readiness;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::float_cmp)]

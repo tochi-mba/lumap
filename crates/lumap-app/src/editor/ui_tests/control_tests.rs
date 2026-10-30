@@ -13,6 +13,7 @@ use lumap_core::project::demo_project;
 #[test]
 fn cue_panel_stores_fires_updates_and_reorders() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     assert!(h
         .query_by_label("No cues yet. Set up a look, then Store cue. Space fades to the next one.")
         .is_some());
@@ -104,6 +105,7 @@ fn cue_panel_stores_fires_updates_and_reorders() {
 fn control_section_learns_midi_and_runs_feedback_and_remote() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     assert!(h.query_by_label("Control").is_some());
     assert!(h.query_by_label("MIDI off").is_some());
     click(&mut h, "Refresh MIDI ports");
@@ -302,6 +304,8 @@ fn stage_view_selects_drags_and_the_calibration_tools_work() {
         Selection::Output("right".into())
     );
     assert_eq!(h.state().canvas.output.as_deref(), Some("right"));
+    // Selecting swaps the inspector, which can resize the stage: measure again.
+    let right = h.state().canvas.stage_rects[1].1;
     // Drag it 40 screen points right: the placement moves by 40 / scale desktop pixels.
     let scale = right.width() / 1920.0;
     drag(
@@ -329,9 +333,9 @@ fn stage_view_selects_drags_and_the_calibration_tools_work() {
     // Click empty space clears the selection.
     click_at(&mut h, egui::pos2(right.max.x + 2.0, right.max.y + 2.0));
     settle(&mut h);
-    // Suggest blends from the overlap, through the show inspector.
+    // Suggest blends from the overlap, through the Setup step's inspector.
     h.state_mut().editor.selection = Selection::None;
-    settle(&mut h);
+    step(&mut h, "1 Setup");
     click(&mut h, "Suggest blends");
     assert!(
         h.state()
@@ -345,7 +349,7 @@ fn stage_view_selects_drags_and_the_calibration_tools_work() {
             > 0.0
     );
     // Back to the output view; overlay combo and gamma keys on the shown output.
-    menu(&mut h, "View", "Stage view  (T)");
+    click(&mut h, "Stage view");
     assert!(!h.state().canvas.stage);
     click(&mut h, "left");
     click(&mut h, "Overlay");
