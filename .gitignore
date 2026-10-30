@@ -12,3 +12,5 @@ models/*.onnx
 .idea/
 .vscode/
 .claude/worktrees/
+__pycache__/
+*.pyc
