@@ -121,7 +121,9 @@ impl Correspondence {
         let reach = CONSENSUS * span.max(1.0);
         let mut sum = vec![[0.0f64; 3]; pw * ph];
         for (at, c) in samples {
-            let Some(m) = medians[block(at)] else { continue };
+            let Some(m) = medians[block(at)] else {
+                continue;
+            };
             if (c[0] - m[0]).abs() > reach || (c[1] - m[1]).abs() > reach {
                 continue;
             }
@@ -310,6 +312,9 @@ impl ProjectorMap {
 /// it cannot resolve snap them further, so the outline is decided at this coarser scale.
 const BLOCK: usize = 16;
 
+/// How many blocks across an unreadable gap inside the projection may be.
+const SPAN: i64 = 6;
+
 /// How many blocks' span (in camera pixels) a sample may sit from its block's median camera
 /// position before it counts as stray light.
 const CONSENSUS: f64 = 2.0;
@@ -402,28 +407,25 @@ fn push_pull(sum: &[[f64; 3]], w: usize, h: usize) -> Vec<[f32; 2]> {
             }
         }
     }
+    // A block is inside when it holds samples, or when blocks holding samples lie on both sides
+    // of it (above and below, or left and right) within `SPAN` blocks: a strip the camera could
+    // not read is inside, the dark beyond the projection's edge is not.
+    let at = |x: i64, y: i64| {
+        x >= 0
+            && y >= 0
+            && (x as usize) < bw
+            && (y as usize) < bh
+            && has[y as usize * bw + x as usize]
+    };
+    let side =
+        |bx: i64, by: i64, dx: i64, dy: i64| (1..=SPAN).any(|k| at(bx + dx * k, by + dy * k));
     let inside: Vec<bool> = (0..bh)
         .flat_map(|by| (0..bw).map(move |bx| (bx, by)))
         .map(|(bx, by)| {
-            if has[by * bw + bx] {
-                return true;
-            }
-            let mut n = 0;
-            for dy in -1i64..=1 {
-                for dx in -1i64..=1 {
-                    let (x, y) = (bx as i64 + dx, by as i64 + dy);
-                    if (dx != 0 || dy != 0)
-                        && x >= 0
-                        && y >= 0
-                        && (x as usize) < bw
-                        && (y as usize) < bh
-                        && has[y as usize * bw + x as usize]
-                    {
-                        n += 1;
-                    }
-                }
-            }
-            n >= 5
+            let (x, y) = (bx as i64, by as i64);
+            at(x, y)
+                || (side(x, y, 0, -1) && side(x, y, 0, 1))
+                || (side(x, y, -1, 0) && side(x, y, 1, 0))
         })
         .collect();
     (0..h)

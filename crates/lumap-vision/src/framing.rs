@@ -223,8 +223,15 @@ pub fn check(white: &Gray, black: &Gray) -> Framing {
             .max_by_key(|(_, n)| **n)
             .map_or(4, |(i, _)| i);
         let area = [
-            "top left", "top", "top right", "left side", "middle", "right side", "bottom left",
-            "bottom", "bottom right",
+            "top left",
+            "top",
+            "top right",
+            "left side",
+            "middle",
+            "right side",
+            "bottom left",
+            "bottom",
+            "bottom right",
         ][worst];
         problems.push(Problem::Blocked(area));
     }
@@ -239,7 +246,10 @@ pub fn check(white: &Gray, black: &Gray) -> Framing {
         .map(|(d, _)| *d)
         .collect();
     inside_diff.sort_unstable();
-    if inside_diff.get(inside_diff.len() / 2).is_some_and(|m| *m < DIM) {
+    if inside_diff
+        .get(inside_diff.len() / 2)
+        .is_some_and(|m| *m < DIM)
+    {
         problems.push(Problem::Dim);
     }
     Framing {
