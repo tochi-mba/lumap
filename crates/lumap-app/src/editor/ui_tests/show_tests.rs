@@ -434,7 +434,7 @@ fn source_inspector_transport_and_generator_controls() {
             .restart_token,
         1
     );
-    assert!(h.query_by_label("Delete source").is_some());
+    assert!(h.query_by_label("Remove from the show").is_some());
 
     // Generators from the menu, with the pattern combo.
     h.state_mut().editor.selection = Selection::None;
@@ -463,7 +463,7 @@ fn source_inspector_transport_and_generator_controls() {
         .live_ids()
         .contains(&"generator".to_string()));
     // Unused generator can be deleted from its inspector.
-    click(&mut h, "Delete source");
+    click(&mut h, "Remove from the show");
     assert!(h.state().editor.project.source("generator").is_none());
     assert_eq!(h.state().editor.selection, Selection::None);
     // A used source cannot be deleted (status says why).

@@ -92,6 +92,7 @@ impl LumapApp {
             if self.editor.show_mode {
                 self.editor.exit_show_mode();
             } else {
+                self.panels.golive = false;
                 self.editor.enter_show_mode();
             }
         }

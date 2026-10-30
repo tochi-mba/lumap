@@ -471,33 +471,54 @@ fn rename_box(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, id
     renamed
 }
 
-/// The cheat sheet.
-pub const SHORTCUTS: &[(&str, &str)] = &[
-    ("1 / 2 / 3 / 4", "Setup / Map / Content / Show"),
-    ("Drag handle", "Move a corner, control point or mask point"),
-    ("Shift+drag", "Move the whole surface or mask"),
+/// The cheat sheet, grouped the way the work goes: everywhere, then step by step.
+pub const SHORTCUTS: &[(&str, &[(&str, &str)])] = &[
     (
-        "Arrows",
-        "Nudge the active handle by 1 px (Shift ×10, Alt ×0.1)",
+        "Everywhere",
+        &[
+            ("1 / 2 / 3 / 4", "Setup / Map / Content / Show"),
+            ("Ctrl+Z / Ctrl+Y", "Undo / redo"),
+            ("Ctrl+N / Ctrl+O / Ctrl+S", "New / open / save"),
+            ("B", "Blackout"),
+            ("?", "This list"),
+        ],
     ),
-    ("Click surface", "Select it (Shift adds to the selection)"),
-    ("Scroll / middle-drag", "Zoom and pan the canvas, 0 fits"),
-    ("G / S", "Toggle grid / snapping"),
-    ("L", "Lock or unlock the selected surface"),
-    ("Ctrl+D", "Duplicate the selected surface"),
-    ("Delete", "Delete the selection"),
-    ("Ctrl+Z / Ctrl+Y", "Undo / redo"),
-    ("Ctrl+N / Ctrl+O / Ctrl+S", "New / open / save"),
-    ("I", "Identify: flash each projector's name on its wall"),
-    ("B", "Blackout"),
-    ("T", "Stage view: every placed projector on the desktop"),
     (
-        "[ / ]",
-        "Blend gamma of the shown projector down / up (gamma match)",
+        "1 Setup",
+        &[
+            ("I", "Identify: flash each projector's name on its wall"),
+            ("T", "Stage view: every placed projector on the desktop"),
+            (
+                "[ / ]",
+                "Blend gamma of the shown projector down / up (gamma match)",
+            ),
+        ],
     ),
-    ("Space", "GO: fade to the next cue"),
-    ("F10", "Go live without the check; Escape twice leaves"),
-    ("?", "This list"),
+    (
+        "2 Map",
+        &[
+            ("Drag handle", "Move a corner, control point or cut-out point"),
+            ("Shift+drag", "Move the whole surface or cut-out"),
+            (
+                "Arrows",
+                "Nudge the active handle by 1 px (Shift ×10, Alt ×0.1)",
+            ),
+            ("Click surface", "Select it (Shift adds to the selection)"),
+            ("Scroll / middle-drag", "Zoom and pan the canvas, 0 fits"),
+            ("G / S", "Grid / snapping"),
+            ("L", "Lock or unlock the selected surface"),
+            ("Ctrl+D", "Duplicate the selected surface"),
+            ("Delete", "Delete the selection"),
+        ],
+    ),
+    (
+        "4 Show",
+        &[
+            ("Space", "GO: fade to the next cue"),
+            ("F10", "Go live without the check"),
+            ("Escape twice", "Leave show mode"),
+        ],
+    ),
 ];
 
 /// Overlay while files hover over the window.
@@ -511,7 +532,7 @@ pub fn drop_overlay(ctx: &egui::Context) {
     painter.text(
         rect.center(),
         egui::Align2::CENTER_CENTER,
-        "Drop to add as sources",
+        "Drop to add to the show",
         egui::FontId::new(28.0, crate::theme::strong_family()),
         crate::theme::TEXT,
     );
@@ -543,7 +564,7 @@ pub fn show_mode_screen(ui: &mut egui::Ui, editor: &Editor, fps: f32) {
                 ui.add_space(12.0);
                 ui.label(
                     RichText::new(format!(
-                        "{} output window(s) · {fps:.0} fps",
+                        "{} projector window(s) · {fps:.0} fps",
                         editor.open_outputs.len()
                     ))
                     .color(crate::theme::MUTED),

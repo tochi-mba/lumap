@@ -60,16 +60,20 @@ pub fn dialogs(
             .collapsible(false)
             .resizable(false)
             .show(ctx, |ui| {
-                egui::Grid::new("shortcuts")
-                    .num_columns(2)
-                    .spacing([24.0, 4.0])
-                    .show(ui, |ui| {
-                        for (k, what) in SHORTCUTS {
-                            ui.label(RichText::new(*k).monospace());
-                            ui.label(*what);
-                            ui.end_row();
-                        }
-                    });
+                for (group, keys) in SHORTCUTS {
+                    crate::theme::section_header(ui, group);
+                    egui::Grid::new(("shortcuts", *group))
+                        .num_columns(2)
+                        .min_col_width(150.0)
+                        .spacing([24.0, 4.0])
+                        .show(ui, |ui| {
+                            for (k, what) in *keys {
+                                ui.label(RichText::new(*k).monospace());
+                                ui.label(*what);
+                                ui.end_row();
+                            }
+                        });
+                }
                 if ui.button("Close").clicked() {
                     state.help = false;
                 }

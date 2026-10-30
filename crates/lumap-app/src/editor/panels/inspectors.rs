@@ -255,7 +255,7 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
         .count();
     ui.label(RichText::new(format!("used by {used} surface(s)")).weak());
     if ui
-        .add_enabled(used == 0, egui::Button::new("Delete source"))
+        .add_enabled(used == 0, egui::Button::new("Remove from the show"))
         .clicked()
     {
         editor.selection = Selection::Source(id.to_string());

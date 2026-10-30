@@ -77,7 +77,7 @@ pub fn show(
     if all.is_empty() {
         state.stage_rects.clear();
         ui.centered_and_justified(|ui| {
-            ui.label("Place an output on a monitor (output inspector) to see the stage.");
+            ui.label("Put a projector on a display (select it in Setup, then Display) to see the stage.");
         });
         return;
     }

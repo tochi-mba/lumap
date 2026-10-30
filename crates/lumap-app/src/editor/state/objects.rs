@@ -25,7 +25,7 @@ impl Editor {
         let mut n = 0;
         self.edit(|p| n = p.suggest_blends());
         self.status = if n == 0 {
-            "no overlapping placed outputs".into()
+            "No placed projectors overlap".into()
         } else {
             format!("set {n} blend edges from the overlaps")
         };
@@ -570,7 +570,7 @@ impl Editor {
         }
         if added > 0 {
             self.reload_sources();
-            self.status = format!("added {added} source(s)");
+            self.status = format!("Added {added} to the show");
         }
         added
     }
