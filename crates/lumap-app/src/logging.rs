@@ -3,7 +3,7 @@
 //! that the lab harness serves at `GET /lab/logs`. A panic is logged with its backtrace before
 //! the app goes down, so a crash leaves its reason in the file.
 //!
-//! The level per module comes from `LUMAP_LOG` (or `RUST_LOG`) in the usual `env_logger` form,
+//! The level per module comes from `LUMAP_LOG` in the usual `env_logger` form,
 //! for example `info,lumap::editor::scan=trace`. Without either, lumap's own modules log at
 //! debug and everything else at info, with the chatty GPU crates at warn.
 
@@ -40,15 +40,15 @@ pub fn current_file() -> Option<&'static Path> {
 /// Starts logging for this run: the filter, the file (old ones pruned) and the panic hook.
 /// Returns the file's path. Safe to call once; later calls change nothing.
 pub fn init() -> Option<PathBuf> {
-    let spec = std::env::var("LUMAP_LOG")
-        .or_else(|_| std::env::var("RUST_LOG"))
-        .unwrap_or_else(|_| DEFAULT_FILTER.to_string());
+    // Use a lumap-specific switch. A machine-wide RUST_LOG (often `warn` for development
+    // tools) must not silently turn off the diagnostic history users rely on after a failure.
+    let spec = std::env::var("LUMAP_LOG").unwrap_or_else(|_| DEFAULT_FILTER.to_string());
     let filter = Filter::parse(&spec);
+    let max = filter.max();
     let (file, path) = match dir().and_then(|d| open_file(&d)) {
         Some((f, p)) => (Some(f), Some(p)),
         None => (None, None),
     };
-    let max = filter.max();
     let logger = Logger {
         filter,
         file: Mutex::new(file.map(BufWriter::new)),
@@ -360,5 +360,16 @@ mod tests {
             ]
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn initialized_logger_writes_and_keeps_recent_lines() {
+        let path = init().expect("a run log");
+        log::error!(target: "lumap::logging::test", "logger smoke test");
+        let text = std::fs::read_to_string(path).expect("read run log");
+        assert!(text.contains("logger smoke test"), "{text:?}");
+        assert!(recent(10, Level::Trace, Some("smoke test"))
+            .iter()
+            .any(|line| line.contains("logger smoke test")));
     }
 }
