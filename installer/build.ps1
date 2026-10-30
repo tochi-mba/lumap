@@ -44,8 +44,11 @@ foreach ($file in @("README.md", "CHANGELOG.md", "LICENSE-MIT", "LICENSE-APACHE"
 
 # The app finds the bundled ffmpeg beside itself; prove it before packaging.
 $env:LUMAP_FFMPEG = $null
-& (Join-Path $payload "lumap.exe") validate (Join-Path $payload "examples\two-projector-demo.lumap.toml")
-if ($LASTEXITCODE -ne 0) { throw "The staged lumap.exe cannot validate the demo project." }
+# A Windows GUI-subsystem executable does not make PowerShell wait or populate LASTEXITCODE
+# when invoked with &, so explicitly wait for its headless validation process.
+$demo = Join-Path $payload "examples\two-projector-demo.lumap.toml"
+$validate = Start-Process -FilePath (Join-Path $payload "lumap.exe") -ArgumentList "validate `"$demo`"" -Wait -PassThru
+if ($validate.ExitCode -ne 0) { throw "The staged lumap.exe cannot validate the demo project (exit $($validate.ExitCode))." }
 
 $iscc = @(
     (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),

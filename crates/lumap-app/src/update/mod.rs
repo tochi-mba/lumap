@@ -502,9 +502,12 @@ mod tests {
             u.request(&mut s, Request::CheckNow, now),
             Some("Checking for a newer lumap.".into())
         );
-        assert!(
-            settle(&mut u, &mut s, calm(), now).is_empty(),
-            "the skipped version is not offered again"
+        // An explicit Check now intentionally clears Skip so the user can reconsider
+        // a version they previously dismissed.
+        assert!(s.skipped.is_none());
+        assert_eq!(
+            settle(&mut u, &mut s, calm(), now),
+            vec!["lumap 0.4.0 is available.".to_string()]
         );
         assert!(format!("{u:?}").contains("closing: false"));
     }

@@ -66,13 +66,14 @@ if ($userPath -notlike "*$app*") { throw "The install folder was not added to th
 $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot"
 $env:LUMAP_FFMPEG = $null
 $exe = Join-Path $app "lumap.exe"
-& $exe validate (Join-Path $app "examples\two-projector-demo.lumap.toml")
-if ($LASTEXITCODE -ne 0) { throw "The installed lumap cannot validate the demo project." }
+$demo = Join-Path $app "examples\two-projector-demo.lumap.toml"
+$validate = Start-Process -FilePath $exe -ArgumentList "validate `"$demo`"" -Wait -PassThru
+if ($validate.ExitCode -ne 0) { throw "The installed lumap cannot validate the demo project (exit $($validate.ExitCode))." }
 
 $frames = Join-Path $env:TEMP "lumap-smoke-frames"
 if (Test-Path $frames) { Remove-Item -Recurse -Force $frames }
-& $exe render (Join-Path $app "examples\two-projector-demo.lumap.toml") --out $frames --size 320x180
-if ($LASTEXITCODE -ne 0) { throw "The installed lumap cannot render the demo project." }
+$render = Start-Process -FilePath $exe -ArgumentList "render `"$demo`" --out `"$frames`" --size 320x180" -Wait -PassThru
+if ($render.ExitCode -ne 0) { throw "The installed lumap cannot render the demo project (exit $($render.ExitCode))." }
 $pngs = @(Get-ChildItem $frames -Filter *.png)
 if ($pngs.Count -lt 1) { throw "lumap render produced no PNG." }
 Write-Host "Rendered $($pngs.Count) output(s) from the installed app."

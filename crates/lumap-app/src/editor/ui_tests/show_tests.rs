@@ -130,12 +130,12 @@ fn file_flows_through_dialogs_and_unsaved_prompt() {
     // Prompt, discard: new project.
     h.key_press_modifiers(Modifiers::COMMAND, Key::N);
     settle(&mut h);
-    click(&mut h, "Discard changes");
+    click(&mut h, "Create without saving");
     assert!(h.state().editor.path.is_none());
     assert!(h.state().panels.home, "a new show starts on the start page");
     click(&mut h, "Start from the demo");
     assert!(!h.state().panels.home);
-    // Open the saved file through the dialog; then dirty + open another with "Save and continue".
+    // Open the saved file through the dialog; then save dirty changes before opening another.
     fake(&mut h, |d| d.project = Some(path.clone()));
     h.key_press_modifiers(Modifiers::COMMAND, Key::O);
     settle(&mut h);
@@ -149,7 +149,7 @@ fn file_flows_through_dialogs_and_unsaved_prompt() {
     fake(&mut h, |d| d.project = Some(other.clone()));
     h.key_press_modifiers(Modifiers::COMMAND, Key::O);
     settle(&mut h);
-    click(&mut h, "Save and continue");
+    click(&mut h, "Save and open");
     assert_eq!(h.state().editor.path.as_deref(), Some(other.as_path()));
     assert_eq!(
         lumap_core::project::Project::load(&path).unwrap().master,
@@ -174,7 +174,7 @@ fn file_flows_through_dialogs_and_unsaved_prompt() {
     h.state_mut().request(Pending::Close);
     settle(&mut h);
     assert!(h.query_by_label("Unsaved changes").is_some());
-    click(&mut h, "Discard changes");
+    click(&mut h, "Quit without saving");
     assert!(h.state().close_confirmed);
 }
 
@@ -214,7 +214,7 @@ fn welcome_screen_creates_outputs_and_remembers_recent() {
         h.query_by_label("Unsaved changes").is_some(),
         "the fresh outputs are unsaved"
     );
-    click(&mut h, "Discard changes");
+    click(&mut h, "Open without saving");
     assert_eq!(h.state().editor.path.as_deref(), Some(recent.as_path()));
     h.state_mut().panels.home = true;
     settle(&mut h);
