@@ -562,7 +562,18 @@ impl LumapApp {
             panels::shell::Step::Map => {
                 panels::steps::map::layers_panel(ui, &mut self.editor, &self.canvas);
             }
-            _ => panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions),
+            panels::shell::Step::Content => {
+                panels::steps::content::library(
+                    ui,
+                    &mut self.editor,
+                    &mut self.panels,
+                    &self.canvas,
+                    &mut actions,
+                );
+            }
+            panels::shell::Step::Show => {
+                panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+            }
         }
         panels::inspector(
             ui,
@@ -589,6 +600,12 @@ impl LumapApp {
             });
         if step == panels::shell::Step::Map {
             panels::steps::map::action_bar(ctx, &mut self.editor, &self.canvas);
+        }
+        if matches!(
+            step,
+            panels::shell::Step::Map | panels::shell::Step::Content
+        ) {
+            panels::steps::content::canvas_drop(ctx, &mut self.editor, &self.canvas);
         }
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);

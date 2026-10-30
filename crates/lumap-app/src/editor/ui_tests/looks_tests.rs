@@ -46,6 +46,7 @@ fn a_welcome_chip_puts_the_look_on_every_surface_and_closes_the_welcome() {
 #[test]
 fn the_surface_inspector_applies_the_chosen_look_to_that_surface() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "2 Map");
     click(&mut h, "wall-left");
     click(&mut h, "Look");
     click(&mut h, "Night windows");
@@ -64,8 +65,11 @@ fn the_surface_inspector_applies_the_chosen_look_to_that_surface() {
 #[test]
 fn the_source_menu_groups_generators_by_category() {
     let mut h = harness(Editor::new(demo_project(), None));
-    click(&mut h, "+ content");
-    click(&mut h, "Nature");
+    step(&mut h, "3 Content");
+    click(&mut h, "+ generator");
+    // Two "Nature"s: the open menu's and the library's filter chip; the menu's comes first.
+    h.get_all_by_label("Nature").next().unwrap().click();
+    settle(&mut h);
     click(&mut h, "Generator: Aurora");
     assert!(h.state().editor.project.sources.iter().any(|s| matches!(
         s.kind,

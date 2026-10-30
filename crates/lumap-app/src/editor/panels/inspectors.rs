@@ -78,28 +78,8 @@ fn step_inspector(
             crate::theme::empty_state(
                 ui,
                 "Select a surface",
-                "Then pick a look for it, or add your own video and images.",
+                "Its content, look, opacity and blend appear here. The library on the left has                  everything you can put on it.",
             );
-            ui.horizontal(|ui| {
-                if ui.button("Add media…").clicked() {
-                    actions.add_media = true;
-                }
-                if ui.button("Add frame folder…").clicked() {
-                    actions.add_folder = true;
-                }
-            });
-            crate::theme::section_header(ui, "Live input");
-            let label = ui.label("Spout sender");
-            ui.text_edit_singleline(&mut state.spout_sender)
-                .labelled_by(label.id)
-                .on_hover_text(
-                    "The name another app (Resolume, TouchDesigner…) shares its video as",
-                );
-            if ui.button("Add Spout receiver").clicked() {
-                editor.add_source(SourceKind::Spout {
-                    sender: state.spout_sender.trim().to_string(),
-                });
-            }
         }
         Step::Show => {
             ui.heading("Control");

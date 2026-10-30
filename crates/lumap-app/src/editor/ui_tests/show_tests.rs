@@ -36,6 +36,7 @@ fn show_mode_screen_and_shortcuts() {
     h.state_mut().editor.open_outputs.clear();
     settle(&mut h);
 
+    step(&mut h, "4 Show");
     click(&mut h, "logo");
     h.state_mut().editor.set_param(
         "/surface/logo/opacity",
@@ -238,6 +239,7 @@ fn dropped_files_become_sources_and_hover_shows_an_overlay() {
         .save(&img)
         .unwrap();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     click(&mut h, "right");
     h.input_mut().hovered_files.push(egui::HoveredFile {
         path: Some(img.clone()),
@@ -265,6 +267,7 @@ fn dropped_files_become_sources_and_hover_shows_an_overlay() {
 fn view_menu_toggles_and_output_windows_carry_handles() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     click(&mut h, "Grid");
     assert!(h.state().canvas.show_grid);
     click(&mut h, "Edit on the wall");
@@ -352,6 +355,7 @@ fn source_inspector_transport_and_generator_controls() {
             .unwrap();
     }
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     // Folder dialog adds a sequence source and a surface on the first output.
     fake(&mut h, |d| d.folder = Some(seq.clone()));
     click(&mut h, "+ content");
@@ -454,6 +458,7 @@ fn source_inspector_transport_and_generator_controls() {
 #[test]
 fn crop_preview_drags_and_resets() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     click(&mut h, "wall-right");
     click(&mut h, "Crop");
     // wall-right uses the right part of its content; drag the crop box's bottom-right
@@ -494,6 +499,7 @@ fn crop_preview_drags_and_resets() {
 fn media_dialog_accepts_video_when_ffmpeg_exists() {
     let tools = lumap_sources::video::Tools::from_env();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     assert_eq!(h.state().panels.ffmpeg_ok, tools.available());
     if !tools.available() {
         eprintln!("skipping video part: no ffmpeg");
