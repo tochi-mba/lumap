@@ -12,10 +12,9 @@ pub(super) fn enumerate(window: &winit::window::Window) -> Vec<MonitorInfo> {
     let mut handles: Vec<_> = window.available_monitors().collect();
     // Setup skips the first display when creating projectors. Keep the display that
     // currently hosts the editor first, not whichever order the OS enumerates.
-    if let Some(active) = window.current_monitor() {
-        if let Some(index) = handles.iter().position(|m| m == &active) {
-            handles.swap(0, index);
-        }
+    let active = window.current_monitor();
+    if let Some(index) = handles.iter().position(|m| active.as_ref() == Some(m)) {
+        handles.swap(0, index);
     }
     handles
         .into_iter()
