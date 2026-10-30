@@ -124,14 +124,37 @@ pub fn icon(out: &Path) -> anyhow::Result<ExitCode> {
 }
 
 /// `lumap new`.
-pub fn new_project(path: &Path, force: bool) -> anyhow::Result<ExitCode> {
+pub fn new_project(path: &Path, force: bool, look: Option<&str>) -> anyhow::Result<ExitCode> {
     if path.exists() && !force {
         bail!("{} exists; pass --force to overwrite", path.display());
     }
-    demo_project()
+    let mut project = demo_project();
+    if let Some(name) = look {
+        let look = lumap_core::looks::find(name)
+            .with_context(|| format!("no look called {name:?}; `lumap looks` lists them"))?;
+        let surfaces: Vec<String> = project.surfaces.iter().map(|s| s.id.clone()).collect();
+        for s in &surfaces {
+            look.apply(&mut project, s);
+        }
+    }
+    project
         .save(path)
         .with_context(|| format!("writing {}", path.display()))?;
     println!("wrote {}", path.display());
+    Ok(ExitCode::SUCCESS)
+}
+
+/// `lumap looks`: every built-in look with its category and blurb.
+#[allow(clippy::unnecessary_wraps)]
+pub fn list_looks() -> anyhow::Result<ExitCode> {
+    for look in lumap_core::looks::LOOKS {
+        println!(
+            "{:<18} {:<8} {}",
+            look.name,
+            look.category().label(),
+            look.blurb
+        );
+    }
     Ok(ExitCode::SUCCESS)
 }
 

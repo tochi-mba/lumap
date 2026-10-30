@@ -152,18 +152,146 @@ pub enum GeneratorKind {
     Radar,
     /// Grid whose lines pulse.
     GridPulse,
+    /// A bright segment running around the frame's border.
+    EdgeChase,
+    /// The border pulsing in and out.
+    Outline,
+    /// A light bar sweeping across, then down.
+    Scan,
+    /// A brick wall whose bricks breathe in waves.
+    Bricks,
+    /// A grid of windows lighting up and going dark.
+    Windows,
+    /// Blocks falling and stacking.
+    Blocks,
+    /// A rotating wireframe cube.
+    Wireframe,
+    /// Ripples spreading from drifting drops.
+    Water,
+    /// Flames rising.
+    Fire,
+    /// Slow curtains of light.
+    Aurora,
+    /// Twinkling stars drifting.
+    Stars,
+    /// Tiles flashing on the beat.
+    Disco,
+    /// Plasma folded into six mirrored wedges.
+    Kaleidoscope,
+    /// Soft glowing hearts drifting upwards, with a gentle heartbeat.
+    Hearts,
+}
+
+/// How generators are grouped in menus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GeneratorCategory {
+    /// The original six: plasma, noise, colour cycle, strobe, radar, grid pulse.
+    Classic,
+    /// For mapped boxes, frames and windows.
+    Edges,
+    /// For walls and buildings.
+    Facade,
+    /// Water, fire, sky.
+    Nature,
+    /// For a dance floor.
+    Party,
+    /// For an anniversary, a proposal, a first dance.
+    Romance,
+}
+
+impl GeneratorCategory {
+    /// Every category, in menu order.
+    pub const ALL: [Self; 6] = [
+        Self::Edges,
+        Self::Facade,
+        Self::Nature,
+        Self::Party,
+        Self::Romance,
+        Self::Classic,
+    ];
+
+    /// The menu label.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Classic => "Classic",
+            Self::Edges => "Edges",
+            Self::Facade => "Facade",
+            Self::Nature => "Nature",
+            Self::Party => "Party",
+            Self::Romance => "Romance",
+        }
+    }
 }
 
 impl GeneratorKind {
     /// Every kind, for menus.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 20] = [
         Self::Plasma,
         Self::Noise,
         Self::ColorCycle,
         Self::Strobe,
         Self::Radar,
         Self::GridPulse,
+        Self::EdgeChase,
+        Self::Outline,
+        Self::Scan,
+        Self::Bricks,
+        Self::Windows,
+        Self::Blocks,
+        Self::Wireframe,
+        Self::Water,
+        Self::Fire,
+        Self::Aurora,
+        Self::Stars,
+        Self::Disco,
+        Self::Kaleidoscope,
+        Self::Hearts,
     ];
+
+    /// Which menu group the kind belongs to.
+    pub fn category(self) -> GeneratorCategory {
+        match self {
+            Self::Plasma
+            | Self::Noise
+            | Self::ColorCycle
+            | Self::Strobe
+            | Self::Radar
+            | Self::GridPulse => GeneratorCategory::Classic,
+            Self::EdgeChase | Self::Outline | Self::Scan => GeneratorCategory::Edges,
+            Self::Bricks | Self::Windows | Self::Blocks | Self::Wireframe => {
+                GeneratorCategory::Facade
+            }
+            Self::Water | Self::Fire | Self::Aurora | Self::Stars => GeneratorCategory::Nature,
+            Self::Disco | Self::Kaleidoscope => GeneratorCategory::Party,
+            Self::Hearts => GeneratorCategory::Romance,
+        }
+    }
+
+    /// A readable name for menus.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Plasma => "Plasma",
+            Self::Noise => "Noise",
+            Self::ColorCycle => "Colour cycle",
+            Self::Strobe => "Strobe",
+            Self::Radar => "Radar",
+            Self::GridPulse => "Grid pulse",
+            Self::EdgeChase => "Edge chase",
+            Self::Outline => "Outline",
+            Self::Scan => "Scan",
+            Self::Bricks => "Bricks",
+            Self::Windows => "Windows",
+            Self::Blocks => "Blocks",
+            Self::Wireframe => "Wireframe",
+            Self::Water => "Water",
+            Self::Fire => "Fire",
+            Self::Aurora => "Aurora",
+            Self::Stars => "Stars",
+            Self::Disco => "Disco",
+            Self::Kaleidoscope => "Kaleidoscope",
+            Self::Hearts => "Hearts",
+        }
+    }
 }
 
 impl SourceKind {

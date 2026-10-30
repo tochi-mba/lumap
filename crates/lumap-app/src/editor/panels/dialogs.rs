@@ -84,6 +84,7 @@ pub fn dialogs(
             } else {
                 ui.label(RichText::new("Only one display detected. Plug in a projector and reopen lumap, or map on this screen for now.").weak());
             }
+            super::looks::welcome_row(ui, actions);
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 if ui.button("Open a project…").clicked() {

@@ -1,0 +1,167 @@
+schema_version = 1
+name = "Fourteen look generators at time zero"
+
+[[sources]]
+id = "edge_chase"
+kind = "generator"
+pattern = "edge_chase"
+
+[[sources]]
+id = "outline"
+kind = "generator"
+pattern = "outline"
+
+[[sources]]
+id = "scan"
+kind = "generator"
+pattern = "scan"
+
+[[sources]]
+id = "bricks"
+kind = "generator"
+pattern = "bricks"
+
+[[sources]]
+id = "windows"
+kind = "generator"
+pattern = "windows"
+color = [1.0, 0.78, 0.4, 1.0]
+
+[[sources]]
+id = "blocks"
+kind = "generator"
+pattern = "blocks"
+
+[[sources]]
+id = "wireframe"
+kind = "generator"
+pattern = "wireframe"
+
+[[sources]]
+id = "water"
+kind = "generator"
+pattern = "water"
+color = [0.35, 0.7, 1.0, 1.0]
+
+[[sources]]
+id = "fire"
+kind = "generator"
+pattern = "fire"
+color = [1.0, 0.45, 0.1, 1.0]
+
+[[sources]]
+id = "aurora"
+kind = "generator"
+pattern = "aurora"
+color = [0.3, 1.0, 0.7, 1.0]
+
+[[sources]]
+id = "stars"
+kind = "generator"
+pattern = "stars"
+
+[[sources]]
+id = "disco"
+kind = "generator"
+pattern = "disco"
+color = [1.0, 0.3, 0.8, 1.0]
+
+[[sources]]
+id = "kaleidoscope"
+kind = "generator"
+pattern = "kaleidoscope"
+
+[[sources]]
+id = "hearts"
+kind = "generator"
+pattern = "hearts"
+color = [1.0, 0.35, 0.55, 1.0]
+
+[[outputs]]
+id = "main"
+width = 1920
+height = 1080
+
+[[surfaces]]
+id = "s0"
+output = "main"
+source = "edge_chase"
+warp = { kind = "quad", corners = [{ x = 0.00, y = 0.00 }, { x = 0.25, y = 0.00 }, { x = 0.25, y = 0.25 }, { x = 0.00, y = 0.25 }] }
+
+[[surfaces]]
+id = "s1"
+output = "main"
+source = "outline"
+warp = { kind = "quad", corners = [{ x = 0.25, y = 0.00 }, { x = 0.50, y = 0.00 }, { x = 0.50, y = 0.25 }, { x = 0.25, y = 0.25 }] }
+
+[[surfaces]]
+id = "s2"
+output = "main"
+source = "scan"
+warp = { kind = "quad", corners = [{ x = 0.50, y = 0.00 }, { x = 0.75, y = 0.00 }, { x = 0.75, y = 0.25 }, { x = 0.50, y = 0.25 }] }
+
+[[surfaces]]
+id = "s3"
+output = "main"
+source = "bricks"
+warp = { kind = "quad", corners = [{ x = 0.75, y = 0.00 }, { x = 1.00, y = 0.00 }, { x = 1.00, y = 0.25 }, { x = 0.75, y = 0.25 }] }
+
+[[surfaces]]
+id = "s4"
+output = "main"
+source = "windows"
+warp = { kind = "quad", corners = [{ x = 0.00, y = 0.25 }, { x = 0.25, y = 0.25 }, { x = 0.25, y = 0.50 }, { x = 0.00, y = 0.50 }] }
+
+[[surfaces]]
+id = "s5"
+output = "main"
+source = "blocks"
+warp = { kind = "quad", corners = [{ x = 0.25, y = 0.25 }, { x = 0.50, y = 0.25 }, { x = 0.50, y = 0.50 }, { x = 0.25, y = 0.50 }] }
+
+[[surfaces]]
+id = "s6"
+output = "main"
+source = "wireframe"
+warp = { kind = "quad", corners = [{ x = 0.50, y = 0.25 }, { x = 0.75, y = 0.25 }, { x = 0.75, y = 0.50 }, { x = 0.50, y = 0.50 }] }
+
+[[surfaces]]
+id = "s7"
+output = "main"
+source = "water"
+warp = { kind = "quad", corners = [{ x = 0.75, y = 0.25 }, { x = 1.00, y = 0.25 }, { x = 1.00, y = 0.50 }, { x = 0.75, y = 0.50 }] }
+
+[[surfaces]]
+id = "s8"
+output = "main"
+source = "fire"
+warp = { kind = "quad", corners = [{ x = 0.00, y = 0.50 }, { x = 0.25, y = 0.50 }, { x = 0.25, y = 0.75 }, { x = 0.00, y = 0.75 }] }
+
+[[surfaces]]
+id = "s9"
+output = "main"
+source = "aurora"
+warp = { kind = "quad", corners = [{ x = 0.25, y = 0.50 }, { x = 0.50, y = 0.50 }, { x = 0.50, y = 0.75 }, { x = 0.25, y = 0.75 }] }
+
+[[surfaces]]
+id = "s10"
+output = "main"
+source = "stars"
+warp = { kind = "quad", corners = [{ x = 0.50, y = 0.50 }, { x = 0.75, y = 0.50 }, { x = 0.75, y = 0.75 }, { x = 0.50, y = 0.75 }] }
+
+[[surfaces]]
+id = "s11"
+output = "main"
+source = "disco"
+warp = { kind = "quad", corners = [{ x = 0.75, y = 0.50 }, { x = 1.00, y = 0.50 }, { x = 1.00, y = 0.75 }, { x = 0.75, y = 0.75 }] }
+
+[[surfaces]]
+id = "s12"
+output = "main"
+source = "kaleidoscope"
+warp = { kind = "quad", corners = [{ x = 0.00, y = 0.75 }, { x = 0.25, y = 0.75 }, { x = 0.25, y = 1.00 }, { x = 0.00, y = 1.00 }] }
+
+[[surfaces]]
+id = "s13"
+output = "main"
+source = "hearts"
+warp = { kind = "quad", corners = [{ x = 0.25, y = 0.75 }, { x = 0.50, y = 0.75 }, { x = 0.50, y = 1.00 }, { x = 0.25, y = 1.00 }] }

@@ -56,8 +56,13 @@ files anywhere on the window.
 | Image | PNG, JPEG |
 | Video | Any format `ffmpeg` decodes. The installer bundles ffmpeg; see "Where ffmpeg comes from" in section 7 |
 | Sequence | Folder of numbered PNG/JPEG frames, or a GIF, with a frame rate |
-| Generator | Plasma, noise, colour cycle, strobe, radar sweep, grid pulse; speed and tint |
+| Generator | Twenty patterns in six groups, speed and tint: **Edges** (edge chase, outline, scan), **Facade** (bricks, windows, blocks, wireframe), **Nature** (water, fire, aurora, stars), **Party** (disco, kaleidoscope), **Romance** (hearts), **Classic** (plasma, noise, colour cycle, strobe, radar, grid pulse) |
 | Spout | Windows builds: any Spout sender by name (empty = the active sender) |
+
+**Looks** are ready-made generators with a colour, speed and blend mode: *Try a look* on the
+welcome screen puts one on every surface; the surface inspector's *Looks* section puts one on
+that surface (one undo step either way); `lumap new FILE --look NAME` writes the demo with it;
+`lumap looks` lists them. Change the generator's tint or speed afterwards like any source.
 
 Video, sequences and generators share a **transport**: play/pause, loop, speed, restart. They
 are also parameters (`/source/<id>/play`, `/loop`, `/speed`, `/restart`) so cues, OSC and MIDI

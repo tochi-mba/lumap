@@ -6,6 +6,7 @@
   "description": "lumap maps video, images, loops and live inputs onto physical surfaces through one or many projectors. Plug in the projectors, click Create outputs, and every display gets a full-size output with a grid; drag the corners on the canvas or on the wall itself, and Suggest blends sets the overlap fades for you.\n\nThe geometry is provably correct: corner-pin warps are true homographies with perspective-correct sampling, curved surfaces use bicubic Bezier meshes, and overlaps blend in linear light. A CPU reference renderer is the specification and the GPU renderer is compared against it on every push.\n\nIt runs a real show: video through ffmpeg, image sequences, generators and Spout senders; cues with crossfades; GO from the keyboard, OSC, a MIDI controller or a phone on the Wi-Fi; a locked show mode, autosave with crash recovery and a render watchdog. Projects are small TOML files that live happily in git.",
   "highlights": [
     "Create outputs: one click, and every projector shows a grid",
+    "Seventeen built-in looks, from a neon edge chase to drifting hearts, with no media needed",
     "Corner-pin and Bezier warps proved against a CPU reference renderer on every push",
     "Cues with crossfades; GO from the keyboard, OSC, MIDI or a phone",
     "Locked show mode, autosave, crash recovery and a render watchdog",

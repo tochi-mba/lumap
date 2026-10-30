@@ -376,7 +376,10 @@ fn source_transport_params() {
             color: [1.0; 4]
         }
     );
-    assert_eq!(GeneratorKind::ALL.len(), 6);
+    assert_eq!(GeneratorKind::ALL.len(), 20);
+    let names: std::collections::HashSet<_> =
+        GeneratorKind::ALL.iter().map(|g| g.label()).collect();
+    assert_eq!(names.len(), 20, "labels are unique");
 }
 
 #[test]

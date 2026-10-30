@@ -1,5 +1,7 @@
 //! Procedural animated sources, rendered on the CPU so the oracle can test them.
 
+mod looks;
+
 use crate::{Frame, FrameSource};
 use lumap_core::project::{GeneratorKind, Playback, SourceKind};
 use std::sync::Arc;
@@ -21,6 +23,10 @@ pub fn render(kind: GeneratorKind, t: f64, color: [f32; 4], size: u32) -> Frame 
         ]
     };
     let fsize = f64::from(n);
+    let shade = |v: f64| tint(v, 0, 0);
+    if let Some(frame) = looks::render(kind, t, n, &shade) {
+        return frame;
+    }
     match kind {
         GeneratorKind::Plasma => Frame::from_fn(n, n, |x, y| {
             let (u, v) = (f64::from(x) / fsize, f64::from(y) / fsize);
@@ -80,6 +86,8 @@ pub fn render(kind: GeneratorKind, t: f64, color: [f32; 4], size: u32) -> Frame 
                 y,
             )
         }),
+        // Drawn by `looks::render` above.
+        _ => Frame::solid(2, 2, tint(0.0, 0, 0)),
     }
 }
 
