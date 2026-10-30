@@ -105,6 +105,8 @@
         <div class="feature-card"><h3>Cues</h3><p>A cue snapshots every live parameter with a fade time. GO fades the numbers and switches the booleans half way. Cues travel in the project file.</p></div>
         <div class="feature-card"><h3>Show mode</h3><p>Locked (double-Escape to leave), with autosave and crash recovery, atomic project writes, a render-loop watchdog that can relaunch the show, and a startup self-check that opens every output where the project says it belongs.</p></div>
         <div class="feature-card"><h3>The stage view</h3><p>The whole wall to scale, every output in place, so you see the overlaps before you walk over to them.</p></div>
+        <div class="feature-card"><h3>The camera maps for you</h3><p>Point a webcam at the wall and scan the room: lumap learns where every projector pixel lands, shows you the wall under the canvas, finds the surfaces worth mapping and re-aligns a bumped projector in one click.</p></div>
+        <div class="feature-card"><h3>A wall that plays back</h3><p>Letters that land on your shadow, snow that settles on real shelves, light that traces the room's edges, paint drawn with a phone torch or a pinch, and zones or hand gestures that fire cues.</p></div>
         <div class="feature-card"><h3>Plain-text projects</h3><p>A show is a small <code>.lumap.toml</code> file: diffable, versioned with migrations, happy in git. Cues and MIDI maps live inside it.</p></div>
         <div class="feature-card"><h3>Headless and scriptable</h3><p><code>lumap render</code> draws any output to PNG without a window; <code>validate</code>, <code>migrate</code> and <code>new</code> do the rest from a terminal. The whole app, UI included, runs under headless tests.</p></div>
       </div>
@@ -193,6 +195,7 @@
         <details><summary>Does it send anything anywhere?</summary><p>No telemetry, no account, no analytics. The only network traffic is the OSC, MIDI and phone-remote connections you open yourself.</p></details>
         <details><summary>Where does my show live?</summary><p>In one <code>.lumap.toml</code> file next to your media. It is plain text, diffable, versioned with migrations, and safe to commit to git.</p></details>
         <details><summary>Will there be a Mac version?</summary><p>lumap is built and tested for Windows today. The macOS build is on the way, and this page will offer it as soon as it ships.</p></details>
+        <details><summary>Do I need a camera?</summary><p>No. Everything works by hand. A webcam that sees the wall (a laptop's own camera sitting on the projector is enough) adds the room scan, automatic surfaces, re-alignment and the interactive effects. The camera only runs while something uses it, and its pictures never leave your computer.</p></details>
         <details><summary>Is it free?</summary><p>Yes. MIT OR Apache-2.0, one executable, no watermark, no subscription.</p></details>
       </div>
     </section>

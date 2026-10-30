@@ -187,6 +187,52 @@ Projects are TOML with a `schema_version`; older files are migrated on load and
 `lumap migrate` rewrites them. Media paths are stored relative to the project file when
 possible. `lumap validate` reports every broken reference or degenerate warp.
 
+## 9. The camera
+
+A webcam that sees the whole wall lets lumap scan the room, find surfaces and react to people.
+A laptop's own camera sitting on the projector works; a USB webcam on a tripod sees more of the
+room's shape. On Windows, allow desktop apps to use the camera (Settings ▸ Privacy ▸ Camera).
+The camera only runs while something uses it, and pictures never leave the computer.
+
+**Scan the room** (step 1, Setup ▸ Camera). Pick the camera, *Look through it* to aim it so
+every projector's picture is inside the frame, then *Scan the room*. Each projector in turn
+shows white, black and stripe patterns while the others stay black: about twenty seconds each.
+Keep the room dark and still. The result per projector is kept in `<show>.scan/<projector>/`
+(`photo.png`, `camera.png`, `white.png`, `black.png`, `cam2proj.png`, `scan.toml`) and the
+projector remembers its folder (`scan = "…"` in the project file). The scan sheet shows how much
+of each projector the camera saw, offers *Use measured blends* and *See them in Map*.
+*Check alignment* runs a two-second check per projector.
+
+**Map with the wall** (step 2). *Wall photo* draws what the projector sees over the canvas
+(slider for strength). With snapping on (S), corners snap to real corners and edges.
+*Find surfaces* shows what the scan found as dashed outlines: click one, then *Use this surface*
+or *Use all*. *Pick an object*: click anything on the photo to outline it, then *Make a surface*
+or *Cut it out of* the selected surface. *Hands*: with Edit on the wall on, pinch near a corner
+on the wall to grab it.
+
+**Room content** (step 3, Library ▸ Room). Trace the room, Letters, Shadow fill, Shadow
+monsters, Snow that settles, Bouncing light, Marble run; Paint with light (a phone torch, laser
+or glow stick, in a dark room), Paint with your hand (pinch to draw, open hand to stop, fist to
+clear) and the Camera itself. The content panel sets effect, tint and speed, or brush, colour,
+width and fade; *Clear the paint* (or `/paint/<id>/clear`).
+
+**Zones and gestures** (step 4, Show ▸ Camera). Drag across the camera picture to draw a zone;
+its meter shows motion or presence. Type an address in the MIDI card's *Learn address* (for
+example `/cue/go`), press *Learn as button* (or fader, or switch) and move in the zone or make a
+gesture (pinch, open hand, fist, swipe left or right, thumbs up, point). Forget a mapping from
+the list.
+
+**Before going live** the check adds a camera line: *Check with the camera* tests that each
+projector is still where it was scanned; *Re-align* moves every surface of a bumped projector to
+follow it; if the camera itself moved, *Scan again*.
+
+## 10. The lab
+
+`lumap --lab` (port 7414, or `--lab-port`) serves a local automation API for driving lumap from
+scripts on real hardware: change the show, put patterns on projectors, take camera photos and
+screenshots, click through the interface by label, run scans. It listens on 127.0.0.1 only and
+needs the token in `%LOCALAPPDATA%\lumap\lab\session.json`. See [lab.md](lab.md).
+
 ## 8. Keyboard
 
 | Key | Action |

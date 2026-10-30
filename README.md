@@ -23,6 +23,10 @@ differences from the usual tools:
 - **Show-day reliability.** Locked show mode (double-Escape to leave), autosave with crash
   recovery, atomic project writes, a render-loop watchdog that can relaunch the show, and a
   startup self-check that opens every enabled output where the project says it belongs.
+- **A camera that maps for you.** Point a webcam at the wall and *Scan the room*: lumap learns
+  where every projector pixel lands, shows the wall under the canvas, finds the surfaces worth
+  mapping, measures the blends and re-aligns a bumped projector. Room effects react to people's
+  shadows; paint on the wall with a torch or your hand; zones and gestures fire cues.
 - **Plain-text projects.** `.lumap.toml` files are small, diffable and versioned with
   migrations, so a show lives happily in git. Cues and MIDI maps travel with it.
 - **Scriptable, testable, free.** `lumap render` draws any output to PNG without a window; the

@@ -6,6 +6,31 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Added
+
+- **The camera.** Point a webcam at the wall (a laptop's own camera sitting on the projector
+  works) and lumap uses it:
+  - **Scan the room** (Setup): each projector shows stripe patterns for about twenty seconds
+    while the camera watches, and lumap learns where every projector pixel lands. The scan is
+    kept beside the show in `<show>.scan/`.
+  - **Wall photo** (Map): what each projector sees, under the canvas, so you map on screen with
+    the real wall in view. Corners snap to real corners and edges.
+  - **Find surfaces** (Map): the faces of boxes, frames, doors and round things the scan found,
+    as outlines you click to use. **Pick an object**: click anything on the photo to outline it
+    as a surface or cut it out of one.
+  - **Measured blends**: overlaps measured from the scans become edge-blend widths in one click.
+  - **Re-align**: the Go live check can test with the camera that nothing moved, and a bumped
+    projector's surfaces follow it in one click.
+  - **Room content** (Content): Trace the room, Letters (they land on your shadow), Shadow fill,
+    Shadow monsters, Snow that settles, Bouncing light and Marble run.
+  - **Paint** on the wall with a phone torch, a laser or your hand (pinch to draw, fist to
+    clear), and the **Camera** itself as live content.
+  - **Zones and gestures** (Show): motion in a zone of the camera picture, or a hand gesture,
+    drives any parameter through **Camera learn**, the way MIDI learn does.
+- **The lab**: `lumap --lab` serves a local automation API (127.0.0.1 only, token protected) that
+  drives the editor, the projectors and the camera from scripts, with `scripts/lab/lab.py` as
+  its client. See [docs/lab.md](docs/lab.md).
+
 ## [0.5.1] - 2026-10-30
 
 ### Added
