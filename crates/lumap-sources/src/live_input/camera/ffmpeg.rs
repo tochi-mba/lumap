@@ -188,7 +188,7 @@ impl FfmpegCamera {
 
     /// The stderr of an ffmpeg device listing (empty when ffmpeg cannot run).
     fn run_list(&self, args: &[&str]) -> String {
-        Command::new(&self.tools.ffmpeg)
+        crate::live_input::background(&self.tools.ffmpeg)
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -295,7 +295,7 @@ impl FfmpegStream {
         settings: &CaptureSettings,
         fps_mode: bool,
     ) -> Result<Self, String> {
-        let mut child = Command::new(&tools.ffmpeg)
+        let mut child = crate::live_input::background(&tools.ffmpeg)
             .args(capture_args(api, &camera.id, settings, fps_mode))
             .stdin(Stdio::null())
             .stdout(Stdio::piped())

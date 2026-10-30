@@ -102,7 +102,7 @@ impl Tools {
 
     /// True when `ffmpeg -version` runs.
     pub fn available(&self) -> bool {
-        Command::new(&self.ffmpeg)
+        crate::live_input::background(&self.ffmpeg)
             .arg("-version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -199,7 +199,7 @@ fn parse_rate(s: &str) -> Option<f64> {
 
 /// Runs ffprobe on a file.
 pub fn probe(tools: &Tools, path: &Path) -> Result<VideoInfo, SourceError> {
-    let out = Command::new(&tools.ffprobe)
+    let out = crate::live_input::background(&tools.ffprobe)
         .args([
             "-v",
             "error",
@@ -244,7 +244,7 @@ struct Decoder {
 
 impl Decoder {
     fn spawn(tools: &Tools, path: &Path, size: (u32, u32)) -> Result<Self, SourceError> {
-        let mut child = Command::new(&tools.ffmpeg)
+        let mut child = crate::live_input::background(&tools.ffmpeg)
             .args(["-v", "error", "-nostdin", "-i"])
             .arg(path)
             .args([

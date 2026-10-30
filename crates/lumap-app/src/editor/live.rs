@@ -36,6 +36,8 @@ pub struct LiveState {
     pub settled: bool,
     /// Drift reports from the last drift check, for the go-live check.
     pub drift: Option<Vec<scan::DriftReport>>,
+    /// Projectors the last scan left out because they are not on a display.
+    pub skipped: Vec<String>,
 }
 
 impl LumapApp {
@@ -62,6 +64,9 @@ impl LumapApp {
         let device = self
             .camera_device()
             .ok_or("There is no camera. Plug one in, or pick one in Setup.")?;
+        // A projector that is not on a display shows its stripes in a window on this screen,
+        // where the camera cannot see them: scan only the ones that are.
+        let unplaced = self.editor.unplaced_projectors(&self.monitors);
         let ids: Vec<String> = match projector {
             Some(p) => vec![p.to_string()],
             None => self
@@ -69,6 +74,7 @@ impl LumapApp {
                 .project
                 .outputs
                 .iter()
+                .filter(|o| !unplaced.contains(&o.id))
                 .filter(|o| match kind {
                     Kind::Full => o.enabled,
                     Kind::Drift | Kind::Realign => self.editor.scans.get(&o.id).is_some(),
@@ -78,10 +84,20 @@ impl LumapApp {
         };
         if ids.is_empty() {
             return Err(match kind {
+                Kind::Full if !unplaced.is_empty() => {
+                    "No projector is on a display yet. In Setup, pick each projector's Display, \
+                     then scan."
+                        .into()
+                }
                 Kind::Full => "There is no projector to scan.".into(),
                 Kind::Drift | Kind::Realign => "No projector has a scan yet.".into(),
             });
         }
+        self.live.skipped = if projector.is_none() && kind == Kind::Full {
+            unplaced
+        } else {
+            Vec::new()
+        };
         let root = scan::scan_root(self.editor.path.as_deref());
         self.scan = Some(ScanSession::start(
             kind,
@@ -141,9 +157,15 @@ impl LumapApp {
                     Kind::Realign => format!("Re-aligned {adopted} projector(s)."),
                     Kind::Drift => "Checked the projectors with the camera.".into(),
                 };
-                Ok(
-                    serde_json::json!({ "ok": true, "kind": format!("{kind:?}"), "adopted": adopted, "drift": drift }),
-                )
+                Ok(serde_json::json!({
+                    "ok": true,
+                    "kind": format!("{kind:?}"),
+                    "adopted": adopted,
+                    "drift": drift,
+                    "problems": session.problems(),
+                    "skipped": self.live.skipped,
+                    "lag_ms": session.lag().map(|l| l.as_millis()),
+                }))
             }
             Phase::Failed(e) => {
                 self.editor.status = e.clone();
