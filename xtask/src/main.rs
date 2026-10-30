@@ -2,7 +2,7 @@
 //!
 //! Steps: file-length check (no source file over 1000 lines), fmt check, clippy (all targets, all features, warnings denied), rustdoc, the website checks, cargo-deny,
 //! tests (nextest when installed, `cargo test` otherwise) and, when `cargo-llvm-cov` is
-//! installed, a coverage report with the same floors CI enforces.
+//! installed, the same per-file 100% coverage gate CI enforces (see `coverage.rs`).
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
@@ -10,10 +10,8 @@ use anyhow::{bail, Context};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Minimum line coverage for the whole workspace, in percent.
-pub const COVERAGE_FLOOR_TOTAL: f64 = 85.0;
-/// Minimum line coverage for `lumap-core`, in percent.
-pub const COVERAGE_FLOOR_CORE: f64 = 95.0;
+mod coverage;
+
 /// Longest a source file may be; longer ones get split into modules.
 pub const MAX_FILE_LINES: usize = 1000;
 
@@ -139,7 +137,7 @@ fn ci() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs cargo-llvm-cov and enforces the coverage floors.
+/// Runs cargo-llvm-cov and enforces the per-file 100% gate.
 fn coverage() -> anyhow::Result<()> {
     println!("==> coverage");
     let output = Command::new(env!("CARGO"))
@@ -157,92 +155,7 @@ fn coverage() -> anyhow::Result<()> {
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         bail!("cargo llvm-cov failed");
     }
-    let json = String::from_utf8_lossy(&output.stdout);
-    let report = parse_coverage(&json)?;
-    println!(
-        "    total lines: {:.2}%  lumap-core: {:.2}%",
-        report.total, report.core
-    );
-    check_floors(&report)
-}
-
-/// Line coverage percentages extracted from `cargo llvm-cov --json --summary-only`.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CoverageReport {
-    /// Whole workspace.
-    pub total: f64,
-    /// `lumap-core` only.
-    pub core: f64,
-}
-
-/// Parses the llvm-cov JSON export without a JSON dependency: it needs only the total line
-/// percentage and the per-file line percentages for files under `crates/lumap-core/`.
-pub fn parse_coverage(json: &str) -> anyhow::Result<CoverageReport> {
-    let total = find_percent(json, "\"totals\"").context("no totals in coverage json")?;
-    // Per-file entries look like {"filename":"...","summary":{..."lines":{"count":N,"covered":M,"percent":P}}}.
-    let (mut covered, mut count) = (0.0, 0.0);
-    let mut rest = json;
-    while let Some(i) = rest.find("\"filename\":\"") {
-        let after = &rest[i + 12..];
-        let Some(end) = after.find('"') else { break };
-        let filename = &after[..end];
-        let section_end = after.find("\"filename\":\"").unwrap_or(after.len());
-        let section = &after[..section_end];
-        if filename.contains("crates/lumap-core/") || filename.contains("crates\\lumap-core\\") {
-            if let Some(lines) = section.find("\"lines\":{") {
-                let l = &section[lines..];
-                covered += number_after(l, "\"covered\":").unwrap_or(0.0);
-                count += number_after(l, "\"count\":").unwrap_or(0.0);
-            }
-        }
-        rest = after;
-    }
-    let core = if count > 0.0 {
-        covered / count * 100.0
-    } else {
-        0.0
-    };
-    Ok(CoverageReport { total, core })
-}
-
-fn find_percent(json: &str, key: &str) -> Option<f64> {
-    let i = json.find(key)?;
-    let section = &json[i..];
-    let lines = section.find("\"lines\":{")?;
-    number_after(&section[lines..], "\"percent\":")
-}
-
-fn number_after(s: &str, key: &str) -> Option<f64> {
-    let i = s.find(key)? + key.len();
-    let rest = &s[i..];
-    let end = rest
-        .find(|c: char| {
-            !(c.is_ascii_digit() || c == '.' || c == '-' || c == 'e' || c == 'E' || c == '+')
-        })
-        .unwrap_or(rest.len());
-    rest[..end].parse().ok()
-}
-
-/// Fails when either floor is missed.
-pub fn check_floors(r: &CoverageReport) -> anyhow::Result<()> {
-    let mut problems = Vec::new();
-    if r.total < COVERAGE_FLOOR_TOTAL {
-        problems.push(format!(
-            "workspace line coverage {:.2}% is below the {COVERAGE_FLOOR_TOTAL}% floor",
-            r.total
-        ));
-    }
-    if r.core < COVERAGE_FLOOR_CORE {
-        problems.push(format!(
-            "lumap-core line coverage {:.2}% is below the {COVERAGE_FLOOR_CORE}% floor",
-            r.core
-        ));
-    }
-    if problems.is_empty() {
-        Ok(())
-    } else {
-        bail!("{}", problems.join("; "))
-    }
+    coverage::check(&String::from_utf8_lossy(&output.stdout))
 }
 
 /// First of `names` that runs with `--version`, so `python3` on Linux and `python` on Windows
@@ -282,7 +195,15 @@ fn site() -> anyhow::Result<()> {
     if let Some(node) = tool(&["node"]) {
         let mut script = Command::new(node);
         script
-            .args(["--test", "tests/site/app.test.mjs"])
+            .args([
+                "--test",
+                "--experimental-test-coverage",
+                "--test-coverage-include=site/**",
+                "--test-coverage-lines=100",
+                "--test-coverage-branches=100",
+                "--test-coverage-functions=100",
+                "tests/site/app.test.mjs",
+            ])
             .current_dir(root());
         run("site script tests", script)?;
     } else {
@@ -483,41 +404,16 @@ fn main() -> anyhow::Result<()> {
                 .nth(2)
                 .context("usage: xtask check-coverage <llvm-cov.json>")?;
             let json = std::fs::read_to_string(&path).with_context(|| format!("reading {path}"))?;
-            let report = parse_coverage(&json)?;
-            println!(
-                "total lines: {:.2}%  lumap-core: {:.2}%",
-                report.total, report.core
-            );
-            check_floors(&report)
+            coverage::check(&json)
         }
         _ => bail!("usage: cargo xtask <ci|file-lengths|site|platforms|check-platforms|icon|coverage|check-coverage FILE>"),
     }
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::float_cmp)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-
-    const SAMPLE: &str = r#"{"data":[{"files":[
-      {"filename":"/w/crates/lumap-core/src/geom.rs","summary":{"functions":{"count":1},"lines":{"count":100,"covered":99,"percent":99.0}}},
-      {"filename":"/w/crates/lumap-core/src/warp.rs","summary":{"lines":{"count":100,"covered":93,"percent":93.0}}},
-      {"filename":"/w/crates/lumap-app/src/main.rs","summary":{"lines":{"count":50,"covered":10,"percent":20.0}}}
-    ],"totals":{"lines":{"count":250,"covered":202,"percent":80.8}}}]}"#;
-
-    #[test]
-    fn parses_totals_and_core_subset() {
-        let r = parse_coverage(SAMPLE).unwrap();
-        assert_eq!(r.total, 80.8);
-        assert_eq!(r.core, 96.0);
-        assert!(parse_coverage("{}").is_err());
-        assert_eq!(
-            parse_coverage(r#"{"totals":{"lines":{"percent":50}}}"#)
-                .unwrap()
-                .core,
-            0.0
-        );
-    }
 
     #[test]
     fn long_files_are_found_and_the_tree_is_within_the_limit() {
@@ -532,36 +428,5 @@ mod tests {
         assert!(found[0].ends_with(&format!("long.rs: {}", MAX_FILE_LINES + 1)));
         std::fs::remove_dir_all(&dir).unwrap();
         assert_eq!(long_files(&root()).unwrap(), Vec::<String>::new());
-    }
-
-    #[test]
-    fn floors() {
-        assert!(check_floors(&CoverageReport {
-            total: 85.0,
-            core: 95.0
-        })
-        .is_ok());
-        let e = check_floors(&CoverageReport {
-            total: 84.9,
-            core: 90.0,
-        })
-        .unwrap_err()
-        .to_string();
-        assert!(e.contains("workspace") && e.contains("lumap-core"));
-        assert!(check_floors(&CoverageReport {
-            total: 99.0,
-            core: 94.9
-        })
-        .is_err());
-    }
-
-    #[test]
-    fn number_parsing() {
-        assert_eq!(
-            number_after(r#""percent":12.5,"x""#, "\"percent\":"),
-            Some(12.5)
-        );
-        assert_eq!(number_after("nothing", "\"percent\":"), None);
-        assert_eq!(number_after("\"percent\":abc", "\"percent\":"), None);
     }
 }

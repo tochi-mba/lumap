@@ -53,8 +53,8 @@ jobs:
         run: |
           python3 scripts/check_site.py
           python3 -m unittest discover -s tests/site -p "test_*.py"
-      - name: Test the page script
-        run: node --test tests/site/app.test.mjs
+      - name: Test the page script (100% lines, branches, functions)
+        run: node --test --experimental-test-coverage --test-coverage-include='site/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 tests/site/app.test.mjs
 
   deny:
     name: Licences and advisories
@@ -127,7 +127,7 @@ jobs:
         env:
           LUMAP_REQUIRE_GPU: "1"
           WGPU_BACKEND: vulkan
-      - name: Enforce floors (85% workspace, 95% lumap-core)
+      - name: Enforce 100% per file (lines, regions, branches; window shell excluded)
         run: cargo run -q -p xtask -- check-coverage coverage.json | tee -a "$GITHUB_STEP_SUMMARY"
 
   msrv:
