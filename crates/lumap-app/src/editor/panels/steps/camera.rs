@@ -237,13 +237,16 @@ pub fn sheet(
                     ));
                     live_view(ui, session, state);
                     let f = progress.frame as f32 / progress.frames.max(1) as f32;
+                    // The count sits beside a thin bar: written over the bar, the bar's
+                    // rounded start covered the first digits early in the scan.
+                    ui.label(format!(
+                        "{} of {} patterns photographed",
+                        progress.frame, progress.frames
+                    ));
                     ui.add(
                         egui::ProgressBar::new(f)
                             .fill(crate::theme::SIGNAL)
-                            .text(format!(
-                                "{} of {} patterns",
-                                progress.frame, progress.frames
-                            )),
+                            .desired_height(6.0),
                     );
                     ui.label(
                         RichText::new(

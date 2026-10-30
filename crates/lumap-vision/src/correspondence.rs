@@ -313,7 +313,7 @@ impl ProjectorMap {
 const BLOCK: usize = 16;
 
 /// How many blocks across an unreadable gap inside the projection may be.
-const SPAN: i64 = 6;
+const SPAN: i64 = 10;
 
 /// How many blocks' span (in camera pixels) a sample may sit from its block's median camera
 /// position before it counts as stray light.

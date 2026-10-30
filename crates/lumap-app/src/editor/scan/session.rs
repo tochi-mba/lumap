@@ -503,7 +503,7 @@ impl ScanSession {
                 self.black_gray = Some(gray);
                 if let (Some(w), Some(b)) = (&self.white_gray, &self.black_gray) {
                     let framing = lumap_vision::framing::check(w, b);
-                    self.preview = Some(super::preview::Preview::new(&framing.footprint));
+                    self.preview = Some(super::preview::Preview::new(&framing.footprint, w, b));
                     let advice: Vec<String> =
                         framing.problems.iter().map(|p| p.advice()).collect();
                     let blind = framing.problems.iter().any(|p| p.is_blocking());

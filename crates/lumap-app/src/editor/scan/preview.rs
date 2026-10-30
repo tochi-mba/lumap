@@ -7,6 +7,9 @@ use lumap_vision::graycode::Axis;
 use lumap_vision::{Gray, Rgba};
 
 /// Preview cells are this many camera pixels on a side.
+/// Cells whose white-to-black contrast is under this percentage of the projection's strong
+/// contrast (its 90th percentile) are bounced light, left out of the picture.
+const BOUNCE: u32 = 35;
 const CELL: u32 = 4;
 
 /// What one cell knows so far.
@@ -36,12 +39,32 @@ pub struct Preview {
 impl Preview {
     /// A preview over the camera's picture; `footprint` (camera resolution) says which cells
     /// the projector lights.
-    pub fn new(footprint: &Gray) -> Self {
+    pub fn new(footprint: &Gray, white: &Gray, black: &Gray) -> Self {
         let (width, height) = (footprint.width / CELL, footprint.height / CELL);
+        let centre = |x: u32, y: u32| (x * CELL + CELL / 2, y * CELL + CELL / 2);
+        let contrast = |x: u32, y: u32| {
+            let (px, py) = centre(x, y);
+            white.at(px.into(), py.into()).saturating_sub(black.at(px.into(), py.into()))
+        };
+        let lit = |x: u32, y: u32| {
+            let (px, py) = centre(x, y);
+            footprint.get(px, py) > 0
+        };
+        // Light bounced onto the room around the projection follows the stripes too, only
+        // dimmer: cells far dimmer than the projection's own brightest stay out of the picture.
+        let mut strong: Vec<u8> = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .filter(|&(x, y)| lit(x, y))
+            .map(|(x, y)| contrast(x, y))
+            .collect();
+        strong.sort_unstable();
+        let floor = strong
+            .get(strong.len() * 9 / 10)
+            .map_or(0, |&c| (u32::from(c) * BOUNCE / 100) as u8);
         let cells = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
             .map(|(x, y)| Cell {
-                lit: footprint.get(x * CELL + CELL / 2, y * CELL + CELL / 2) > 0,
+                lit: lit(x, y) && contrast(x, y) >= floor,
                 ..Cell::default()
             })
             .collect();
@@ -151,12 +174,12 @@ mod tests {
     #[test]
     fn stripes_sharpen_the_picture_cell_by_cell() {
         let footprint = Gray::from_fn(16, 8, |x, _| if x < 12 { 255 } else { 0 });
-        let mut p = Preview::new(&footprint);
+        let white = Gray::from_fn(16, 8, |_, _| 200);
+        let black = Gray::from_fn(16, 8, |_, _| 10);
+        let mut p = Preview::new(&footprint, &white, &black);
         assert_eq!(p.progress(), 0.0);
         assert_eq!(p.image().get(0, 0), [40, 48, 42, 255], "lit, nothing read yet");
         assert_eq!(p.image().get(3, 0), [8, 10, 9, 255], "not lit");
-        let white = Gray::from_fn(16, 8, |_, _| 200);
-        let black = Gray::from_fn(16, 8, |_, _| 10);
         // Left half bright in the pattern: stripe 1 there, 0 on the right.
         let pattern = Gray::from_fn(16, 8, |x, _| if x < 8 { 200 } else { 10 });
         let inverse = Gray::from_fn(16, 8, |x, _| if x < 8 { 10 } else { 200 });
@@ -171,5 +194,16 @@ mod tests {
         assert_eq!(fraction(0, 0), 0.5);
         assert_eq!(hsv(0.0, 1.0, 1.0), [255, 0, 0, 255]);
         assert_eq!(hsv(240.0, 1.0, 1.0), [0, 0, 255, 255]);
+    }
+
+    #[test]
+    fn dim_bounced_light_stays_out_of_the_picture() {
+        let footprint = Gray::from_fn(16, 8, |_, _| 255);
+        // The left half is the projection, the right half the wall beside it catching a glow.
+        let white = Gray::from_fn(16, 8, |x, _| if x < 8 { 220 } else { 50 });
+        let black = Gray::from_fn(16, 8, |_, _| 10);
+        let p = Preview::new(&footprint, &white, &black);
+        assert!(p.cells[0].lit);
+        assert!(!p.cells[3].lit);
     }
 }
