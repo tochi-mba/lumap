@@ -24,11 +24,24 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   toggles, Picture, Edge blending with *Suggest blends* and plainly named curves (Straight,
   Smooth, Soft), Calibration chips with a *Gamma match* helper, and a *Precise* section for
   size and position. The stage view is Setup's canvas.
+- **Map step**: *Layers* lists the surfaces of the projector being mapped, top first, with
+  an eye to show or hide, a lock badge, the content each one shows, and six dots to drag it
+  up or down; right-click for the rest. A tab per projector, *Add surface* and *Add cut-out*
+  sit above the canvas with the canvas toggles. Beside the selected surface a small action
+  bar offers Lock, Duplicate, Flip, Rotate, Fit, Curve (or Corners) and Delete. The surface
+  panel groups Content, Looks, Appearance (blend modes named Normal, Brighten, Light, Darken),
+  Shape (*Make it curved*, *Flatten the curve*, *Back to four corners*, *Reset shape*),
+  Arrange, Crop, Cut-outs and Precise (corners in pixels, order, curve patches, MIDI learn).
+  The canvas readout says "Point 2 · 1024.0, 512.5 px".
+- Information toasts let clicks through to whatever is under them; a problem shows at the
+  top until dismissed.
 - Plain words: Projector, Surface and Content in the interface. Project files and OSC
   addresses keep `output`, `surface` and `source`.
 
 ### Fixed
 
+- The crop preview keeps its corner handles clear of the panel's scrollbar, which used to
+  take the drag when the panel was narrow.
 - A projector's width and height can be dragged or typed again: the fields used to re-read
   the size every frame, so a drag never accumulated.
 

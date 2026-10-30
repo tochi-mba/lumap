@@ -169,8 +169,9 @@ fn panels_render_and_selection_drives_the_inspector() {
 #[test]
 fn surface_inspector_buttons_edit_the_project() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "2 Map");
     click(&mut h, "wall-left");
-    click(&mut h, "+ rectangle");
+    click(&mut h, "+ cut-out");
     assert_eq!(
         h.state()
             .editor
@@ -188,9 +189,9 @@ fn surface_inspector_buttons_edit_the_project() {
             .len(),
         5
     );
-    click(&mut h, "hole (unchecked = window)");
+    click(&mut h, "Hide what is inside (off: show only inside)");
     assert!(!h.state().editor.project.surface("wall-left").unwrap().masks[0].subtract);
-    click(&mut h, "Delete mask");
+    click(&mut h, "Delete cut-out");
     assert!(h
         .state()
         .editor
@@ -200,10 +201,10 @@ fn surface_inspector_buttons_edit_the_project() {
         .masks
         .is_empty());
 
-    click(&mut h, "Convert to Bezier mesh");
+    click(&mut h, "Make it curved");
     assert!(matches!(surface_warp(&h, "wall-left"), WarpKind::Bezier(_)));
-    click(&mut h, "Reset to flat mesh");
-    click(&mut h, "Back to corner pin");
+    click(&mut h, "Flatten the curve");
+    click(&mut h, "Back to four corners");
     assert_eq!(surface_warp(&h, "wall-left"), WarpKind::default());
     click(&mut h, "Visible");
     assert!(
@@ -218,7 +219,7 @@ fn surface_inspector_buttons_edit_the_project() {
 
     h.get_by_value("Normal").click();
     settle(&mut h);
-    click(&mut h, "Screen");
+    click(&mut h, "Light (screen)");
     assert_eq!(
         h.state()
             .editor
@@ -228,7 +229,7 @@ fn surface_inspector_buttons_edit_the_project() {
             .blend_mode,
         lumap_core::project::BlendMode::Screen
     );
-    h.get_all_by_role_and_label(Role::ComboBox, "Source")
+    h.get_all_by_role_and_label(Role::ComboBox, "Content")
         .next()
         .unwrap()
         .click();
@@ -246,9 +247,9 @@ fn surface_inspector_buttons_edit_the_project() {
     );
 
     // Lock, duplicate, order, align.
-    click(&mut h, "Locked");
+    click(&mut h, "Lock");
     assert!(h.state().editor.is_locked("wall-left"));
-    click(&mut h, "Locked");
+    click(&mut h, "Unlock");
     click(&mut h, "Duplicate");
     assert_eq!(
         h.state().editor.selection,
@@ -257,8 +258,8 @@ fn surface_inspector_buttons_edit_the_project() {
             mask: None
         }
     );
-    click(&mut h, "Backward");
-    click(&mut h, "Forward");
+    click(&mut h, "Send backward");
+    click(&mut h, "Bring forward");
     h.state_mut().editor.set_warp(
         "wall-left-copy",
         WarpKind::Quad(lumap_core::warp::Quad {
@@ -285,7 +286,7 @@ fn surface_inspector_buttons_edit_the_project() {
         menu(&mut h, "Align", item);
     }
     assert_eq!(surface_warp(&h, "wall-left-copy"), WarpKind::default());
-    click(&mut h, "Reset warp");
+    click(&mut h, "Reset shape");
 
     click(&mut h, "Delete surface");
     assert!(h.state().editor.project.surface("wall-left-copy").is_none());
@@ -744,6 +745,7 @@ fn snapping_locking_and_click_to_select_on_the_canvas() {
 
 mod control_tests;
 mod looks_tests;
+mod map_tests;
 mod show_tests;
 mod update_tests;
 
@@ -771,10 +773,13 @@ fn render_doc_screenshots() {
     for step in super::panels::shell::Step::ALL {
         h.state_mut().panels.step = step;
         // Setup shows a projector being set up; the other steps show the surfaces.
-        h.state_mut().editor.selection = if step == super::panels::shell::Step::Setup {
-            Selection::Output("left".into())
-        } else {
-            Selection::None
+        h.state_mut().editor.selection = match step {
+            super::panels::shell::Step::Setup => Selection::Output("left".into()),
+            super::panels::shell::Step::Map => Selection::Surface {
+                id: "wall-left".into(),
+                mask: None,
+            },
+            _ => Selection::None,
         };
         h.run_steps(4);
         let name = step.label().to_lowercase();

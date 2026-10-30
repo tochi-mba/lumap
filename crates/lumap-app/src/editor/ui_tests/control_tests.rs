@@ -151,6 +151,7 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
 
     // The surface inspector has a one-click learn for opacity.
     click(&mut h, "logo");
+    click(&mut h, "Precise");
     click(&mut h, "MIDI learn opacity");
     assert_eq!(
         h.state().editor.midi_learn,

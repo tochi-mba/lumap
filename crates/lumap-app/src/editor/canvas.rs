@@ -102,6 +102,15 @@ pub fn view_rect(base: Rect, zoom: f32, pan: EVec2) -> Rect {
     Rect::from_center_size(base.center() + pan, base.size() * zoom)
 }
 
+/// What a handle is called in the readout: "Corner 2", "Cut-out point 3", "Whole surface".
+pub fn handle_name(h: handles::Handle) -> String {
+    match h {
+        handles::Handle::Warp(i) => format!("Point {}", i + 1),
+        handles::Handle::Mask(i) => format!("Cut-out point {}", i + 1),
+        handles::Handle::All => "Whole surface".into(),
+    }
+}
+
 /// Draws and runs the canvas for one frame.
 #[allow(clippy::too_many_lines)]
 pub fn show(
@@ -165,7 +174,7 @@ pub fn show(
     painter.rect_stroke(
         rect,
         0.0,
-        Stroke::new(1.0, Color32::from_gray(90)),
+        Stroke::new(1.0, crate::theme::LINE),
         egui::StrokeKind::Outside,
     );
 
@@ -233,13 +242,13 @@ pub fn show(
             state.zoom * 100.0
         ),
         egui::FontId::proportional(12.0),
-        Color32::from_white_alpha(140),
+        crate::theme::MUTED,
     );
     if let Some((h, p)) = state.readout {
         painter.text(
             avail.left_bottom() + EVec2::new(6.0, -4.0),
             egui::Align2::LEFT_BOTTOM,
-            format!("{h:?}: {:.1}, {:.1} px", p.x, p.y),
+            format!("{} · {:.1}, {:.1} px", handle_name(h), p.x, p.y),
             egui::FontId::monospace(12.0),
             Color32::from_white_alpha(180),
         );
@@ -251,7 +260,7 @@ pub fn show(
                 egui::Align2::RIGHT_BOTTOM,
                 "locked",
                 egui::FontId::proportional(12.0),
-                Color32::from_rgb(255, 170, 60),
+                crate::theme::MUTED,
             );
         }
     }
