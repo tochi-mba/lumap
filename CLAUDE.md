@@ -82,6 +82,19 @@ guide is `docs/manual.md`.
 - The Spout native path only compiles on Windows (MSVC, x64); CI's Windows job builds it.
   It cannot be run here, so keep `spout.rs`'s native module small and obviously correct.
 
+## Platforms
+
+- Platform code lives in exactly two places: `lumap-sources::live_input` (Spout today, Syphon
+  planned) and `lumap-render::gpu::preferred_backends`. No `cfg(windows)` / `cfg(target_os)`
+  anywhere else; a new platform concern gets a thin module there with a trait or an enum.
+- `docs/platforms.json` is the capability matrix; `cargo xtask platforms` renders
+  `docs/platforms.md` and `check-platforms` (in `xtask ci` and CI's lint job) fails when the
+  Markdown is stale or a `supported` cell names no existing test or file. Change the json, never
+  the md.
+- CI tests on Linux, Windows and macOS and builds a universal, ad-hoc-signed macOS binary with
+  `MACOSX_DEPLOYMENT_TARGET=12.0`. The Mac is not released yet: `site/app.js` `SUPPORTED` and the
+  publish job are where that turns on, after a `.dmg` and a Syphon input exist.
+
 ## Conventions
 
 - `#![forbid(unsafe_code)]` everywhere, including the Spout receiver (the `spout2` crate's
