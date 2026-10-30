@@ -119,11 +119,7 @@ mod tests {
     fn poller_does_not_clear_displays_without_a_native_window() {
         let mut poller = Poller::default();
         let mut known = vec![display("DISPLAY1", 1920)];
-        poller.poll(
-            None,
-            &mut known,
-            Instant::now() + POLL_INTERVAL,
-        );
+        poller.poll(None, &mut known, Instant::now() + POLL_INTERVAL);
         assert_eq!(known.len(), 1);
     }
 }
