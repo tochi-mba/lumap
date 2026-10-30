@@ -325,8 +325,8 @@ pub fn show_output_windows(
                 paint_pattern(ui, rect, &id, frame, &mut state.pattern);
                 // Tell the scan this pattern is on the wall, once the window fills its display
                 // (a window still opening or going full screen shows it somewhere else).
-                let filled = !spec.fullscreen
-                    || ui.ctx().input(|i| i.viewport().fullscreen) == Some(true);
+                let filled =
+                    !spec.fullscreen || ui.ctx().input(|i| i.viewport().fullscreen) == Some(true);
                 if filled {
                     let generation = editor.scan_generation;
                     match &mut editor.scan_shown {

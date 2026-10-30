@@ -71,7 +71,9 @@ pub fn recent(lines: usize, level: Level, contains: Option<&str>) -> Vec<String>
     let Some(ring) = RECENT.get() else {
         return Vec::new();
     };
-    let ring = ring.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let ring = ring
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut out: Vec<String> = ring
         .iter()
         .rev()
@@ -170,7 +172,9 @@ impl Log for Logger {
             }
         }
         let ring = RECENT.get_or_init(|| Mutex::new(VecDeque::with_capacity(RING)));
-        let mut ring = ring.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut ring = ring
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if ring.len() == RING {
             ring.pop_front();
         }
@@ -239,7 +243,7 @@ impl Filter {
         self.rules
             .iter()
             .map(|(_, l)| *l)
-            .fold(self.default, LevelFilter::max)
+            .fold(self.default, std::cmp::max)
     }
 }
 
@@ -283,8 +287,15 @@ mod tests {
         assert_eq!(f.level_for("other"), LevelFilter::Warn);
         assert_eq!(f.level_for("lumap"), LevelFilter::Debug);
         assert_eq!(f.level_for("lumap::editor"), LevelFilter::Debug);
-        assert_eq!(f.level_for("lumap::editor::scan::session"), LevelFilter::Trace);
-        assert_eq!(f.level_for("lumap_vision"), LevelFilter::Warn, "a prefix, not a module");
+        assert_eq!(
+            f.level_for("lumap::editor::scan::session"),
+            LevelFilter::Trace
+        );
+        assert_eq!(
+            f.level_for("lumap_vision"),
+            LevelFilter::Warn,
+            "a prefix, not a module"
+        );
         assert_eq!(f.level_for("wgpu"), LevelFilter::Error);
         assert_eq!(f.max(), LevelFilter::Trace);
         let bare = Filter::parse("lumap");
@@ -311,7 +322,10 @@ mod tests {
             line_level("2026-10-30T22:22:50.123Z DEBUG [main] lumap: x"),
             Some(Level::Debug)
         );
-        assert_eq!(line_level("2026-10-30T22:22:50.123Z WARN  [main] x: y"), Some(Level::Warn));
+        assert_eq!(
+            line_level("2026-10-30T22:22:50.123Z WARN  [main] x: y"),
+            Some(Level::Warn)
+        );
         assert_eq!(line_level("garbage"), None);
     }
 
@@ -339,7 +353,11 @@ mod tests {
         left.sort();
         assert_eq!(
             left,
-            ["lumap-20261002-100000-1.log", "lumap-20261003-100000-1.log", "notes.txt"]
+            [
+                "lumap-20261002-100000-1.log",
+                "lumap-20261003-100000-1.log",
+                "notes.txt"
+            ]
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

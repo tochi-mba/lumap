@@ -491,7 +491,11 @@ fn logs_take_lines_level_and_grep() {
         }
     );
     assert_eq!(
-        ok("GET", "/lab/logs?lines=50&level=WARN&grep=scan+start%3A", ""),
+        ok(
+            "GET",
+            "/lab/logs?lines=50&level=WARN&grep=scan+start%3A",
+            ""
+        ),
         LabRequest::Logs {
             lines: 50,
             level: LogLevel::Warn,
