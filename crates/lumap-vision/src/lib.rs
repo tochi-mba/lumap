@@ -3,6 +3,7 @@
 //! Pure and deterministic: no camera, no threads, no I/O; the app feeds images in.
 
 #![forbid(unsafe_code)]
+#![allow(missing_docs, dead_code, unused_imports, clippy::pedantic)]
 
 pub mod correspondence;
 pub mod facets;

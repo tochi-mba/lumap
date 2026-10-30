@@ -1,4 +1,12 @@
 //! The egui editor and show player.
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_qualifications,
+    clippy::pedantic,
+    clippy::type_complexity,
+    clippy::unwrap_used
+)]
 
 mod camera;
 mod canvas;

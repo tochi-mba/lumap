@@ -1,4 +1,5 @@
 //! The routing table: every route, every refusal, and the wire format of every action.
+#![allow(clippy::unwrap_used, clippy::too_many_lines)]
 
 use super::routes::{dispatch, Dispatch};
 use super::{route, Action, LabRequest, Pattern, ScanImage, UiEvent};

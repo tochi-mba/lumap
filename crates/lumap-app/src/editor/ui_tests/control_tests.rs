@@ -139,8 +139,8 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
     assert!(h.query_by_label("Always on").is_some(), "the keyboard card");
     assert_eq!(
         h.get_all_by_label("Off").count(),
-        3,
-        "phone, OSC and MIDI are off"
+        4,
+        "phone, OSC, MIDI and the camera are off"
     );
     click(&mut h, "Refresh MIDI ports");
     // Opening no port is fine; opening a nonexistent one reports an error.

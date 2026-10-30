@@ -17,6 +17,8 @@ path = "src/main.rs"
 default = []
 # Spout receiver (Windows). Forwarded to lumap-sources.
 spout = ["lumap-sources/spout"]
+# Bundled MediaPipe hand models through lumap-vision.
+hands = ["lumap-vision/hands"]
 
 [dependencies]
 lumap-core.workspace = true
