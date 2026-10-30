@@ -7,12 +7,10 @@ fn resource_compiler() -> PathBuf {
     if let Some(rc) = env::var_os("RC") {
         return PathBuf::from(rc);
     }
-    let sdk = env::var_os("WindowsSdkDir")
-        .map(PathBuf::from)
-        .or_else(|| {
-            env::var_os("ProgramFiles(x86)")
-                .map(|dir| PathBuf::from(dir).join("Windows Kits").join("10"))
-        });
+    let sdk = env::var_os("WindowsSdkDir").map(PathBuf::from).or_else(|| {
+        env::var_os("ProgramFiles(x86)")
+            .map(|dir| PathBuf::from(dir).join("Windows Kits").join("10"))
+    });
     if let Some(sdk) = sdk {
         if let Ok(entries) = fs::read_dir(sdk.join("bin")) {
             let mut versions: Vec<_> = entries.flatten().map(|entry| entry.path()).collect();
@@ -34,9 +32,8 @@ fn main() {
         return;
     }
     let out = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR"));
-    let manifest = PathBuf::from(
-        env::var_os("CARGO_MANIFEST_DIR").expect("Cargo sets CARGO_MANIFEST_DIR"),
-    );
+    let manifest =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("Cargo sets CARGO_MANIFEST_DIR"));
     let icon = manifest.join("../../assets/lumap.ico");
     let source = out.join("lumap.rc");
     let escaped = icon.display().to_string().replace('\\', "\\\\");

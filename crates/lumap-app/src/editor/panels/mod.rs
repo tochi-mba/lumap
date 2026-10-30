@@ -393,7 +393,11 @@ pub fn status_bar(
 
 /// The update offer in the status bar: a line and the choices it allows. Quiet when there is
 /// nothing to say.
-pub(super) fn update_banner(ui: &mut egui::Ui, banner: &crate::update::flow::Banner, actions: &mut Actions) {
+pub(super) fn update_banner(
+    ui: &mut egui::Ui,
+    banner: &crate::update::flow::Banner,
+    actions: &mut Actions,
+) {
     use crate::update::flow::Banner;
     use crate::update::Request;
     let (text, choices): (&str, &[(&str, Request)]) = match banner {

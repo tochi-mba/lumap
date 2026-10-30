@@ -35,8 +35,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
+pub use helpers::{apply_ffmpeg_path, monitor_at, physical_to_points, scene_for};
 pub use state::{AlignOp, Editor, Pending, Selection};
-pub use helpers::{apply_ffmpeg_path, physical_to_points, monitor_at, scene_for};
 
 use crate::settings::Settings;
 use std::collections::HashMap;
@@ -594,7 +594,14 @@ impl LumapApp {
             now,
         ));
         let banner = self.update_banner(now);
-        panels::start_page(ui, &self.monitors, &self.settings, &mut actions, &check, &banner);
+        panels::start_page(
+            ui,
+            &self.monitors,
+            &self.settings,
+            &mut actions,
+            &check,
+            &banner,
+        );
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions, &check);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
@@ -963,4 +970,3 @@ impl eframe::App for LumapApp {
         self.frame(ui);
     }
 }
-
