@@ -197,7 +197,7 @@ The camera only runs while something uses it, and pictures never leave the compu
 **Scan the room** (step 1, Setup ▸ Camera). Pick the camera, *Look through it* to aim it so
 every projector's picture is inside the frame, then *Scan the room*. Each projector in turn
 shows white, black and stripe patterns while the others stay black: about twenty seconds each.
-Keep the room dark and still. The result per projector is kept in `<show>.scan/<projector>/`
+Keep the camera still and stay out of the light. A dim room scans best, but it works with the lights on. The result per projector is kept in `<show>.scan/<projector>/`
 (`photo.png`, `camera.png`, `white.png`, `black.png`, `cam2proj.png`, `scan.toml`) and the
 projector remembers its folder (`scan = "…"` in the project file). The scan sheet shows how much
 of each projector the camera saw, offers *Use measured blends* and *See them in Map*.

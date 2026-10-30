@@ -104,7 +104,7 @@ pub fn card(
     );
     ui.horizontal_wrapped(|ui| {
         if crate::theme::primary_button(ui, "Scan the room")
-            .on_hover_text("Keep the room dark and still while it runs")
+            .on_hover_text("Keep the camera and projectors still while it runs")
             .clicked()
         {
             actions.scan = Some((Kind::Full, None));
@@ -250,7 +250,7 @@ pub fn sheet(
                     );
                     ui.label(
                         RichText::new(
-                            "Keep the room dark and still. Nobody in front of the projectors.",
+                            "Keep the camera still and stay out of the light. A dim room scans best, but lights on works too.",
                         )
                         .weak()
                         .small(),
