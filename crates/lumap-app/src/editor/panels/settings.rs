@@ -20,7 +20,6 @@ pub fn check_button(ui: &mut egui::Ui, check: &CheckUi, actions: &mut Actions, l
     }
 }
 
-
 /// Draws the Settings window while it is open.
 pub fn settings_window(
     ctx: &egui::Context,

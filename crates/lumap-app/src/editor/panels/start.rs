@@ -4,8 +4,8 @@
 use super::super::MonitorInfo;
 use super::Actions;
 use crate::settings::Settings;
-use crate::update::CheckUi;
 use crate::update::flow::Banner;
+use crate::update::CheckUi;
 use eframe::egui::{self, RichText};
 
 /// Draws the start page over the whole window.
@@ -42,9 +42,13 @@ pub fn start_page(
                                 ui.horizontal_wrapped(|ui| {
                                     super::update_banner(ui, banner, actions);
                                 });
-                                ui.label(RichText::new(
-                                    "Downloads are verified. You decide when to install."
-                                ).weak().small());
+                                ui.label(
+                                    RichText::new(
+                                        "Downloads are verified. You decide when to install.",
+                                    )
+                                    .weak()
+                                    .small(),
+                                );
                             });
                             ui.add_space(16.0);
                         }
@@ -171,7 +175,10 @@ fn footer(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions, check: 
             );
         });
     });
-    if check.checking || check.detail.contains("up to date") || check.detail.contains("Couldn't check") {
+    if check.checking
+        || check.detail.contains("up to date")
+        || check.detail.contains("Couldn't check")
+    {
         ui.label(RichText::new(&check.detail).weak().small());
     }
 }

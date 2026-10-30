@@ -178,7 +178,11 @@ fn saving_before_exit_must_succeed_before_app_closes() {
     fake(&mut h, |d| d.save = Some(dir.path().to_path_buf()));
     settle(&mut h);
     click(&mut h, "Save and quit");
-    assert_eq!(h.state().editor.pending, Some(Pending::Close), "failed save keeps prompt");
+    assert_eq!(
+        h.state().editor.pending,
+        Some(Pending::Close),
+        "failed save keeps prompt"
+    );
     assert!(h.state().panels.error.is_some());
     assert!(!h.state().close_confirmed);
 
