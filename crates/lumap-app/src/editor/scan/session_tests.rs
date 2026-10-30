@@ -47,6 +47,21 @@ fn half(v: u8, left: bool) -> Arc<Frame> {
     }))
 }
 
+/// A half-pattern over fine room detail; `focused=false` models an autofocus pulse.
+fn detailed_half(v: u8, left: bool, focused: bool) -> Arc<Frame> {
+    Arc::new(Frame::from_fn(CW, CH, |x, y| {
+        let lit = (x < CW / 2) == left;
+        let base = if lit { v } else { v / 8 };
+        let detail = if focused && (x / 2 + y / 2) % 2 == 0 {
+            24
+        } else {
+            0
+        };
+        let l = base.saturating_add(detail);
+        [l, l, l, 255]
+    }))
+}
+
 fn session(now: Instant) -> ScanSession {
     let editor = editor_with("p");
     let dir = std::env::temp_dir().join("lumap-scan-tests");
@@ -108,10 +123,10 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
         s.ready(&half(151, false), PatternFrame::Black, at(850)),
         Ready::Collect
     );
-    // Once collecting, the next frames count too.
+    // Once collecting, another stable frame counts too.
     s.collected.push(half(151, false));
     assert_eq!(
-        s.ready(&half(170, false), PatternFrame::Black, at(900)),
+        s.ready(&half(151, false), PatternFrame::Black, at(900)),
         Ready::Collect
     );
     // Later patterns: 300 ms, then one slow 2.5 s frame; the lag is the median, not the worst.
@@ -139,6 +154,65 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
     );
     assert!(s.changed_at.is_none());
     assert_eq!(s.lag(), Some(Duration::from_millis(400)));
+}
+
+#[test]
+fn autofocus_neither_impersonates_a_pattern_nor_contaminates_the_median() {
+    let t0 = Instant::now();
+    let at = |ms| t0 + Duration::from_millis(ms);
+    let mut s = session(t0);
+    s.shown_at = t0;
+    s.lag = Some(Duration::from_millis(300));
+    s.reference = Some(thumbnail(&detailed_half(180, true, true)));
+
+    // The same old pattern loses focus after the lag. Its broad structure did not move, so it
+    // must not establish a false pattern-arrival time or alter the learned camera lag.
+    assert_eq!(
+        s.ready(
+            &detailed_half(180, true, false),
+            PatternFrame::Black,
+            at(350)
+        ),
+        Ready::Wait
+    );
+    assert!(s.changed_at.is_none());
+    assert_eq!(s.lag(), Some(Duration::from_millis(300)));
+
+    // The real opposite-half pattern arrives while soft. Refocusing is not stable enough to
+    // photograph; only two matching focused frames after the fade are accepted.
+    assert_eq!(
+        s.ready(
+            &detailed_half(180, false, false),
+            PatternFrame::Black,
+            at(400)
+        ),
+        Ready::Wait
+    );
+    assert!(s.changed_at.is_some());
+    assert_eq!(
+        s.ready(
+            &detailed_half(180, false, true),
+            PatternFrame::Black,
+            at(850)
+        ),
+        Ready::Wait
+    );
+    assert_eq!(
+        s.ready(
+            &detailed_half(180, false, true),
+            PatternFrame::Black,
+            at(900)
+        ),
+        Ready::Wait
+    );
+    assert_eq!(
+        s.ready(
+            &detailed_half(180, false, true),
+            PatternFrame::Black,
+            at(950)
+        ),
+        Ready::Collect
+    );
 }
 
 #[test]

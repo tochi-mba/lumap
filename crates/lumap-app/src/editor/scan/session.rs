@@ -47,6 +47,9 @@ const WARM_UP: Duration = Duration::from_millis(2500);
 const CHANGED: f64 = 0.15;
 /// Change in shape (1 - correlation) between frames below which the picture is holding still.
 const STEADY_SHAPE: f64 = 0.02;
+/// Maximum change in edge energy between consecutive photos. Phone autofocus changes edge
+/// energy sharply even when neither the phone nor the projected pattern moved.
+const STEADY_FOCUS: f64 = 0.12;
 /// Mean brightness change between frames below which the picture is holding still.
 const STEADY: f64 = 2.5;
 /// Fresh frames whose median makes one photo.
@@ -560,7 +563,9 @@ impl ScanSession {
             // Before half the known lag has passed, a change is the camera adjusting, not the
             // pattern arriving.
             let too_soon = self.lag.is_some_and(|lag| waited < lag / 2);
-            let moved = !too_soon && reshaped(reference, &small) > CHANGED;
+            // Judge arrival at a deliberately defocused scale. A phone hunting focus can make
+            // every edge change without the projected pattern having reached the camera yet.
+            let moved = !too_soon && broadly_reshaped(reference, &small) > CHANGED;
             let limit = self.lag.map_or(FIRST_WAIT, |lag| lag + LAG_MARGIN);
             self.previous = Some(small);
             if moved {
@@ -582,10 +587,13 @@ impl ScanSession {
             self.changed_at = Some(now);
             return Ready::Collect;
         }
-        // Still: the picture keeps its shape (a phone's exposure drifting on is fine; the
-        // decoder evens exposure out) and its brightness hardly moves.
+        // Still: low-frequency structure and brightness hold, and autofocus has stopped
+        // changing edge energy. Keep applying this while gathering the median's three frames;
+        // otherwise a focus pulse immediately after frame one contaminates frames two/three.
         let steady_now = self.previous.as_ref().is_some_and(|p| {
-            reshaped(p, &small) < STEADY_SHAPE && difference(p, &small) < STEADY * 3.0
+            broadly_reshaped(p, &small) < STEADY_SHAPE
+                && difference(p, &small) < STEADY * 3.0
+                && focus_change(p, &small) < STEADY_FOCUS
         });
         self.still = if steady_now { self.still + 1 } else { 0 };
         let faded_in = self
@@ -596,7 +604,7 @@ impl ScanSession {
         let settled = self
             .changed_at
             .is_some_and(|t| now.duration_since(t) >= STEADY_WAIT);
-        if steady || settled || !self.collected.is_empty() {
+        if steady || settled {
             Ready::Collect
         } else {
             Ready::Wait
@@ -822,6 +830,62 @@ fn reshaped(a: &[u8], b: &[u8]) -> f64 {
         return ((ma - mb).abs() / 32.0).min(1.0);
     }
     1.0 - ab / (aa * bb).sqrt()
+}
+
+/// Shape difference after a 5x5 box blur. Projected stripes survive at this scale; autofocus
+/// breathing and fine room texture do not, so they cannot masquerade as a newly-arrived pattern.
+fn broadly_reshaped(a: &[u8], b: &[u8]) -> f64 {
+    reshaped(&softened(a), &softened(b))
+}
+
+fn softened(src: &[u8]) -> Vec<u8> {
+    let (w, h) = (THUMB.0 as usize, THUMB.1 as usize);
+    if src.len() != w * h {
+        return src.to_vec();
+    }
+    let mut out = vec![0; src.len()];
+    for y in 0..h {
+        for x in 0..w {
+            let mut sum = 0_u32;
+            let mut n = 0_u32;
+            for yy in y.saturating_sub(2)..=(y + 2).min(h - 1) {
+                for xx in x.saturating_sub(2)..=(x + 2).min(w - 1) {
+                    sum += u32::from(src[yy * w + xx]);
+                    n += 1;
+                }
+            }
+            out[y * w + x] = (sum / n) as u8;
+        }
+    }
+    out
+}
+
+/// Relative change in mean neighbour contrast (edge energy), 0 when focus is unchanged.
+fn focus_change(a: &[u8], b: &[u8]) -> f64 {
+    fn energy(src: &[u8]) -> f64 {
+        let (w, h) = (THUMB.0 as usize, THUMB.1 as usize);
+        if src.len() != w * h {
+            return 0.0;
+        }
+        let mut total = 0_u64;
+        let mut n = 0_u64;
+        for y in 0..h {
+            for x in 0..w {
+                let here = i32::from(src[y * w + x]);
+                if x + 1 < w {
+                    total += u64::from((here - i32::from(src[y * w + x + 1])).unsigned_abs());
+                    n += 1;
+                }
+                if y + 1 < h {
+                    total += u64::from((here - i32::from(src[(y + 1) * w + x])).unsigned_abs());
+                    n += 1;
+                }
+            }
+        }
+        total as f64 / n.max(1) as f64
+    }
+    let (ea, eb) = (energy(a), energy(b));
+    (ea - eb).abs() / ea.max(eb).max(1.0)
 }
 
 /// Mean absolute difference of two thumbnails, in brightness levels.
