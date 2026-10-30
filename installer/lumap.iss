@@ -2,8 +2,8 @@
 ; Built by installer\build.ps1: ISCC /DAppVersion=<x.y.z> /DSource=<dist folder> lumap.iss
 ;
 ; Per-user install (no administrator prompt) into %LocalAppData%\Programs\lumap, with the
-; bundled ffmpeg in an ffmpeg\ folder beside lumap.exe (where the app looks first after the
-; settings). Settings live in %APPDATA%\lumap; the uninstaller keeps them unless asked.
+; bundled ffmpeg and hand models beside lumap.exe (where the app looks for them).
+; Settings live in %APPDATA%\lumap; the uninstaller keeps them unless asked.
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -71,6 +71,7 @@ Name: "associate"; Description: "Open .lumap.toml projects with lumap"; GroupDes
 Source: "prepare-upgrade.ps1"; Flags: dontcopy
 Source: "{#Source}\lumap\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\lumap\ffmpeg\*"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#Source}\lumap\models\*"; DestDir: "{app}\models"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Source}\lumap\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Source}\lumap\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Source}\lumap\README.md"; DestDir: "{app}"; Flags: ignoreversion
