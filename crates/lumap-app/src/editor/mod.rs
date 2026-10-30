@@ -4,6 +4,7 @@ mod canvas;
 mod handles;
 mod outputs;
 mod panels;
+mod shortcuts;
 mod stage;
 mod state;
 mod thumbs;
@@ -128,7 +129,7 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
                 render_state.target_format,
             );
             app.apply_settings(Settings::load());
-            app.panels.welcome = launch_for_app.project.is_none() && !app.settings.skip_welcome;
+            app.panels.home = launch_for_app.project.is_none() && !app.settings.skip_welcome;
             Ok(Box::new(app))
         }),
     )
@@ -161,6 +162,8 @@ pub struct LumapApp {
     updater: crate::update::Updater,
     /// The theme (fonts included) has been applied to the context.
     themed: bool,
+    /// The step the canvas was last arranged for (stage view in Setup, the canvas elsewhere).
+    arranged_for: Option<panels::shell::Step>,
 }
 
 impl LumapApp {
@@ -205,6 +208,30 @@ impl LumapApp {
             started: Instant::now(),
             updater: crate::update::Updater::new(),
             themed: false,
+            arranged_for: None,
+        }
+        .on_first_open_step()
+    }
+
+    /// Moves to the first step the show still needs.
+    fn on_first_open_step(mut self) -> Self {
+        self.go_to_first_open_step();
+        self
+    }
+
+    /// Puts the editor on the first step the show still needs: Setup for an empty show,
+    /// Content for a mapped one with only test patterns, and so on.
+    fn go_to_first_open_step(&mut self) {
+        self.panels.step = panels::shell::Step::first_open(&self.editor.readiness());
+    }
+
+    /// Arranges the canvas for the step when the step changes: the stage view in Setup, the
+    /// mapping canvas everywhere else. T still toggles it within a step.
+    fn arrange_for_step(&mut self) {
+        let step = self.panels.step;
+        if self.arranged_for != Some(step) {
+            self.canvas.stage = step == panels::shell::Step::Setup;
+            self.arranged_for = Some(step);
         }
     }
 
@@ -328,7 +355,7 @@ impl LumapApp {
                 self.editor = Editor::new(demo_project(), None);
                 self.editor.set_osc_port(self.settings.osc_port);
                 self.canvas.reset_view();
-                self.panels.welcome = true;
+                self.panels.home = true;
             }
             Pending::Open(path) => match Editor::open(&path) {
                 Ok(mut e) => {
@@ -339,7 +366,8 @@ impl LumapApp {
                     }
                     self.editor = e;
                     self.canvas.reset_view();
-                    self.panels.welcome = false;
+                    self.panels.home = false;
+                    self.go_to_first_open_step();
                     self.note_recent();
                 }
                 Err(e) => self.panels.error = Some(format!("{}: {e}", path.display())),
@@ -379,7 +407,7 @@ impl LumapApp {
         });
         if !dropped.is_empty() {
             self.editor.add_files(&dropped);
-            self.panels.welcome = false;
+            self.panels.home = false;
         }
     }
 
@@ -395,124 +423,6 @@ impl LumapApp {
             0.0
         } else {
             (n - 1) as f32 / span
-        }
-    }
-
-    #[allow(clippy::too_many_lines)]
-    fn handle_shortcuts(&mut self, ctx: &egui::Context) {
-        use egui::{Key, Modifiers};
-        let now = Instant::now();
-        let typing = ctx.egui_wants_keyboard_input();
-        let k = ctx.input_mut(|i| Shortcuts {
-            undo: i.consume_key(Modifiers::COMMAND, Key::Z),
-            redo: i.consume_key(Modifiers::COMMAND, Key::Y)
-                || i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z),
-            save: i.consume_key(Modifiers::COMMAND, Key::S),
-            save_as: i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::S),
-            open: i.consume_key(Modifiers::COMMAND, Key::O),
-            new: i.consume_key(Modifiers::COMMAND, Key::N),
-            duplicate: i.consume_key(Modifiers::COMMAND, Key::D),
-            show: i.consume_key(Modifiers::NONE, Key::F10),
-            escape: i.consume_key(Modifiers::NONE, Key::Escape),
-            go: !typing && i.consume_key(Modifiers::NONE, Key::Space),
-            delete: i.consume_key(Modifiers::NONE, Key::Delete)
-                || i.consume_key(Modifiers::NONE, Key::Backspace),
-            blackout: i.consume_key(Modifiers::NONE, Key::B),
-            identify: i.consume_key(Modifiers::NONE, Key::I),
-            grid: i.consume_key(Modifiers::NONE, Key::G),
-            snap: i.consume_key(Modifiers::NONE, Key::S),
-            lock: i.consume_key(Modifiers::NONE, Key::L),
-            help: i.consume_key(Modifiers::NONE, Key::Questionmark)
-                || i.consume_key(Modifiers::SHIFT, Key::Slash)
-                || i.consume_key(Modifiers::NONE, Key::F1),
-            reset_view: i.consume_key(Modifiers::NONE, Key::Num0),
-            stage: i.consume_key(Modifiers::NONE, Key::T),
-            gamma_down: i.consume_key(Modifiers::NONE, Key::OpenBracket),
-            gamma_up: i.consume_key(Modifiers::NONE, Key::CloseBracket),
-        });
-        if k.undo && !typing {
-            self.editor.undo();
-        }
-        if k.redo && !typing {
-            self.editor.redo();
-        }
-        if k.save {
-            self.save();
-        }
-        if k.save_as {
-            self.save_as();
-        }
-        if k.open {
-            self.open_dialog();
-        }
-        if k.new {
-            self.request(Pending::New);
-        }
-        if k.show {
-            if self.editor.show_mode {
-                self.editor.exit_show_mode();
-            } else {
-                self.editor.enter_show_mode();
-            }
-        }
-        if k.escape {
-            if self.panels.help || self.panels.welcome {
-                self.panels.help = false;
-                self.panels.welcome = false;
-            } else {
-                self.editor.press_escape(now, Duration::from_secs(2));
-            }
-        }
-        if typing {
-            return;
-        }
-        if k.delete {
-            self.editor.delete_selection();
-        }
-        if k.duplicate {
-            if let Selection::Surface { id, .. } = self.editor.selection.clone() {
-                self.editor.duplicate_surface(&id);
-            }
-        }
-        if k.go {
-            let clock = self.editor.sources.time();
-            self.editor.cue_go_next(clock);
-        }
-        if k.blackout {
-            let on = self.editor.project.blackout;
-            self.editor
-                .set_param("/show/blackout", lumap_core::params::ParamValue::Bool(!on));
-            self.editor.commit();
-        }
-        if k.identify {
-            self.editor.identify(now);
-        }
-        if k.grid && !self.editor.show_mode {
-            self.canvas.show_grid = !self.canvas.show_grid;
-        }
-        if k.snap && !self.editor.show_mode {
-            self.canvas.handles.snap = !self.canvas.handles.snap;
-        }
-        if k.lock && !self.editor.show_mode {
-            if let Selection::Surface { id, .. } = self.editor.selection.clone() {
-                let locked = self.editor.is_locked(&id);
-                self.editor.set_locked(&id, !locked);
-            }
-        }
-        if k.help {
-            self.panels.help = !self.panels.help;
-        }
-        if k.stage && !self.editor.show_mode {
-            self.canvas.stage = !self.canvas.stage;
-        }
-        if (k.gamma_down || k.gamma_up) && !self.editor.show_mode {
-            if let Some(id) = self.canvas.output.clone() {
-                let delta = if k.gamma_up { 0.05 } else { -0.05 };
-                self.editor.adjust_blend_gamma(&id, delta);
-            }
-        }
-        if k.reset_view {
-            self.canvas.reset_view();
         }
     }
 
@@ -553,33 +463,6 @@ impl LumapApp {
             self.editor.add_files(&files);
         }
     }
-}
-
-/// Keys pressed this frame.
-#[derive(Debug, Default, Clone, Copy)]
-#[allow(clippy::struct_excessive_bools)]
-struct Shortcuts {
-    undo: bool,
-    redo: bool,
-    save: bool,
-    save_as: bool,
-    open: bool,
-    new: bool,
-    duplicate: bool,
-    show: bool,
-    escape: bool,
-    go: bool,
-    delete: bool,
-    blackout: bool,
-    identify: bool,
-    grid: bool,
-    snap: bool,
-    lock: bool,
-    help: bool,
-    reset_view: bool,
-    stage: bool,
-    gamma_down: bool,
-    gamma_up: bool,
 }
 
 impl LumapApp {
@@ -625,6 +508,82 @@ impl LumapApp {
         }
     }
 
+    /// The start page, with the windows it can open.
+    fn home_frame(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, now: Instant) {
+        let mut actions = panels::Actions::default();
+        panels::start_page(ui, &self.monitors, &self.settings, &mut actions);
+        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
+        panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
+        panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
+        self.run_actions(actions, ctx);
+    }
+
+    /// The four-step editor: top bar, coach line, status bar, the step's panels and the canvas.
+    fn editor_frame(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, now: Instant, clock: f64) {
+        self.arrange_for_step();
+        let step = self.panels.step;
+        let mut actions = panels::Actions::default();
+        panels::shell::top_bar(
+            ui,
+            &mut self.editor,
+            &mut self.panels,
+            &self.settings,
+            &mut actions,
+        );
+        panels::shell::coach(
+            ui,
+            &mut self.editor,
+            &mut self.panels,
+            self.monitors.len(),
+            &mut actions,
+        );
+        let banner = self.update_banner(now);
+        panels::status_bar(
+            ui,
+            &self.editor,
+            &self.canvas,
+            self.fps(),
+            now,
+            &banner,
+            &mut actions,
+        );
+        if step == panels::shell::Step::Show {
+            panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
+        }
+        panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+        panels::inspector(
+            ui,
+            &mut self.editor,
+            &self.monitors,
+            &mut self.panels,
+            &mut actions,
+        );
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE.fill(crate::theme::CANVAS_BG))
+            .show(ui, |ui| {
+                panels::shell::canvas_toolbar(ui, &mut self.editor, &mut self.canvas);
+                if self.canvas.stage {
+                    stage::show(
+                        ui,
+                        &mut self.editor,
+                        &mut self.canvas,
+                        &self.monitors,
+                        self.surface_format,
+                    );
+                } else {
+                    canvas::show(ui, &mut self.editor, &mut self.canvas, self.surface_format);
+                }
+            });
+        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
+        panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
+        panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
+        self.run_actions(actions, ctx);
+        self.drop_hover = ctx.input(|i| !i.raw.hovered_files.is_empty());
+        if self.drop_hover {
+            panels::drop_overlay(ctx);
+        }
+    }
+
     /// One frame of the whole application: input, panels, canvas, output windows.
     pub fn frame(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
@@ -646,62 +605,10 @@ impl LumapApp {
         if self.editor.show_mode {
             let fps = self.fps();
             panels::show_mode_screen(ui, &self.editor, fps);
+        } else if self.panels.home {
+            self.home_frame(ui, &ctx, now);
         } else {
-            let mut actions = panels::Actions::default();
-            panels::top_bar(
-                ui,
-                &mut self.editor,
-                &mut self.panels,
-                &mut self.canvas,
-                &mut actions,
-            );
-            let banner = self.update_banner(now);
-            panels::status_bar(
-                ui,
-                &self.editor,
-                &self.canvas,
-                self.fps(),
-                now,
-                &banner,
-                &mut actions,
-            );
-            panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
-            panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
-            panels::inspector(
-                ui,
-                &mut self.editor,
-                &self.monitors,
-                &mut self.panels,
-                &mut actions,
-            );
-            egui::CentralPanel::default()
-                .frame(egui::Frame::NONE.fill(crate::theme::CANVAS_BG))
-                .show(ui, |ui| {
-                    if self.canvas.stage {
-                        stage::show(
-                            ui,
-                            &mut self.editor,
-                            &mut self.canvas,
-                            &self.monitors,
-                            self.surface_format,
-                        );
-                    } else {
-                        canvas::show(ui, &mut self.editor, &mut self.canvas, self.surface_format);
-                    }
-                });
-            panels::dialogs(
-                &ctx,
-                &mut self.editor,
-                &mut self.panels,
-                &self.monitors,
-                &self.settings,
-                &mut actions,
-            );
-            self.run_actions(actions, &ctx);
-            self.drop_hover = ctx.input(|i| !i.raw.hovered_files.is_empty());
-            if self.drop_hover {
-                panels::drop_overlay(&ctx);
-            }
+            self.editor_frame(ui, &ctx, now, clock);
         }
         outputs::show_output_windows(
             &ctx,
@@ -731,9 +638,8 @@ impl LumapApp {
         }
     }
 
-    /// Runs the actions the panels asked for (they cannot borrow the app themselves).
-    fn run_actions(&mut self, actions: panels::Actions, ctx: &egui::Context) {
-        let _ = ctx;
+    /// The actions that change lumap's own preferences: updates and the start page.
+    fn run_preference_actions(&mut self, actions: &panels::Actions) {
         if let Some(mode) = actions.update_mode {
             self.settings.update.mode = mode;
             self.settings.save();
@@ -748,6 +654,16 @@ impl LumapApp {
             }
             self.settings.save();
         }
+        if let Some(show) = actions.start_page {
+            self.settings.skip_welcome = !show;
+            self.settings.save();
+        }
+    }
+
+    /// Runs the actions the panels asked for (they cannot borrow the app themselves).
+    fn run_actions(&mut self, actions: panels::Actions, ctx: &egui::Context) {
+        let _ = ctx;
+        self.run_preference_actions(&actions);
         if actions.save {
             self.save();
         }
@@ -816,22 +732,23 @@ impl LumapApp {
             if let Some(look) = lumap_core::looks::find(&name) {
                 panels::looks::apply_look_everywhere(&mut self.editor, look);
             }
-            self.panels.welcome = false;
+            self.panels.home = false;
+            self.panels.step = panels::shell::Step::Content;
         }
         if actions.create_outputs {
             self.editor
                 .create_outputs_for_monitors(&self.monitors, true);
-            self.panels.welcome = false;
+            self.panels.home = false;
+            self.panels.step = panels::shell::Step::Setup;
+        }
+        if actions.leave_home {
+            self.panels.home = false;
+            self.go_to_first_open_step();
         }
         if let Some(proceed) = actions.resolve_pending {
             if let Some(action) = self.editor.resolve_pending(proceed) {
                 self.perform(action);
             }
-        }
-        if actions.skip_welcome {
-            self.settings.skip_welcome = true;
-            self.settings.save();
-            self.panels.welcome = false;
         }
     }
 }

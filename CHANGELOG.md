@@ -6,6 +6,21 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Changed
+
+- A new shell: lumap now works in four steps, **1 Setup** (projectors), **2 Map** (surfaces),
+  **3 Content** (what they show) and **4 Show** (cues, control, going live), as tabs across the
+  top with a tick on each finished step, a coach line that says what to do now with a
+  *Next* button, and keys 1 to 4. The File, Edit and View menus become one *Menu*; Undo, Redo,
+  Identify, Blackout, Master and **Go live** sit in the top bar; Grid, Snap, Edit on the wall,
+  Stage view and Fit view sit above the canvas.
+- A start page replaces the welcome window: create a projector per display, start from the
+  demo, open a show, recent shows, and *Try a look*. Menu ▸ Home returns to it.
+- App settings (start page, ffmpeg, updates) move to a Settings window; messages appear as
+  toasts in the corner, and problems as a toast that stays until dismissed.
+- Plain words: Projector, Surface and Content in the interface. Project files and OSC
+  addresses keep `output`, `surface` and `source`.
+
 ## [0.4.0] - 2026-10-30
 
 Looks: something worth seeing on the wall before you own a single clip.

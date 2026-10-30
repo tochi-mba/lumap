@@ -1,5 +1,5 @@
 //! Choosing built-in looks through the real UI: the welcome chips, the surface inspector and
-//! the "+ source" menu grouped by category.
+//! the "+ content" menu grouped by category.
 
 use super::*;
 use crate::editor::Editor;
@@ -9,11 +9,15 @@ use lumap_core::project::{demo_project, BlendMode, GeneratorKind, SourceKind};
 #[test]
 fn a_welcome_chip_puts_the_look_on_every_surface_and_closes_the_welcome() {
     let mut h = harness(Editor::new(demo_project(), None));
-    h.state_mut().panels.welcome = true;
+    h.state_mut().panels.home = true;
     settle(&mut h);
     click(&mut h, "Campfire");
     let state = h.state();
-    assert!(!state.panels.welcome);
+    assert!(!state.panels.home);
+    assert_eq!(
+        state.panels.step,
+        crate::editor::panels::shell::Step::Content
+    );
     assert!(state
         .editor
         .project
@@ -60,7 +64,7 @@ fn the_surface_inspector_applies_the_chosen_look_to_that_surface() {
 #[test]
 fn the_source_menu_groups_generators_by_category() {
     let mut h = harness(Editor::new(demo_project(), None));
-    click(&mut h, "+ source");
+    click(&mut h, "+ content");
     click(&mut h, "Nature");
     click(&mut h, "Generator: Aurora");
     assert!(h.state().editor.project.sources.iter().any(|s| matches!(

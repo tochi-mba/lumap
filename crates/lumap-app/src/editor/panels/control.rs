@@ -13,7 +13,6 @@ pub(super) fn control_section(
     state: &mut PanelState,
     actions: &mut Actions,
 ) {
-    ui.heading("Control");
     crate::theme::section_header(ui, "MIDI");
     ui.horizontal(|ui| {
         egui::ComboBox::from_label("MIDI port")

@@ -15,7 +15,7 @@ use std::sync::Arc;
 #[test]
 fn show_mode_screen_and_shortcuts() {
     let mut h = harness(Editor::new(demo_project(), None));
-    click(&mut h, "Show mode");
+    click(&mut h, "Go live");
     assert!(h.state().editor.show_mode);
     assert!(h.query_by_label("SHOW MODE").is_some());
     assert_eq!(h.state().editor.open_outputs.len(), 2);
@@ -93,21 +93,21 @@ fn file_flows_through_dialogs_and_unsaved_prompt() {
     assert!(h.state().settings.recent.contains(&path));
     // A cancelled dialog does nothing.
     fake(&mut h, |_| {});
-    menu(&mut h, "File", "Save As…  (Ctrl+Shift+S)");
+    menu(&mut h, "Menu", "Save as…");
     assert!(h.state().panels.error.is_none());
     // Open a missing file: error dialog.
     fake(&mut h, |d| {
         d.project = Some(dir.path().join("missing.toml"));
     });
-    menu(&mut h, "File", "Open…  (Ctrl+O)");
-    assert!(h.query_by_label("Problem").is_some());
+    menu(&mut h, "Menu", "Open…");
+    assert!(h.state().panels.error.is_some());
     click(&mut h, "Dismiss");
     // Dirty + New: prompt, cancel keeps everything.
     h.state_mut()
         .editor
         .set_param("/show/master", lumap_core::params::ParamValue::Number(0.3));
     h.state_mut().editor.commit();
-    menu(&mut h, "File", "New  (Ctrl+N)");
+    menu(&mut h, "Menu", "New show");
     assert!(h.query_by_label("Unsaved changes").is_some());
     click(&mut h, "Cancel");
     assert_eq!(h.state().editor.project.master, 0.3);
@@ -116,11 +116,9 @@ fn file_flows_through_dialogs_and_unsaved_prompt() {
     settle(&mut h);
     click(&mut h, "Discard changes");
     assert!(h.state().editor.path.is_none());
-    assert!(
-        h.state().panels.welcome,
-        "a new project shows the welcome screen"
-    );
-    click(&mut h, "Close");
+    assert!(h.state().panels.home, "a new show starts on the start page");
+    click(&mut h, "Start from the demo");
+    assert!(!h.state().panels.home);
     // Open the saved file through the dialog; then dirty + open another with "Save and continue".
     fake(&mut h, |d| d.project = Some(path.clone()));
     h.key_press_modifiers(Modifiers::COMMAND, Key::O);
@@ -172,10 +170,10 @@ fn welcome_screen_creates_outputs_and_remembers_recent() {
     demo_project().save(&recent).unwrap();
     let mut h = harness(Editor::new(lumap_core::project::Project::default(), None));
     h.state_mut().settings.push_recent(&recent);
-    h.state_mut().panels.welcome = true;
+    h.state_mut().panels.home = true;
     settle(&mut h);
     assert!(h.query_by_label("Welcome to lumap").is_some());
-    click(&mut h, "Create 1 output(s) with a test grid");
+    click(&mut h, "Create 1 projector(s)");
     assert_eq!(h.state().editor.project.outputs.len(), 1);
     assert_eq!(
         h.state().editor.project.outputs[0]
@@ -185,25 +183,39 @@ fn welcome_screen_creates_outputs_and_remembers_recent() {
             .monitor,
         "DISPLAY2"
     );
-    assert!(!h.state().panels.welcome);
-    h.state_mut().panels.welcome = true;
+    assert!(!h.state().panels.home);
+    assert_eq!(
+        h.state().panels.step,
+        crate::editor::panels::shell::Step::Setup
+    );
+    h.state_mut().panels.home = true;
     settle(&mut h);
-    click(&mut h, "old.lumap.toml");
+    // The new projector's window is a separate OS window in the app, but the test harness
+    // embeds it over the middle of the page, so this click goes through accessibility.
+    h.get_by_label("old.lumap.toml").click_accesskit();
+    settle(&mut h);
     assert!(
         h.query_by_label("Unsaved changes").is_some(),
         "the fresh outputs are unsaved"
     );
     click(&mut h, "Discard changes");
     assert_eq!(h.state().editor.path.as_deref(), Some(recent.as_path()));
-    h.state_mut().panels.welcome = true;
+    h.state_mut().panels.home = true;
     settle(&mut h);
-    click(&mut h, "Don't show again");
+    click(&mut h, "Show this page when lumap opens");
     assert!(h.state().settings.skip_welcome);
-    assert!(!h.state().panels.welcome);
-    menu(&mut h, "File", "Welcome screen");
-    assert!(h.state().panels.welcome);
+    assert!(
+        h.state().panels.home,
+        "the checkbox does not leave the page"
+    );
     click(&mut h, "Start from the demo");
-    assert!(!h.state().panels.welcome);
+    assert!(!h.state().panels.home);
+    menu(&mut h, "Menu", "Home");
+    assert!(h.state().panels.home);
+    click(&mut h, "Show this page when lumap opens");
+    assert!(!h.state().settings.skip_welcome);
+    click(&mut h, "Start from the demo");
+    assert!(!h.state().panels.home);
 }
 
 #[derive(Debug)]
@@ -253,25 +265,27 @@ fn dropped_files_become_sources_and_hover_shows_an_overlay() {
 fn view_menu_toggles_and_output_windows_carry_handles() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
-    menu(&mut h, "View", "Grid  (G)");
+    click(&mut h, "Grid");
     assert!(h.state().canvas.show_grid);
-    menu(&mut h, "View", "Handles on output windows");
+    click(&mut h, "Edit on the wall");
     assert!(!h.state().editor.edit_on_wall);
-    menu(&mut h, "View", "Handles on output windows");
-    menu(&mut h, "View", "Fit view  (0)");
-    menu(&mut h, "View", "Keyboard shortcuts  (?)");
+    click(&mut h, "Edit on the wall");
+    click(&mut h, "Fit view");
+    menu(&mut h, "Menu", "Keyboard shortcuts");
     assert!(h.state().panels.help);
     click(&mut h, "Close");
     // Settings persisted the toggles.
     let saved = crate::settings::Settings::load();
     assert!(saved.show_grid);
     click(&mut h, "wall-left");
-    menu(&mut h, "Edit", "Duplicate surface  (Ctrl+D)");
+    h.key_press_modifiers(Modifiers::COMMAND, Key::D);
+    settle(&mut h);
     assert!(h.state().editor.project.surface("wall-left-copy").is_some());
-    menu(&mut h, "Edit", "Delete  (Del)");
+    h.key_press(Key::Delete);
+    settle(&mut h);
     assert!(h.state().editor.project.surface("wall-left-copy").is_none());
-    menu(&mut h, "Edit", "Undo  (Ctrl+Z)");
-    menu(&mut h, "Edit", "Redo  (Ctrl+Y)");
+    click(&mut h, "Undo");
+    click(&mut h, "Redo");
     click(&mut h, "Identify");
     h.get_all_by_label("Blackout").next().unwrap().click();
     settle(&mut h);
@@ -312,9 +326,17 @@ fn starting_in_show_mode_and_osc_port_zero() {
 
 #[test]
 fn empty_project_canvas_asks_for_an_output() {
-    let h = harness(Editor::new(lumap_core::project::Project::default(), None));
+    let mut h = harness(Editor::new(lumap_core::project::Project::default(), None));
+    // An empty show starts on Setup, on the stage view; the mapping canvas is on Map.
+    assert_eq!(
+        h.state().panels.step,
+        crate::editor::panels::shell::Step::Setup
+    );
+    assert!(h.state().canvas.stage);
+    step(&mut h, "2 Map");
+    assert!(!h.state().canvas.stage);
     assert!(h
-        .query_by_label("Add an output to start mapping (or drop an image here).")
+        .query_by_label("Add a projector to start mapping (or drop an image here).")
         .is_some());
     assert!(h.state().canvas.last_rect.is_none());
 }
@@ -332,7 +354,7 @@ fn source_inspector_transport_and_generator_controls() {
     let mut h = harness(Editor::new(demo_project(), None));
     // Folder dialog adds a sequence source and a surface on the first output.
     fake(&mut h, |d| d.folder = Some(seq.clone()));
-    click(&mut h, "+ source");
+    click(&mut h, "+ content");
     click(&mut h, "Image sequence folder…");
     assert!(h.state().editor.project.source("frames").is_some());
     assert!(
@@ -344,7 +366,7 @@ fn source_inspector_transport_and_generator_controls() {
         h.state().editor.selection,
         Selection::Source("frames".into())
     );
-    assert!(h.query_by_label("Source frames").is_some());
+    assert!(h.query_by_label("Content frames").is_some());
     click(&mut h, "Pause");
     assert!(
         h.state()
@@ -397,7 +419,7 @@ fn source_inspector_transport_and_generator_controls() {
     assert!(h.query_by_label("Delete source").is_some());
 
     // Generators from the menu, with the pattern combo.
-    click(&mut h, "+ source");
+    click(&mut h, "+ content");
     click(&mut h, "Classic");
     click(&mut h, "Generator: Plasma");
     assert!(h.state().editor.project.source("generator").is_some());
@@ -504,7 +526,7 @@ fn media_dialog_accepts_video_when_ffmpeg_exists() {
     assert!(ok);
     click(&mut h, "right");
     fake(&mut h, |d| d.media = vec![clip.clone()]);
-    menu(&mut h, "File", "Add media…");
+    menu(&mut h, "Menu", "Add media…");
     assert!(matches!(
         h.state().editor.project.source("clip").unwrap().kind,
         lumap_core::project::SourceKind::Video { .. }

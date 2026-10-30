@@ -92,6 +92,11 @@ fn click(h: &mut Harness<'static, LumapApp>, label: &str) {
     settle(h);
 }
 
+/// Clicks a step tab: "1 Setup", "2 Map", "3 Content" or "4 Show".
+fn step(h: &mut Harness<'static, LumapApp>, tab: &str) {
+    click(h, tab);
+}
+
 fn menu(h: &mut Harness<'static, LumapApp>, menu: &str, item: &str) {
     click(h, menu);
     click(h, item);
@@ -133,15 +138,15 @@ fn drag(h: &mut Harness<'static, LumapApp>, from: egui::Pos2, to: egui::Pos2) {
 #[test]
 fn panels_render_and_selection_drives_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
-    assert!(h.query_by_label("Outputs").is_some());
-    assert!(h.query_by_label("Sources").is_some());
+    assert!(h.query_by_label("Projectors").is_some());
+    assert!(h.query_by_label("+ content").is_some());
     assert!(
         h.query_by_label("Show").is_some(),
         "no selection shows the show inspector"
     );
     click(&mut h, "left");
     assert_eq!(h.state().editor.selection, Selection::Output("left".into()));
-    assert!(h.query_by_label("Output left").is_some());
+    assert!(h.query_by_label("Projector left").is_some());
     click(&mut h, "logo");
     assert_eq!(
         h.state().editor.selection,
@@ -327,7 +332,6 @@ fn inline_rename_through_the_inspector() {
     h.key_press(Key::Enter);
     settle(&mut h);
     assert!(h.state().panels.error.is_some());
-    assert!(h.query_by_label("Problem").is_some());
     click(&mut h, "Dismiss");
     assert!(h.state().panels.error.is_none());
 }
@@ -369,7 +373,7 @@ fn output_inspector_places_and_opens_windows() {
     settle(&mut h);
     click(&mut h, "Close window");
     assert!(h.state().editor.open_outputs.is_empty());
-    click(&mut h, "Enabled in show mode");
+    click(&mut h, "On in show mode");
     assert!(!h.state().editor.project.output("left").unwrap().enabled);
     h.get_all_by_value("Smooth").next().unwrap().click();
     settle(&mut h);
@@ -395,9 +399,9 @@ fn tree_adds_removes_and_offers_context_menus() {
     h.get_all_by_label("+ surface").next().unwrap().click();
     settle(&mut h);
     assert_eq!(h.state().editor.project.surfaces.len(), 4);
-    click(&mut h, "+ output");
+    click(&mut h, "+ projector");
     assert_eq!(h.state().editor.project.outputs.len(), 3);
-    click(&mut h, "+ source");
+    click(&mut h, "+ content");
     click(&mut h, "Pattern: Checker");
     assert!(h
         .state()
@@ -479,6 +483,7 @@ fn tree_adds_removes_and_offers_context_menus() {
 #[test]
 fn show_inspector_and_media_dialog() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "3 Content");
     click(&mut h, "Add Spout receiver");
     assert!(h
         .state()
@@ -727,7 +732,17 @@ fn render_doc_screenshots() {
         );
     h.run_steps(4);
     h.render().unwrap().save(out.join("editor.png")).unwrap();
-    h.state_mut().panels.welcome = true;
+    std::fs::create_dir_all(out.join("steps")).unwrap();
+    for step in super::panels::shell::Step::ALL {
+        h.state_mut().panels.step = step;
+        h.run_steps(4);
+        let name = step.label().to_lowercase();
+        h.render()
+            .unwrap()
+            .save(out.join("steps").join(format!("{name}.png")))
+            .unwrap();
+    }
+    h.state_mut().panels.home = true;
     h.run_steps(4);
     h.render().unwrap().save(out.join("welcome.png")).unwrap();
 }
