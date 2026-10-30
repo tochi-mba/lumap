@@ -157,6 +157,10 @@ pub struct OutputUiState {
     pub last_pos: Option<egui::Pos2>,
     /// The scan pattern on screen, as a texture, keyed by the frame it came from.
     pub pattern: Option<(usize, egui::TextureHandle)>,
+    /// Frames this window has been shown.
+    pub frames: u32,
+    /// Fullscreen has been asked for.
+    pub fullscreen: bool,
 }
 
 impl Default for OutputUiState {
@@ -166,6 +170,8 @@ impl Default for OutputUiState {
             last_move: Instant::now(),
             last_pos: None,
             pattern: None,
+            frames: 0,
+            fullscreen: false,
         }
     }
 }
@@ -265,9 +271,17 @@ pub fn show_output_windows(
         if spec.locked {
             builder = builder.with_window_level(egui::WindowLevel::AlwaysOnTop);
         }
-        if spec.fullscreen {
-            builder = builder.with_fullscreen(true);
-        }
+        // Fullscreen comes after the window has drawn a few frames: asked for while the window
+        // is created, DirectX 12 refuses the swapchain and the app stops.
+        let go_fullscreen = {
+            let state = ui_state.entry(id.clone()).or_default();
+            state.frames = state.frames.saturating_add(1);
+            let due = spec.fullscreen && !state.fullscreen && state.frames > 2;
+            if due {
+                state.fullscreen = true;
+            }
+            due
+        };
         // While a scan runs, its projector shows the pattern and every other one stays black.
         let scan = editor
             .scan_pattern
@@ -291,7 +305,7 @@ pub fn show_output_windows(
         let state = ui_state.entry(id.clone()).or_default();
         state.handles.snap = snap;
         state.handles.grid = 0;
-        let editing = !editor.show_mode && editor.edit_on_wall;
+        let editing = !editor.show_mode && editor.edit_on_wall && scan.is_none();
         ctx.show_viewport_immediate(viewport_id, builder, |ui, class| {
             let rect = ui.max_rect();
             ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
@@ -310,7 +324,7 @@ pub fn show_output_windows(
                 state.handles.grid = grid;
                 handles::interact(ui, editor, &mut state.handles, &response, &map, &id);
             }
-            if identify {
+            if identify && scan.is_none() {
                 handles::draw_identify(ui.painter(), rect, &id, output.width, output.height, index);
             }
             let pos = ui.input(|i| i.pointer.hover_pos());
@@ -329,6 +343,9 @@ pub fn show_output_windows(
         });
         if scan.is_none() {
             state.pattern = None;
+        }
+        if go_fullscreen {
+            ctx.send_viewport_cmd_to(viewport_id, egui::ViewportCommand::Fullscreen(true));
         }
         if let Some(r) = outer {
             editor
