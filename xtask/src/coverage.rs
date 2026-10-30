@@ -76,7 +76,10 @@ pub fn parse(json: &str) -> anyhow::Result<Vec<FileCoverage>> {
 /// longer names a measured file (so the list cannot rot).
 pub fn problems(files: &[FileCoverage]) -> Vec<String> {
     let mut out = Vec::new();
-    for f in files.iter().filter(|f| !EXCLUDED.contains(&f.path.as_str())) {
+    for f in files
+        .iter()
+        .filter(|f| !EXCLUDED.contains(&f.path.as_str()))
+    {
         for (name, m) in [
             ("lines", f.lines),
             ("regions", f.regions),
@@ -152,7 +155,13 @@ mod tests {
         ]);
         let files = parse(&json).unwrap();
         assert_eq!(files.len(), 2);
-        assert_eq!(files[0].regions, Metric { count: 2, covered: 2 });
+        assert_eq!(
+            files[0].regions,
+            Metric {
+                count: 2,
+                covered: 2
+            }
+        );
         assert_eq!(
             problems(&files),
             vec![
@@ -173,7 +182,13 @@ mod tests {
     fn missing_fields_and_bad_input() {
         let files = parse(r#"{"data":[{"files":[{"summary":{}}]}]}"#).unwrap();
         assert_eq!(files[0].path, "");
-        assert_eq!(files[0].lines, Metric { count: 0, covered: 0 });
+        assert_eq!(
+            files[0].lines,
+            Metric {
+                count: 0,
+                covered: 0
+            }
+        );
         assert!(parse("not json").is_err());
         assert!(parse("{}").is_err());
     }

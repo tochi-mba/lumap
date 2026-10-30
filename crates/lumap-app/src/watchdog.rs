@@ -144,25 +144,30 @@ mod tests {
 
     #[test]
     fn watchdog_fires_once_per_stall_and_recovers() {
+        // Margins wide enough for a busy CI runner, where a 20 ms sleep can take ten times as
+        // long (macOS coalesces timers): beats come every 20 ms against a 600 ms limit, and a
+        // stall is waited out for well over twice the limit.
+        let limit = Duration::from_millis(600);
+        let stall = Duration::from_millis(1500);
         let hb = Heartbeat::new();
         let fired = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&fired);
-        let dog = Watchdog::spawn(hb.clone(), Duration::from_millis(80), move |d| {
+        let dog = Watchdog::spawn(hb.clone(), limit, move |d| {
             sink.lock().unwrap().push(d);
         });
         // Keep beating: no stall.
-        for _ in 0..5 {
+        for _ in 0..10 {
             hb.beat();
             std::thread::sleep(Duration::from_millis(20));
         }
         assert!(fired.lock().unwrap().is_empty());
-        // Stop beating: exactly one report.
-        std::thread::sleep(Duration::from_millis(250));
+        // Stop beating: exactly one report, however long the stall lasts.
+        std::thread::sleep(stall);
         assert_eq!(fired.lock().unwrap().len(), 1);
+        assert!(fired.lock().unwrap()[0] > limit);
         // Recover, then stall again: a second report.
         hb.beat();
-        std::thread::sleep(Duration::from_millis(30));
-        std::thread::sleep(Duration::from_millis(250));
+        std::thread::sleep(stall);
         assert_eq!(fired.lock().unwrap().len(), 2);
         drop(dog);
     }
