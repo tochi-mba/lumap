@@ -9,7 +9,7 @@
 
 use super::handles::Mapping;
 use super::panels::FakeDialogs;
-use super::{Launch, LumapApp, MonitorInfo, Selection};
+use super::{Launch, LumapApp, MonitorInfo, Pending, Selection};
 use crate::editor::Editor;
 use eframe::egui::{self, accesskit::Role, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
@@ -59,6 +59,9 @@ fn app(editor: Editor) -> LumapApp {
     config_dir();
     let launch = Launch {
         project: None,
+        new_show: false,
+        open_show: false,
+        check_updates: false,
         osc_port: 0,
         show: false,
         restart_on_stall: None,
@@ -143,6 +146,70 @@ fn drag(h: &mut Harness<'static, LumapApp>, from: egui::Pos2, to: egui::Pos2) {
     settle(h);
     h.drop_at(to);
     settle(h);
+}
+
+#[test]
+fn closing_with_unsaved_work_never_discards_after_cancelled_save() {
+    let _lock = settings_guard();
+    let _config = config_dir();
+    let mut h = harness(Editor::new(demo_project(), None));
+    h.state_mut().editor.dirty = true;
+    h.state_mut().request(Pending::Close);
+    settle(&mut h);
+    h.get_by_label("Unsaved changes");
+    click(&mut h, "Save and quit");
+    assert_eq!(h.state().editor.pending, Some(Pending::Close));
+    assert!(h.state().editor.dirty);
+    assert!(!h.state().close_confirmed);
+    click(&mut h, "Cancel");
+    assert_eq!(h.state().editor.pending, None);
+    assert!(h.state().editor.dirty);
+    assert!(!h.state().close_confirmed);
+}
+
+#[test]
+fn saving_before_exit_must_succeed_before_app_closes() {
+    let _lock = settings_guard();
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("my-show.lumap.toml");
+    let mut h = harness(Editor::new(demo_project(), None));
+    h.state_mut().editor.dirty = true;
+    h.state_mut().request(Pending::Close);
+    fake(&mut h, |d| d.save = Some(dir.path().to_path_buf()));
+    settle(&mut h);
+    click(&mut h, "Save and quit");
+    assert_eq!(h.state().editor.pending, Some(Pending::Close), "failed save keeps prompt");
+    assert!(h.state().panels.error.is_some());
+    assert!(!h.state().close_confirmed);
+
+    fake(&mut h, |d| d.save = Some(target.clone()));
+    click(&mut h, "Save and quit");
+    assert!(target.is_file());
+    assert!(!h.state().editor.dirty);
+    assert!(h.state().close_confirmed);
+}
+
+#[test]
+fn installing_with_unsaved_work_requires_confirmation() {
+    let _lock = settings_guard();
+    let mut h = harness(Editor::new(demo_project(), None));
+    h.state_mut().editor.dirty = true;
+    h.state_mut().request(Pending::InstallUpdate);
+    settle(&mut h);
+    h.get_by_label("Save and install");
+    h.get_by_label("Install without saving");
+    click(&mut h, "Cancel");
+    assert_eq!(h.state().editor.pending, None);
+    assert!(!h.state().updater.closing);
+}
+
+#[test]
+fn starting_a_new_show_uses_a_blank_project() {
+    let _lock = settings_guard();
+    let mut h = harness(Editor::new(demo_project(), None));
+    menu(&mut h, "Menu", "New show");
+    assert!(h.state().editor.project.outputs.is_empty());
+    assert!(h.state().editor.project.surfaces.is_empty());
 }
 
 #[test]

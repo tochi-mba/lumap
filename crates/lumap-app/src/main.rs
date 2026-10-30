@@ -105,6 +105,22 @@ enum Command {
     },
 }
 
+#[cfg(test)]
+mod launch_tests {
+    use super::*;
+
+    #[test]
+    fn start_menu_launch_actions_parse() {
+        let new = Args::try_parse_from(["lumap", "--new-show"]).unwrap();
+        assert!(new.new_show && !new.open_show && !new.check_updates);
+        let open = Args::try_parse_from(["lumap", "--open-show"]).unwrap();
+        assert!(open.open_show && !open.new_show);
+        let updates = Args::try_parse_from(["lumap", "--check-updates"]).unwrap();
+        assert!(updates.check_updates && !updates.new_show);
+        assert!(Args::try_parse_from(["lumap", "example.toml", "--new-show"]).is_err());
+    }
+}
+
 fn main() -> ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args = Args::parse();
