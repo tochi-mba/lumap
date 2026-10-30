@@ -2,7 +2,7 @@
 
 What lumap does on each platform, generated from `docs/platforms.json` by `cargo xtask platforms`; CI fails when this file is stale. A *supported* cell names the test or file that proves it; *planned* is on the way; *n/a* does not apply there.
 
-Totals: windows: 23 supported, macos: 18 supported, linux: 18 supported.
+Totals: windows: 27 supported, macos: 22 supported, linux: 22 supported.
 
 | Capability | Windows | macOS | Linux | Proof |
 |---|---|---|---|---|
@@ -17,6 +17,10 @@ Totals: windows: 23 supported, macos: 18 supported, linux: 18 supported.
 | Built-in looks (generators with colour, speed and blend) | supported | supported | supported | `applying_a_look_points_the_surface_at_it_and_is_idempotent` |
 | Live input from Spout senders | supported | n/a | n/a | `lifecycle` |
 | Live input from Syphon servers | n/a | planned | n/a | `` |
+| Webcam capture and Camera live input | supported | supported | supported | `crates/lumap-sources/src/live_input/camera` |
+| Structured-light room scan and measured projector overlap | supported | supported | supported | `crates/lumap-app/src/editor/scan` |
+| Wall photo, automatic surfaces and object picker | supported | supported | supported | `crates/lumap-vision/src/find` |
+| Camera drift check and one-click projector re-alignment | supported | supported | supported | `the_camera_line_appears_with_a_scan_and_follows_the_drift_check` |
 | OSC control and feedback | supported | supported | supported | `osc_patches_apply_live` |
 | MIDI learn and control | supported | supported | supported | `control_section_learns_midi_and_runs_feedback_and_remote` |
 | Phone remote over HTTP with a QR code | supported | supported | supported | `control_section_learns_midi_and_runs_feedback_and_remote` |
