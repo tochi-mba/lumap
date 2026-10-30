@@ -11,7 +11,7 @@ use lumap_core::project::Playback;
 use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::mpsc::{sync_channel, Receiver, TryRecvError};
 use std::sync::Arc;
 
@@ -430,6 +430,7 @@ impl FrameSource for VideoSource {
 )]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn info_parsing_and_sizes() {

@@ -13,7 +13,7 @@ use crate::{Frame, SourceError};
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdout, Stdio};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;

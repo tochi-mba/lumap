@@ -89,11 +89,36 @@ pub struct WindowSpec {
     pub size: [f32; 2],
     /// Borderless, always-on-top projector window versus a movable preview.
     pub locked: bool,
+    /// Borderless fullscreen on the display the window opens on: placed on a connected display,
+    /// the window covers it exactly, whatever the displays' scaling (a 125% laptop screen next
+    /// to a 100% projector put sized-by-hand windows short of the projector's edges).
+    pub fullscreen: bool,
 }
 
 /// Decides the window for an output: placed outputs open borderless at full size on their
 /// monitor; unplaced ones open as a small decorated preview the user can drag to a projector.
 pub fn window_spec(output: &lumap_core::project::Output, monitors: &[MonitorInfo]) -> WindowSpec {
+    if let Some(m) = output
+        .placement
+        .as_ref()
+        .filter(|p| !p.monitor.is_empty())
+        .and_then(|p| monitors.iter().find(|m| m.name == p.monitor))
+    {
+        // Open well inside the display, so fullscreen takes the right one.
+        let inset = |origin: i32, extent: u32| origin + (extent / 4) as i32;
+        return WindowSpec {
+            pos: Some([
+                physical_to_points(inset(m.x, m.width), m.scale),
+                physical_to_points(inset(m.y, m.height), m.scale),
+            ]),
+            size: [
+                physical_to_points(m.width as i32, m.scale),
+                physical_to_points(m.height as i32, m.scale),
+            ],
+            locked: true,
+            fullscreen: true,
+        };
+    }
     if let Some(p) = &output.placement {
         let scale = monitor_at(monitors, p.x, p.y).map_or(1.0, |m| m.scale);
         WindowSpec {
@@ -106,6 +131,7 @@ pub fn window_spec(output: &lumap_core::project::Output, monitors: &[MonitorInfo
                 physical_to_points(output.height as i32, scale),
             ],
             locked: true,
+            fullscreen: false,
         }
     } else {
         let aspect = output.width.max(1) as f32 / output.height.max(1) as f32;
@@ -113,6 +139,7 @@ pub fn window_spec(output: &lumap_core::project::Output, monitors: &[MonitorInfo
             pos: None,
             size: [480.0, (480.0 / aspect).max(120.0)],
             locked: false,
+            fullscreen: false,
         }
     }
 }
@@ -237,6 +264,9 @@ pub fn show_output_windows(
         }
         if spec.locked {
             builder = builder.with_window_level(egui::WindowLevel::AlwaysOnTop);
+        }
+        if spec.fullscreen {
+            builder = builder.with_fullscreen(true);
         }
         // While a scan runs, its projector shows the pattern and every other one stays black.
         let scan = editor
@@ -370,14 +400,27 @@ mod tests {
             })),
             &monitors,
         );
+        // On a connected display: fullscreen there, opened a quarter of the way in.
         assert_eq!(
             spec,
             WindowSpec {
-                pos: Some([960.0, 0.0]),
+                pos: Some([1200.0, 135.0]),
                 size: [960.0, 540.0],
-                locked: true
+                locked: true,
+                fullscreen: true,
             }
         );
+        // A display that is not connected: the window keeps the saved place and size.
+        let spec = window_spec(
+            &output(Some(Placement {
+                monitor: "gone".into(),
+                x: 1920,
+                y: 0,
+            })),
+            &monitors,
+        );
+        assert!(spec.locked && !spec.fullscreen);
+        assert_eq!(spec.pos, Some([960.0, 0.0]));
         let spec = window_spec(
             &output(Some(Placement {
                 monitor: String::new(),
@@ -398,7 +441,8 @@ mod tests {
             WindowSpec {
                 pos: None,
                 size: [480.0, 270.0],
-                locked: false
+                locked: false,
+                fullscreen: false,
             }
         );
         let mut tall = output(None);
