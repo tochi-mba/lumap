@@ -81,12 +81,12 @@ fn the_update_mode_is_chosen_in_the_show_inspector_and_saved() {
     assert_eq!(h.state().settings.update.mode, Mode::Notify);
     menu(&mut h, "Menu", "Settings…");
     click(&mut h, "Updates");
-    click(&mut h, "never check");
+    click(&mut h, "Off (manual only)");
     assert_eq!(h.state().settings.update.mode, Mode::Off);
     let saved = crate::settings::Settings::load_from(&dir.join("settings.toml")).unwrap();
     assert_eq!(saved.update.mode, Mode::Off);
 
-    click(&mut h, "Check now");
+    click(&mut h, "Check for updates");
     assert!(
         h.state()
             .editor

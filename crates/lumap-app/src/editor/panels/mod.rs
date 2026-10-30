@@ -326,11 +326,13 @@ pub fn status_bar(
     fps: f32,
     now: Instant,
     banner: &crate::update::flow::Banner,
+    check: &crate::update::CheckUi,
     actions: &mut Actions,
 ) {
     egui::Panel::bottom("lumap-status").show(ui, |ui| {
         ui.horizontal(|ui| {
             update_banner(ui, banner, actions);
+            settings::check_button(ui, check, actions, "Check updates");
             let selected = editor.selected_surfaces();
             if selected.len() > 1 {
                 ui.label(RichText::new(format!("{} surfaces selected", selected.len())).weak());

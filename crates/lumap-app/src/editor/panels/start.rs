@@ -4,6 +4,7 @@
 use super::super::MonitorInfo;
 use super::Actions;
 use crate::settings::Settings;
+use crate::update::CheckUi;
 use eframe::egui::{self, RichText};
 
 /// Draws the start page over the whole window.
@@ -12,6 +13,7 @@ pub fn start_page(
     monitors: &[MonitorInfo],
     settings: &Settings,
     actions: &mut Actions,
+    check: &CheckUi,
 ) {
     egui::CentralPanel::default()
         .frame(
@@ -32,7 +34,7 @@ pub fn start_page(
                         ui.add_space(16.0);
                         card(ui, |ui| super::looks::welcome_row(ui, actions));
                         ui.add_space(16.0);
-                        footer(ui, settings, actions);
+                        footer(ui, settings, actions, check);
                     });
                 });
             });
@@ -137,7 +139,7 @@ fn recent_card(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions) {
     });
 }
 
-fn footer(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions) {
+fn footer(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions, check: &CheckUi) {
     ui.horizontal(|ui| {
         let mut show = !settings.skip_welcome;
         if ui
@@ -147,11 +149,15 @@ fn footer(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions) {
             actions.start_page = Some(show);
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            super::settings::check_button(ui, check, actions, "Check for updates");
             ui.label(
                 RichText::new(concat!("lumap ", env!("CARGO_PKG_VERSION")))
                     .weak()
                     .small(),
             );
         });
+    });
+    if check.checking || check.detail.contains("up to date") || check.detail.contains("Couldn't check") {
+        ui.label(RichText::new(&check.detail).weak().small());
     });
 }
