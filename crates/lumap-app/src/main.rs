@@ -10,6 +10,7 @@
 mod autosave;
 mod cli;
 mod editor;
+mod logging;
 mod settings;
 mod theme;
 mod update;
@@ -107,8 +108,16 @@ enum Command {
 }
 
 fn main() -> ExitCode {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let log_file = logging::init();
     let args = Args::parse();
+    log::info!(
+        "lumap {} on {} {}, log file {}",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        log_file.as_deref().map_or_else(|| "none".into(), |p| p.display().to_string())
+    );
+    log::debug!("arguments: {:?}", std::env::args().skip(1).collect::<Vec<_>>());
     let result = match args.command {
         None => editor::run(&editor::Launch {
             project: args.project,

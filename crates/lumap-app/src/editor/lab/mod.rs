@@ -227,6 +227,14 @@ impl LabRuntime {
             }
             LabRequest::Found { projector } => pending.reply(images::found(app, &projector)),
             LabRequest::Vision { name } => pending.reply(images::vision(app, &name, now)),
+            LabRequest::Logs { lines, level, grep } => {
+                let lines =
+                    crate::logging::recent(lines as usize, level.to_log(), grep.as_deref());
+                pending.reply(Reply::Json(serde_json::json!({
+                    "file": crate::logging::current_file().map(|p| p.display().to_string()),
+                    "lines": lines,
+                })));
+            }
         }
     }
 

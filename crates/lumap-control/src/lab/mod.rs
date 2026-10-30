@@ -102,6 +102,45 @@ pub enum LabRequest {
         /// Debug image name.
         name: String,
     },
+    /// `GET /lab/logs?lines=&level=&grep=`: the app's most recent log lines as JSON, with the
+    /// path of this run's log file.
+    Logs {
+        /// How many lines at most, 1 to 5000.
+        lines: u32,
+        /// The least severe level included: `error`, `warn`, `info`, `debug` or `trace`.
+        level: LogLevel,
+        /// Only lines containing this text (ignoring case).
+        grep: Option<String>,
+    },
+}
+
+/// A log level the lab can ask for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogLevel {
+    /// Errors only.
+    Error,
+    /// Warnings and errors.
+    Warn,
+    /// Information and up.
+    Info,
+    /// Debugging detail and up.
+    Debug,
+    /// Everything.
+    Trace,
+}
+
+impl LogLevel {
+    /// The `log` crate's level.
+    pub fn to_log(self) -> log::Level {
+        match self {
+            Self::Error => log::Level::Error,
+            Self::Warn => log::Level::Warn,
+            Self::Info => log::Level::Info,
+            Self::Debug => log::Level::Debug,
+            Self::Trace => log::Level::Trace,
+        }
+    }
 }
 
 /// One step of `POST /lab/act`, mirroring an editor command. On the wire it is an object named

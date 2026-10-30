@@ -1,7 +1,7 @@
 //! Routing: method, path, query and body to a [`LabRequest`], with every check that needs no
 //! app state. Pure, so the whole table is unit-tested without a server.
 
-use super::{Action, LabRequest, Pattern, ScanImage, UiEvent};
+use super::{Action, LabRequest, LogLevel, Pattern, ScanImage, UiEvent};
 use lumap_core::params::ParamAddress;
 use lumap_core::project::is_valid_id;
 use serde::Deserialize;
@@ -41,7 +41,8 @@ pub fn route(method: &str, path_and_query: &str, body: &[u8]) -> Result<LabReque
         return Err((405, format!("{path} answers {want}, not {method}")));
     }
     let query = pairs(query)?;
-    if let (Some((key, _)), false) = (query.first(), matches!(endpoint, Endpoint::Camera)) {
+    let takes_query = matches!(endpoint, Endpoint::Camera | Endpoint::Logs);
+    if let (Some((key, _)), false) = (query.first(), takes_query) {
         return Err((400, format!("{path} takes no query parameter `{key}`")));
     }
     endpoint.request(&query, body)
@@ -85,6 +86,7 @@ enum Endpoint {
     Found(String),
     Realign,
     Vision(String),
+    Logs,
 }
 
 impl Endpoint {
@@ -112,6 +114,7 @@ impl Endpoint {
             ["", "lab", "found", projector] => Self::Found(id(projector, "projector")?),
             ["", "lab", "realign"] => Self::Realign,
             ["", "lab", "vision", file] => Self::Vision(id(png(file, path)?, "vision image")?),
+            ["", "lab", "logs"] => Self::Logs,
             _ => return Err(not_found(path)),
         })
     }
@@ -141,6 +144,7 @@ impl Endpoint {
             Self::Found(projector) => LabRequest::Found { projector },
             Self::Realign => LabRequest::Realign,
             Self::Vision(name) => LabRequest::Vision { name },
+            Self::Logs => logs(query)?,
         })
     }
 }
@@ -202,6 +206,72 @@ fn camera(query: &[(&str, &str)]) -> Result<LabRequest, Refusal> {
         settle_ms,
         frames: frames as u32,
     })
+}
+
+/// Most log lines one request returns.
+pub const MAX_LOG_LINES: u64 = 5000;
+/// Log lines returned when the request does not say.
+pub const DEFAULT_LOG_LINES: u64 = 300;
+
+fn logs(query: &[(&str, &str)]) -> Result<LabRequest, Refusal> {
+    let (mut lines, mut level, mut grep) = (DEFAULT_LOG_LINES, LogLevel::Debug, None);
+    for &(key, value) in query {
+        match key {
+            "lines" => lines = number(key, value, 1, MAX_LOG_LINES)?,
+            "level" => {
+                level = match value.to_ascii_lowercase().as_str() {
+                    "error" => LogLevel::Error,
+                    "warn" => LogLevel::Warn,
+                    "info" => LogLevel::Info,
+                    "debug" => LogLevel::Debug,
+                    "trace" => LogLevel::Trace,
+                    _ => {
+                        return Err((
+                            400,
+                            format!("level must be error, warn, info, debug or trace, not {value:?}"),
+                        ))
+                    }
+                }
+            }
+            "grep" => grep = Some(unescape(value)),
+            _ => {
+                return Err((
+                    400,
+                    format!("unknown query parameter `{key}`; logs takes lines, level and grep"),
+                ))
+            }
+        }
+    }
+    Ok(LabRequest::Logs {
+        lines: lines as u32,
+        level,
+        grep,
+    })
+}
+
+/// A query value with `+` and `%XX` decoded.
+fn unescape(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => out.push(b' '),
+            b'%' if i + 2 < bytes.len() => {
+                let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
+                match hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                    Some(b) => {
+                        out.push(b);
+                        i += 2;
+                    }
+                    None => out.push(b'%'),
+                }
+            }
+            b => out.push(b),
+        }
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// A whole number from `min` to `max`.
