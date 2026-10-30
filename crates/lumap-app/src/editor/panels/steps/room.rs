@@ -113,7 +113,7 @@ pub fn controls(ui: &mut egui::Ui, editor: &mut Editor, id: &str, kind: &SourceK
             ui.label(
                 RichText::new(match i {
                     PaintInput::Light => {
-                        "Draw on the wall with a phone torch, a laser pointer or a glow stick, in a dark room."
+                        "Draw on the wall with a phone torch, a laser pointer or a glow stick."
                     }
                     PaintInput::Hand => {
                         "Pinch thumb and finger to draw, open your hand to stop, make a fist to clear."

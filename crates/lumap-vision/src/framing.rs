@@ -65,9 +65,9 @@ impl Problem {
                  or zoom in, so it fills most of the picture.",
                 f * 100.0
             ),
-            Self::Dim => "The projector barely brightens the wall in the camera's view. Dim the \
-                          lights or close the curtains, or the scan will take longer and miss \
-                          detail."
+            Self::Dim => "The projector barely brightens the wall in the camera's view. lumap \
+                          reads faint stripes too, but for more detail move the camera closer or \
+                          turn the projector's brightness up."
                 .into(),
             Self::Blocked(area) => format!(
                 "Something is blocking the {area} of the projection. Move it, or step out of \
@@ -101,7 +101,40 @@ pub struct Framing {
     pub bounds: Option<[u32; 4]>,
     /// Share of the camera's picture it covers.
     pub coverage: f64,
+    /// How bright the room is next to the projector's own light, inside the projection: the
+    /// typical brightness with the projector black over its typical brightening when white.
+    /// 0 is a dark room; around 1 or more, room light rivals the projector.
+    pub room_light: f64,
 }
+
+impl Framing {
+    /// How the room's light compares with the projector's, for the scan sheet to say.
+    pub fn light(&self) -> Light {
+        if self.room_light >= BRIGHT_ROOM {
+            Light::Bright
+        } else if self.room_light >= LIT_ROOM {
+            Light::Lit
+        } else {
+            Light::Dark
+        }
+    }
+}
+
+/// The room's light next to the projector's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Light {
+    /// The projector's light is most of what the camera sees.
+    Dark,
+    /// Room light is there, but the projector clearly outshines it.
+    Lit,
+    /// Room light rivals the projector.
+    Bright,
+}
+
+/// `room_light` from which a room counts as lit.
+const LIT_ROOM: f64 = 0.25;
+/// `room_light` from which room light rivals the projector.
+const BRIGHT_ROOM: f64 = 1.0;
 
 /// Share of the picture's width or height counted as touching an edge.
 const EDGE_BAND: f64 = 0.015;
@@ -122,6 +155,7 @@ pub fn check(white: &Gray, black: &Gray) -> Framing {
         footprint: Gray::new(w, h),
         bounds: None,
         coverage: 0.0,
+        room_light: 0.0,
     };
     if w == 0 || h == 0 || black.width != w || black.height != h {
         return empty;
@@ -246,17 +280,29 @@ pub fn check(white: &Gray, black: &Gray) -> Framing {
         .map(|(d, _)| *d)
         .collect();
     inside_diff.sort_unstable();
-    if inside_diff
-        .get(inside_diff.len() / 2)
-        .is_some_and(|m| *m < DIM)
-    {
+    let brightening = inside_diff.get(inside_diff.len() / 2).copied();
+    if brightening.is_some_and(|m| m < DIM) {
         problems.push(Problem::Dim);
     }
+    let mut inside_black: Vec<u8> = black
+        .data
+        .iter()
+        .zip(&footprint.data)
+        .filter(|(_, f)| **f > 0)
+        .map(|(b, _)| *b)
+        .collect();
+    inside_black.sort_unstable();
+    let room = inside_black
+        .get(inside_black.len() / 2)
+        .copied()
+        .unwrap_or(0);
+    let room_light = f64::from(room) / f64::from(brightening.unwrap_or(0).max(1));
     Framing {
         problems,
         footprint,
         bounds: Some([x0, y0, x1, y1]),
         coverage,
+        room_light,
     }
 }
 
@@ -346,5 +392,37 @@ mod tests {
         assert!(Problem::Blind.is_blocking() && !Problem::Dim.is_blocking());
         let mismatched = check(&Gray::new(4, 4), &Gray::new(2, 2));
         assert_eq!(mismatched.problems, vec![Problem::Blind]);
+    }
+
+    #[test]
+    fn room_light_is_measured_against_the_projector() {
+        let footprint = |v: u8| {
+            Gray::from_fn(100, 60, |x, y| {
+                if (20..80).contains(&x) && (15..45).contains(&y) {
+                    v
+                } else {
+                    0
+                }
+            })
+        };
+        // Dark room: black is black, white brightens a lot.
+        let dark = check(&footprint(200), &Gray::new(100, 60));
+        assert_eq!(dark.light(), Light::Dark);
+        // Lights on: the wall is already bright with the projector black.
+        let lit_black = Gray::from_fn(100, 60, |_, _| 90);
+        let lit_white = Gray::from_fn(100, 60, |x, y| {
+            if (20..80).contains(&x) && (15..45).contains(&y) {
+                160
+            } else {
+                90
+            }
+        });
+        let lit = check(&lit_white, &lit_black);
+        assert!(lit.room_light > 1.0, "{}", lit.room_light);
+        assert_eq!(lit.light(), Light::Bright);
+        assert_eq!(
+            check(&Gray::new(100, 60), &Gray::new(100, 60)).room_light,
+            0.0
+        );
     }
 }

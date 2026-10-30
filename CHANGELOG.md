@@ -6,6 +6,35 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-30
+
+### Added
+
+- **Fix the camera first.** Before the stripes, a scan checks what the camera sees. If the
+  projection runs off the edge of the picture, is too small or too dim, or something blocks it,
+  the scan pauses and says what to move. *Check again* looks once more, and *Scan anyway* carries
+  on.
+- **A scan you can watch.** The scan sheet shows the live camera with the projection outlined,
+  beside a picture of where every pixel lands that fills in stripe by stripe.
+- **The scan says what it sees.** It measures the room's light against the projector's and says
+  how it is coping (a dark room, some light, or a bright room it reads more carefully), with the
+  time left. No message asks for a dark room any more: lumap adjusts to the light it finds.
+- **Sharpness** per projector (Setup, Picture): crisps up a projector that is a little out of
+  focus.
+
+### Fixed
+
+- Scanning with a phone used as a webcam (such as a phone linked to Windows) failed every time.
+  Scans now wait out the phone's start-up spinner, its delay and its auto-exposure. A scan takes
+  under a minute per projector, down from about six, and works with the room lights on.
+- The wall photo filled only a few percent of the projection when the camera has fewer pixels
+  than the projector. It now fills the whole projection, ignoring light bounced off the room.
+- Finding surfaces after a scan could take over a minute. It now takes under a second.
+- Projector windows now cover their whole display, so no desktop shows at the edges.
+- Scans skip projectors that are not on a display, and one failed projector no longer costs the
+  others their scans.
+- No console windows flash up while lumap uses its bundled video tools.
+
 ## [0.7.0] - 2026-10-30
 
 ### Added
@@ -259,7 +288,8 @@ First release under the lumap name, as a REX Technologies product, in its own re
 - CPU reference renderer, wgpu renderer, golden-image tests and GPU-versus-oracle tests.
 - CI on Linux and Windows with clippy, cargo-deny, coverage floors and a release workflow.
 
-[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/tochi-mba/lumap/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/tochi-mba/lumap/compare/v0.5.1...v0.7.0
 [0.5.1]: https://github.com/tochi-mba/lumap/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/tochi-mba/lumap/compare/v0.4.0...v0.5.0

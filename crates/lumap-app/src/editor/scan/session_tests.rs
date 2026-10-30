@@ -80,19 +80,40 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
     let at = |ms| t0 + Duration::from_millis(ms);
     s.reference = Some(thumbnail(&half(200, true)));
     // The camera still shows the old picture, only darker (auto-exposure): wait.
-    assert_eq!(s.ready(&half(120, true), PatternFrame::Black, at(200)), Ready::Wait);
+    assert_eq!(
+        s.ready(&half(120, true), PatternFrame::Black, at(200)),
+        Ready::Wait
+    );
     // The new pattern arrives 400 ms later: that is the lag; one more frame to see it hold.
-    assert_eq!(s.ready(&half(120, false), PatternFrame::Black, at(400)), Ready::Wait);
+    assert_eq!(
+        s.ready(&half(120, false), PatternFrame::Black, at(400)),
+        Ready::Wait
+    );
     assert_eq!(s.lag(), Some(Duration::from_millis(400)));
     // Auto-exposure still moving: wait; still frames too soon after the change (a phone fading
     // the pattern in): wait; still for two frames after the fade time: photograph.
-    assert_eq!(s.ready(&half(150, false), PatternFrame::Black, at(433)), Ready::Wait);
-    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(466)), Ready::Wait);
-    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(500)), Ready::Wait);
-    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(850)), Ready::Collect);
+    assert_eq!(
+        s.ready(&half(150, false), PatternFrame::Black, at(433)),
+        Ready::Wait
+    );
+    assert_eq!(
+        s.ready(&half(151, false), PatternFrame::Black, at(466)),
+        Ready::Wait
+    );
+    assert_eq!(
+        s.ready(&half(151, false), PatternFrame::Black, at(500)),
+        Ready::Wait
+    );
+    assert_eq!(
+        s.ready(&half(151, false), PatternFrame::Black, at(850)),
+        Ready::Collect
+    );
     // Once collecting, the next frames count too.
     s.collected.push(half(151, false));
-    assert_eq!(s.ready(&half(170, false), PatternFrame::Black, at(900)), Ready::Collect);
+    assert_eq!(
+        s.ready(&half(170, false), PatternFrame::Black, at(900)),
+        Ready::Collect
+    );
     // Later patterns: 300 ms, then one slow 2.5 s frame; the lag is the median, not the worst.
     for (start, seen_after) in [(1_000, 300), (5_000, 2_500)] {
         s.shown_at = at(start);
@@ -100,7 +121,11 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
         s.collected.clear();
         s.reference = Some(thumbnail(&half(200, true)));
         assert_eq!(
-            s.ready(&half(200, false), PatternFrame::Black, at(start + seen_after)),
+            s.ready(
+                &half(200, false),
+                PatternFrame::Black,
+                at(start + seen_after)
+            ),
             Ready::Wait
         );
     }
@@ -173,17 +198,16 @@ fn a_scan_through_a_camera_that_lags_like_a_phone_still_decodes() {
     let frames: FrameFn = Arc::new(move |n| {
         let h = history.lock().unwrap();
         let i = (n as usize).saturating_sub(LAG);
-        let gray = h
-            .get(i)
-            .cloned()
-            .flatten()
-            .map_or_else(|| Gray::new(PW, PH), |f| {
+        let gray = h.get(i).cloned().flatten().map_or_else(
+            || Gray::new(PW, PH),
+            |f| {
                 Gray::from_rgba(&Rgba {
                     width: f.width,
                     height: f.height,
                     data: f.rgba.clone(),
                 })
-            });
+            },
+        );
         let img = studio::photograph(&room, &gray, &cam);
         Frame {
             width: img.width,
@@ -248,7 +272,9 @@ fn decode_saved_captures() {
     let code = GrayCode::new(w.parse().unwrap(), h.parse().unwrap());
     let mut decoder = None;
     for i in 0..code.frames().len() {
-        let img = image::open(dir.join(format!("{i:02}.png"))).unwrap().into_luma8();
+        let img = image::open(dir.join(format!("{i:02}.png")))
+            .unwrap()
+            .into_luma8();
         let d = decoder.get_or_insert_with(|| Decoder::new(&code, img.width(), img.height()));
         d.add(
             i,

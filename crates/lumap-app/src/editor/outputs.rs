@@ -312,7 +312,11 @@ pub fn show_output_windows(
             // wall at an edge.
             ui.ctx()
                 .layer_painter(egui::LayerId::background())
-                .rect_filled(ui.ctx().viewport_rect().expand(4.0), 0.0, egui::Color32::BLACK);
+                .rect_filled(
+                    ui.ctx().viewport_rect().expand(4.0),
+                    0.0,
+                    egui::Color32::BLACK,
+                );
             ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
             if let Some(scene) = &scene {
                 paint_scene(ui, rect, format!("output:{id}"), Arc::clone(scene), format);
