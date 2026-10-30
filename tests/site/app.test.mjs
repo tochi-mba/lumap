@@ -98,7 +98,7 @@ test('on Windows the download button is left alone', () => {
 });
 
 test('elsewhere the button says so, leads to the releases page and the note appears', () => {
-  for (const [platform, name] of [['mac', 'macOS'], ['linux', 'Linux'], ['other', 'this device']]) {
+  for (const [platform, name] of [['mac', 'macOS'], ['linux', 'Linux'], ['other', 'this device'], ['plan9', 'this device']]) {
     const doc = downloadDocument();
     assert.equal(applyPlatform(doc, platform), true);
     const button = doc.byId.download;
@@ -118,6 +118,7 @@ test('the installer is found by name and only when this repository hosts it', ()
   assert.equal(findInstaller({}), null);
   assert.equal(findInstaller(null), null);
   assert.equal(findInstaller({ assets: [{}] }), null);
+  assert.equal(findInstaller({ assets: [{ name: 'lumap-Setup-1.exe' }] }), null, 'an asset without a download url');
   assert.equal(findInstaller(release, 'mac'), null, 'no installer pattern for an unsupported platform');
   assert.deepEqual(Object.keys(SUPPORTED), ['windows']);
 });
