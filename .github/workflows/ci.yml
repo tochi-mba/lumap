@@ -137,7 +137,10 @@ jobs:
           LUMAP_REQUIRE_GPU: "1"
           WGPU_BACKEND: vulkan
       - name: Enforce 100% per file (lines, regions, branches; window shell excluded)
-        run: cargo run -q -p xtask -- check-coverage coverage.json | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo run -q -p xtask -- check-coverage coverage.json 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
   msrv:
     name: Minimum supported Rust
