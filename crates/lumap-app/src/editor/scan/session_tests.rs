@@ -72,6 +72,18 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
     // Once collecting, the next frames count too.
     s.collected.push(frame(151));
     assert_eq!(s.ready(&frame(170), PatternFrame::Black, at(500)), Ready::Collect);
+    // Later patterns: 300 ms, then one slow 2.5 s frame; the lag is the median, not the worst.
+    for (start, seen_after) in [(1_000, 300), (5_000, 2_500)] {
+        s.shown_at = at(start);
+        s.changed_at = None;
+        s.collected.clear();
+        s.reference = Some(thumbnail(&frame(20)));
+        assert_eq!(
+            s.ready(&frame(200), PatternFrame::Black, at(start + seen_after)),
+            Ready::Wait
+        );
+    }
+    assert_eq!(s.lag(), Some(Duration::from_millis(400)));
 }
 
 #[test]

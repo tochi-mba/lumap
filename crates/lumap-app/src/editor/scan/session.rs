@@ -143,8 +143,10 @@ pub struct ScanSession {
     previous: Option<Vec<u8>>,
     /// When the camera started showing the new pattern.
     changed_at: Option<Instant>,
-    /// The camera's lag behind the projector, measured on the first patterns.
+    /// The camera's lag behind the projector: the median of every clear change measured.
     lag: Option<Duration>,
+    /// Each lag measured so far.
+    lags: Vec<Duration>,
     workers: Vec<Receiver<WorkerResult>>,
     scans: Vec<ScanData>,
     drifts: Vec<DriftReport>,
@@ -199,6 +201,7 @@ impl ScanSession {
             previous: None,
             changed_at: None,
             lag: None,
+            lags: Vec::new(),
             workers: Vec::new(),
             scans: Vec::new(),
             drifts: Vec::new(),
@@ -370,6 +373,18 @@ impl ScanSession {
         if frames[self.frame] == PatternFrame::White {
             self.white_color = Some(photo.clone());
         }
+        if std::env::var_os("LUMAP_SCAN_DEBUG").is_some() {
+            // Every photographed pattern, for looking at what the camera really saw.
+            let dir = self.root.join(&id).join("captures");
+            let path = dir.join(format!("{:02}.png", self.frame));
+            let (w, h, data) = (photo.width, photo.height, photo.data.clone());
+            std::thread::spawn(move || {
+                let _ = std::fs::create_dir_all(&dir);
+                if let Some(img) = image::RgbaImage::from_raw(w, h, data) {
+                    let _ = img.save(path);
+                }
+            });
+        }
         if let Some(d) = &mut self.decoder {
             d.add(self.frame, &Gray::from_rgba(&photo));
         }
@@ -406,8 +421,12 @@ impl ScanSession {
             self.previous = Some(small);
             if moved {
                 self.changed_at = Some(now);
-                // The lag is the longest any clear change took to show up; it only grows.
-                self.lag = Some(self.lag.map_or(waited, |l| l.max(waited)));
+                // The lag is the median of the clear changes so far: one slow frame from a
+                // phone streamed over Wi-Fi must not stretch every later wait.
+                self.lags.push(waited);
+                let mut sorted = self.lags.clone();
+                sorted.sort_unstable();
+                self.lag = Some(sorted[sorted.len() / 2]);
                 return Ready::Wait;
             }
             if waited < limit {

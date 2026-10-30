@@ -109,14 +109,24 @@ impl GrayCode {
 /// Decoder thresholds.
 #[derive(Debug, Clone, Copy)]
 pub struct DecodeSettings {
+    /// White-minus-black brightness a camera pixel needs to be lit by the projector at all.
     pub min_contrast: u8,
+    /// Pattern-minus-inverse brightness a stripe needs to be read.
     pub min_bit_contrast: u8,
+    /// Share of the pixel's own white-minus-black contrast a stripe must reach to be read. Light
+    /// bounced off the room changes a little with every pattern; light from the projector
+    /// changes by about the whole contrast.
+    pub min_bit_ratio: f64,
+    /// Stripes per axis that must be read, coarsest first, for the pixel to count at all.
+    pub min_bits: u32,
 }
 impl Default for DecodeSettings {
     fn default() -> Self {
         Self {
             min_contrast: 20,
             min_bit_contrast: 6,
+            min_bit_ratio: 0.3,
+            min_bits: 3,
         }
     }
 }
@@ -184,6 +194,10 @@ impl Decoder {
                 continue;
             }
             let (mut gx, mut gy, mut at) = (0, 0, 2);
+            let need = (f64::from(contrast) * s.min_bit_ratio)
+                .max(f64::from(s.min_bit_contrast))
+                .round() as u8;
+            let mut readable = true;
             for (axis, n, start) in [
                 (Axis::X, self.code.bx, self.code.sx),
                 (Axis::Y, self.code.by, self.code.sy),
@@ -202,7 +216,7 @@ impl Decoder {
                         .and_then(Option::as_ref)
                         .map_or(0, |p| p.data[i]);
                     at += 2;
-                    if a.abs_diff(b) < s.min_bit_contrast {
+                    if a.abs_diff(b) < need {
                         unknown = bit + 1;
                         at += 2 * (bit - start) as usize;
                         break;
@@ -217,6 +231,10 @@ impl Decoder {
                     bin ^= shift;
                     shift >>= 1
                 }
+                // Too few stripes read: this is not a pixel the projector lights directly.
+                if unknown - start + s.min_bits.min(n) > n {
+                    readable = false;
+                }
                 if unknown > 0 {
                     let low = (1u32 << unknown) - 1;
                     bin &= !low;
@@ -227,7 +245,7 @@ impl Decoder {
                     Axis::Y => gy = bin,
                 }
             }
-            if gx < self.code.w && gy < self.code.h {
+            if readable && gx < self.code.w && gy < self.code.h {
                 proj[i] = [gx as f32 + 0.5, gy as f32 + 0.5];
                 confidence[i] = contrast;
                 valid += 1
