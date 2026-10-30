@@ -5,6 +5,7 @@ use super::super::MonitorInfo;
 use super::Actions;
 use crate::settings::Settings;
 use crate::update::CheckUi;
+use crate::update::flow::Banner;
 use eframe::egui::{self, RichText};
 
 /// Draws the start page over the whole window.
@@ -14,6 +15,7 @@ pub fn start_page(
     settings: &Settings,
     actions: &mut Actions,
     check: &CheckUi,
+    banner: &Banner,
 ) {
     egui::CentralPanel::default()
         .frame(
@@ -34,6 +36,18 @@ pub fn start_page(
                         ui.add_space(16.0);
                         card(ui, |ui| super::looks::welcome_row(ui, actions));
                         ui.add_space(16.0);
+                        if *banner != Banner::None {
+                            card(ui, |ui| {
+                                crate::theme::section_header(ui, "App update");
+                                ui.horizontal_wrapped(|ui| {
+                                    super::update_banner(ui, banner, actions);
+                                });
+                                ui.label(RichText::new(
+                                    "Downloads are verified. You decide when to install."
+                                ).weak().small());
+                            });
+                            ui.add_space(16.0);
+                        }
                         footer(ui, settings, actions, check);
                     });
                 });

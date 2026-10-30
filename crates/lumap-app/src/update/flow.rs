@@ -12,9 +12,9 @@ use std::time::Duration;
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
     /// Say a newer version exists; download only when asked.
-    #[default]
     Notify,
-    /// Download it in the background and say when it is ready to install.
+    /// Download and verify in the background; installation always needs a click.
+    #[default]
     Download,
     /// Never look.
     Off,
