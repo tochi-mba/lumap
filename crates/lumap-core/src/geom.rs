@@ -228,6 +228,20 @@ impl Homography {
         Ok(Self { forward, inverse })
     }
 
+    /// Wraps a forward matrix (source → destination), for example one fitted to many point
+    /// pairs. The matrix is scaled so its bottom-right entry is `1` when that entry is not zero.
+    pub fn from_matrix(m: Mat3) -> Result<Self, HomographyError> {
+        if !m.0.iter().all(|v| v.is_finite()) {
+            return Err(HomographyError::NonFinite);
+        }
+        let forward = m.normalised();
+        let inverse = forward
+            .inverse()
+            .ok_or(HomographyError::Degenerate)?
+            .normalised();
+        Ok(Self { forward, inverse })
+    }
+
     /// Identity transform.
     pub fn identity() -> Self {
         Self {
@@ -471,6 +485,28 @@ mod tests {
         for (s, d) in src.iter().zip(dst.iter()) {
             assert!(close(h.map(*s).unwrap(), *d));
         }
+    }
+
+    #[test]
+    fn from_matrix_wraps_a_matrix_and_rejects_bad_ones() {
+        let m = Mat3([2.0, 0.1, 5.0, 0.2, 3.0, -1.0, 0.001, 0.002, 2.0]);
+        let h = Homography::from_matrix(m).unwrap();
+        assert!((h.matrix().at(2, 2) - 1.0).abs() < 1e-12, "normalised");
+        let p = Vec2::new(4.0, 7.0);
+        let q = m.apply(p).unwrap();
+        assert!(close(h.map(p).unwrap(), q));
+        assert!(close(h.unmap(q).unwrap(), p));
+        let singular = Mat3([1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 0.0, 1.0]);
+        assert_eq!(
+            Homography::from_matrix(singular),
+            Err(HomographyError::Degenerate)
+        );
+        let mut nan = Mat3::IDENTITY;
+        nan.0[4] = f64::NAN;
+        assert_eq!(
+            Homography::from_matrix(nan),
+            Err(HomographyError::NonFinite)
+        );
     }
 
     fn convex_quad() -> impl Strategy<Value = [Vec2; 4]> {
