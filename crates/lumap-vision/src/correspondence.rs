@@ -145,17 +145,43 @@ impl Correspondence {
     }
     /// Removes isolated decode outliers.
     pub fn median_filter(&mut self) {
-        if self.cam_w < 3 || self.cam_h < 3 { return; }
+        if self.cam_w < 3 || self.cam_h < 3 {
+            return;
+        }
         let old = self.proj.clone();
-        for y in 1..self.cam_h-1 { for x in 1..self.cam_w-1 {
-            let i=y as usize*self.cam_w as usize+x as usize;
-            if !old[i][0].is_finite(){continue}
-            let mut xs=Vec::with_capacity(9);let mut ys=Vec::with_capacity(9);
-            for yy in y-1..=y+1{for xx in x-1..=x+1{let p=old[yy as usize*self.cam_w as usize+xx as usize];if p[0].is_finite(){xs.push(p[0]);ys.push(p[1]);}}}
-            if xs.len()<5{self.proj[i]=[f32::NAN;2];self.confidence[i]=0;continue}
-            xs.sort_by(f32::total_cmp);ys.sort_by(f32::total_cmp);let m=[xs[xs.len()/2],ys[ys.len()/2]];
-            let dx=old[i][0]-m[0];let dy=old[i][1]-m[1];if dx*dx+dy*dy>16.0{self.proj[i]=m;self.confidence[i]/=2;}
-        }}
+        for y in 1..self.cam_h - 1 {
+            for x in 1..self.cam_w - 1 {
+                let i = y as usize * self.cam_w as usize + x as usize;
+                if !old[i][0].is_finite() {
+                    continue;
+                }
+                let mut xs = Vec::with_capacity(9);
+                let mut ys = Vec::with_capacity(9);
+                for yy in y - 1..=y + 1 {
+                    for xx in x - 1..=x + 1 {
+                        let p = old[yy as usize * self.cam_w as usize + xx as usize];
+                        if p[0].is_finite() {
+                            xs.push(p[0]);
+                            ys.push(p[1]);
+                        }
+                    }
+                }
+                if xs.len() < 5 {
+                    self.proj[i] = [f32::NAN; 2];
+                    self.confidence[i] = 0;
+                    continue;
+                }
+                xs.sort_by(f32::total_cmp);
+                ys.sort_by(f32::total_cmp);
+                let m = [xs[xs.len() / 2], ys[ys.len() / 2]];
+                let dx = old[i][0] - m[0];
+                let dy = old[i][1] - m[1];
+                if dx * dx + dy * dy > 16.0 {
+                    self.proj[i] = m;
+                    self.confidence[i] /= 2;
+                }
+            }
+        }
     }
 }
 /// Camera coordinates for every projector pixel.

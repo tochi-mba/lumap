@@ -1,8 +1,89 @@
 //! Animated comet light following connected room-edge chains.
-use crate::{Gray,Rgba};use lumap_core::geom::Vec2;
+use crate::{Gray, Rgba};
+use lumap_core::geom::Vec2;
 /// Linked edge chains in projector pixels.
-pub struct Trace{w:u32,h:u32,chains:Vec<Vec<Vec2>>}
-impl Trace{/// Links 8-connected edge pixels and drops tiny fragments.
-pub fn new(edges:&Gray)->Self{let mut seen=vec![false;edges.data.len()];let mut chains=Vec::new();for start in 0..edges.data.len(){if seen[start]||edges.data[start]==0{continue}let mut stack=vec![start];seen[start]=true;let mut component=Vec::new();while let Some(i)=stack.pop(){let(x,y)=(i%edges.width as usize,i/edges.width as usize);component.push(Vec2::new(x as f64+0.5,y as f64+0.5));for dy in -1..=1{for dx in -1..=1{let(xx,yy)=(x as i64+dx,y as i64+dy);if xx>=0&&yy>=0&&xx<i64::from(edges.width)&&yy<i64::from(edges.height){let j=yy as usize*edges.width as usize+xx as usize;if !seen[j]&&edges.data[j]>0{seen[j]=true;stack.push(j)}}}}}if component.len()>=20{let mut ordered=vec![component.swap_remove(0)];while !component.is_empty(){let last=*ordered.last().unwrap_or(&Vec2::ZERO);let(i,_)=component.iter().enumerate().min_by(|(_,a),(_,b)|a.distance(last).total_cmp(&b.distance(last))).unwrap_or((0,&Vec2::ZERO));ordered.push(component.swap_remove(i));}chains.push(ordered)}}Self{w:edges.width,h:edges.height,chains}}/// Draws a faint edge base plus staggered comet pulses.
-pub fn render(&self,out:&mut Rgba,color:[f32;4],speed:f32,t:f64){*out=Rgba::new(self.w,self.h);let rgb=color.map(|v|(v.clamp(0.0,1.0)*255.0)as u8);for(ci,chain)in self.chains.iter().enumerate(){let n=chain.len().max(1);let head=((t*f64::from(speed)*70.0+ci as f64*37.0).rem_euclid(n as f64))as usize;for(i,p)in chain.iter().enumerate(){let tail=(head+n-i)%n;let alpha=if tail<28{(1.0-tail as f64/28.0)*f64::from(rgb[3])}else{0.1*f64::from(rgb[3])};let x=p.x as u32;let y=p.y as u32;if x<self.w&&y<self.h{out.set(x,y,[rgb[0],rgb[1],rgb[2],alpha as u8])}}}}/// Number of connected chains.
-pub fn chains(&self)->usize{self.chains.len()}}
+pub struct Trace {
+    w: u32,
+    h: u32,
+    chains: Vec<Vec<Vec2>>,
+}
+impl Trace {
+    /// Links 8-connected edge pixels and drops tiny fragments.
+    pub fn new(edges: &Gray) -> Self {
+        let mut seen = vec![false; edges.data.len()];
+        let mut chains = Vec::new();
+        for start in 0..edges.data.len() {
+            if seen[start] || edges.data[start] == 0 {
+                continue;
+            }
+            let mut stack = vec![start];
+            seen[start] = true;
+            let mut component = Vec::new();
+            while let Some(i) = stack.pop() {
+                let (x, y) = (i % edges.width as usize, i / edges.width as usize);
+                component.push(Vec2::new(x as f64 + 0.5, y as f64 + 0.5));
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let (xx, yy) = (x as i64 + dx, y as i64 + dy);
+                        if xx >= 0
+                            && yy >= 0
+                            && xx < i64::from(edges.width)
+                            && yy < i64::from(edges.height)
+                        {
+                            let j = yy as usize * edges.width as usize + xx as usize;
+                            if !seen[j] && edges.data[j] > 0 {
+                                seen[j] = true;
+                                stack.push(j)
+                            }
+                        }
+                    }
+                }
+            }
+            if component.len() >= 20 {
+                let mut ordered = vec![component.swap_remove(0)];
+                while !component.is_empty() {
+                    let last = *ordered.last().unwrap_or(&Vec2::ZERO);
+                    let (i, _) = component
+                        .iter()
+                        .enumerate()
+                        .min_by(|(_, a), (_, b)| a.distance(last).total_cmp(&b.distance(last)))
+                        .unwrap_or((0, &Vec2::ZERO));
+                    ordered.push(component.swap_remove(i));
+                }
+                chains.push(ordered)
+            }
+        }
+        Self {
+            w: edges.width,
+            h: edges.height,
+            chains,
+        }
+    }
+    /// Draws a faint edge base plus staggered comet pulses.
+    pub fn render(&self, out: &mut Rgba, color: [f32; 4], speed: f32, t: f64) {
+        *out = Rgba::new(self.w, self.h);
+        let rgb = color.map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8);
+        for (ci, chain) in self.chains.iter().enumerate() {
+            let n = chain.len().max(1);
+            let head =
+                ((t * f64::from(speed) * 70.0 + ci as f64 * 37.0).rem_euclid(n as f64)) as usize;
+            for (i, p) in chain.iter().enumerate() {
+                let tail = (head + n - i) % n;
+                let alpha = if tail < 28 {
+                    (1.0 - tail as f64 / 28.0) * f64::from(rgb[3])
+                } else {
+                    0.1 * f64::from(rgb[3])
+                };
+                let x = p.x as u32;
+                let y = p.y as u32;
+                if x < self.w && y < self.h {
+                    out.set(x, y, [rgb[0], rgb[1], rgb[2], alpha as u8])
+                }
+            }
+        }
+    }
+    /// Number of connected chains.
+    pub fn chains(&self) -> usize {
+        self.chains.len()
+    }
+}

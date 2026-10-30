@@ -1,9 +1,93 @@
 //! Flat faces of the room from a scan's correspondences and the photo's shading.
-use crate::{features::{centres,label_regions,simplify,trace},Rgba};use lumap_core::geom::Vec2;
+use crate::{
+    features::{centres, label_regions, simplify, trace},
+    Rgba,
+};
+use lumap_core::geom::Vec2;
 /// A coherent photographed face.
-#[derive(Debug,Clone)] pub struct Facet{pub outline:Vec<Vec2>,pub area:f64,pub mean:[u8;3],pub flatness:f64}
+#[derive(Debug, Clone)]
+pub struct Facet {
+    pub outline: Vec<Vec2>,
+    pub area: f64,
+    pub mean: [u8; 3],
+    pub flatness: f64,
+}
 /// Region-growing controls.
-#[derive(Debug,Clone,Copy)] pub struct FacetSettings{pub color_tolerance:f64,pub min_area:f64,pub edge_weight:f64}
-impl Default for FacetSettings{fn default()->Self{Self{color_tolerance:18.0,min_area:64.0,edge_weight:1.0}}}
+#[derive(Debug, Clone, Copy)]
+pub struct FacetSettings {
+    pub color_tolerance: f64,
+    pub min_area: f64,
+    pub edge_weight: f64,
+}
+impl Default for FacetSettings {
+    fn default() -> Self {
+        Self {
+            color_tolerance: 18.0,
+            min_area: 64.0,
+            edge_weight: 1.0,
+        }
+    }
+}
 /// Segments a smoothed photograph into connected colour regions.
-pub fn segment(photo:&Rgba,corr:Option<&[[f32;2]]>,s:&FacetSettings)->Vec<Facet>{if !photo.is_consistent()||photo.width==0||photo.height==0{return Vec::new()}let w=photo.width as usize;let h=photo.height as usize;let step=s.color_tolerance.max(2.0);let keys:Vec<u32>=photo.data.chunks_exact(4).map(|p|{let r=(f64::from(p[0])/step)as u32;let g=(f64::from(p[1])/step)as u32;let b=(f64::from(p[2])/step)as u32;1+r+g*32+b*1024}).collect();let(labels,n)=label_regions(w,h,false,|i|keys[i]);let mut out=Vec::new();for label in 1..=n{let ids:Vec<usize>=labels.iter().enumerate().filter_map(|(i,&l)|(l==label).then_some(i)).collect();let area=ids.len()as f64;if area<s.min_area{continue}let outline=simplify(&centres(w,&trace(w,h,ids[0],|i|labels[i]==label)),2.0,true);if outline.len()<3{continue}let mut sum=[0u64;3];let mut valid=0usize;for&i in&ids{for c in 0..3{sum[c]+=u64::from(photo.data[i*4+c])}if corr.is_some_and(|m|m.get(i).is_some_and(|p|p[0].is_finite()&&p[1].is_finite())){valid+=1}}let mean=sum.map(|v|(v/ids.len()as u64)as u8);let flatness=corr.map_or(1.0,|_|valid as f64/ids.len()as f64);out.push(Facet{outline,area,mean,flatness});}out.sort_by(|a,b|b.area.total_cmp(&a.area));out}
+pub fn segment(photo: &Rgba, corr: Option<&[[f32; 2]]>, s: &FacetSettings) -> Vec<Facet> {
+    if !photo.is_consistent() || photo.width == 0 || photo.height == 0 {
+        return Vec::new();
+    }
+    let w = photo.width as usize;
+    let h = photo.height as usize;
+    let step = s.color_tolerance.max(2.0);
+    let keys: Vec<u32> = photo
+        .data
+        .chunks_exact(4)
+        .map(|p| {
+            let r = (f64::from(p[0]) / step) as u32;
+            let g = (f64::from(p[1]) / step) as u32;
+            let b = (f64::from(p[2]) / step) as u32;
+            1 + r + g * 32 + b * 1024
+        })
+        .collect();
+    let (labels, n) = label_regions(w, h, false, |i| keys[i]);
+    let mut out = Vec::new();
+    for label in 1..=n {
+        let ids: Vec<usize> = labels
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &l)| (l == label).then_some(i))
+            .collect();
+        let area = ids.len() as f64;
+        if area < s.min_area {
+            continue;
+        }
+        let outline = simplify(
+            &centres(w, &trace(w, h, ids[0], |i| labels[i] == label)),
+            2.0,
+            true,
+        );
+        if outline.len() < 3 {
+            continue;
+        }
+        let mut sum = [0u64; 3];
+        let mut valid = 0usize;
+        for &i in &ids {
+            for c in 0..3 {
+                sum[c] += u64::from(photo.data[i * 4 + c])
+            }
+            if corr.is_some_and(|m| {
+                m.get(i)
+                    .is_some_and(|p| p[0].is_finite() && p[1].is_finite())
+            }) {
+                valid += 1
+            }
+        }
+        let mean = sum.map(|v| (v / ids.len() as u64) as u8);
+        let flatness = corr.map_or(1.0, |_| valid as f64 / ids.len() as f64);
+        out.push(Facet {
+            outline,
+            area,
+            mean,
+            flatness,
+        });
+    }
+    out.sort_by(|a, b| b.area.total_cmp(&a.area));
+    out
+}

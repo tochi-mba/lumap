@@ -42,14 +42,14 @@ impl GrayCode {
     }
     /// Coarse sequence using high bits.
     pub fn coarse(w: u32, h: u32, n: u32) -> Self {
-        let (full_x,full_y)=(bits(w),bits(h));
-        let (bx,by)=(full_x.min(n),full_y.min(n));
-        Self::build(w,h,bx,by,full_x-bx,full_y-by)
+        let (full_x, full_y) = (bits(w), bits(h));
+        let (bx, by) = (full_x.min(n), full_y.min(n));
+        Self::build(w, h, bx, by, full_x - bx, full_y - by)
     }
-    fn build(w: u32, h: u32, bx: u32, by: u32, sx:u32, sy:u32) -> Self {
+    fn build(w: u32, h: u32, bx: u32, by: u32, sx: u32, sy: u32) -> Self {
         let mut frames = vec![PatternFrame::White, PatternFrame::Black];
-        for (axis, n, start) in [(Axis::X, bx,sx), (Axis::Y, by,sy)] {
-            for bit in (start..start+n).rev() {
+        for (axis, n, start) in [(Axis::X, bx, sx), (Axis::Y, by, sy)] {
+            for bit in (start..start + n).rev() {
                 frames.push(PatternFrame::Bit {
                     axis,
                     bit,
@@ -184,10 +184,13 @@ impl Decoder {
                 continue;
             }
             let (mut gx, mut gy, mut at) = (0, 0, 2);
-            for (axis, n,start) in [(Axis::X, self.code.bx,self.code.sx), (Axis::Y, self.code.by,self.code.sy)] {
+            for (axis, n, start) in [
+                (Axis::X, self.code.bx, self.code.sx),
+                (Axis::Y, self.code.by, self.code.sy),
+            ] {
                 let mut g = 0u32;
-                let mut unknown=start;
-                for bit in (start..start+n).rev() {
+                let mut unknown = start;
+                for bit in (start..start + n).rev() {
                     let a = self
                         .photos
                         .get(at)
@@ -199,7 +202,11 @@ impl Decoder {
                         .and_then(Option::as_ref)
                         .map_or(0, |p| p.data[i]);
                     at += 2;
-                    if a.abs_diff(b) < s.min_bit_contrast { unknown=bit+1; at+=2*(bit-start)as usize; break }
+                    if a.abs_diff(b) < s.min_bit_contrast {
+                        unknown = bit + 1;
+                        at += 2 * (bit - start) as usize;
+                        break;
+                    }
                     if a > b {
                         g |= 1 << bit
                     }
@@ -210,7 +217,11 @@ impl Decoder {
                     bin ^= shift;
                     shift >>= 1
                 }
-                if unknown>0{let low=(1u32<<unknown)-1;bin&=!low;bin+=1u32<<(unknown-1);}
+                if unknown > 0 {
+                    let low = (1u32 << unknown) - 1;
+                    bin &= !low;
+                    bin += 1u32 << (unknown - 1);
+                }
                 match axis {
                     Axis::X => gx = bin,
                     Axis::Y => gy = bin,

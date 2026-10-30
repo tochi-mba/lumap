@@ -1,12 +1,105 @@
 //! Find ranked quads, polygons and circles in a projector-eye photograph.
-use crate::{facets,features::{self,shapes},Gray,Rgba};use lumap_core::geom::Vec2;
+use crate::{
+    facets,
+    features::{self, shapes},
+    Gray, Rgba,
+};
+use lumap_core::geom::Vec2;
 /// Shape of a suggestion.
-#[derive(Debug,Clone,Copy,PartialEq,Eq)] pub enum SuggestionKind{Quad,Polygon,Circle}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SuggestionKind {
+    Quad,
+    Polygon,
+    Circle,
+}
 /// A ranked mapping suggestion.
-#[derive(Debug,Clone)] pub struct Suggestion{pub kind:SuggestionKind,pub points:Vec<Vec2>,pub score:f64,pub label:String}
+#[derive(Debug, Clone)]
+pub struct Suggestion {
+    pub kind: SuggestionKind,
+    pub points: Vec<Vec2>,
+    pub score: f64,
+    pub label: String,
+}
 /// Surface-finder limits.
-#[derive(Debug,Clone,Copy)] pub struct FindSettings{pub max:usize,pub min_area_fraction:f64,pub max_area_fraction:f64}
-impl Default for FindSettings{fn default()->Self{Self{max:12,min_area_fraction:0.002,max_area_fraction:0.85}}}
-fn candidate(points:Vec<Vec2>,area:f64,total:f64,flatness:f64)->Option<Suggestion>{let fit=shapes::quad_from_outline(&points);if let Some(q)=fit.filter(shapes::is_quad_like){return Some(Suggestion{kind:SuggestionKind::Quad,points:q.quad.to_vec(),score:(0.55+0.25*flatness+0.2*(area/total).sqrt()).min(1.0),label:"Flat face".into()})}let simplified=features::simplify(&points,2.0,true);(simplified.len()>=3).then(||Suggestion{kind:SuggestionKind::Polygon,points:simplified,score:(0.35+0.35*flatness+0.2*(area/total).sqrt()).min(1.0),label:"Object".into()})}
+#[derive(Debug, Clone, Copy)]
+pub struct FindSettings {
+    pub max: usize,
+    pub min_area_fraction: f64,
+    pub max_area_fraction: f64,
+}
+impl Default for FindSettings {
+    fn default() -> Self {
+        Self {
+            max: 12,
+            min_area_fraction: 0.002,
+            max_area_fraction: 0.85,
+        }
+    }
+}
+fn candidate(points: Vec<Vec2>, area: f64, total: f64, flatness: f64) -> Option<Suggestion> {
+    let fit = shapes::quad_from_outline(&points);
+    if let Some(q) = fit.filter(shapes::is_quad_like) {
+        return Some(Suggestion {
+            kind: SuggestionKind::Quad,
+            points: q.quad.to_vec(),
+            score: (0.55 + 0.25 * flatness + 0.2 * (area / total).sqrt()).min(1.0),
+            label: "Flat face".into(),
+        });
+    }
+    let simplified = features::simplify(&points, 2.0, true);
+    (simplified.len() >= 3).then(|| Suggestion {
+        kind: SuggestionKind::Polygon,
+        points: simplified,
+        score: (0.35 + 0.35 * flatness + 0.2 * (area / total).sqrt()).min(1.0),
+        label: "Object".into(),
+    })
+}
 /// Finds useful surfaces from flat colour regions, closed edges and circles.
-pub fn find_surfaces(photo:&Rgba,corr:Option<&[[f32;2]]>,s:&FindSettings)->Vec<Suggestion>{if !photo.is_consistent(){return Vec::new()}let total=f64::from(photo.width)*f64::from(photo.height);let min=total*s.min_area_fraction;let max=total*s.max_area_fraction;let mut out:Vec<_>=facets::segment(photo,corr,&facets::FacetSettings{min_area:min,..Default::default()}).into_iter().filter(|f|f.area<=max).filter_map(|f|candidate(f.outline,f.area,total,f.flatness)).collect();let grey=Gray::from_rgba(photo);let edges=features::canny(&features::blur(&grey,1.0),25.0,65.0);for outline in features::contours(&edges){let area=features::polygon_area(&outline);if area>=min&&area<=max{if let Some(c)=candidate(outline,area,total,0.7){out.push(c)}}}let max_r=f64::from(photo.width.min(photo.height))*0.35;for(c,r,score)in features::hough_circles(&edges,6.0,max_r,0.55){let points=(0..32).map(|i|{let a=std::f64::consts::TAU*f64::from(i)/32.0;Vec2::new(c.x+r*a.cos(),c.y+r*a.sin())}).collect();out.push(Suggestion{kind:SuggestionKind::Circle,points,score,label:"Round".into()});}out.sort_by(|a,b|b.score.total_cmp(&a.score));out.truncate(s.max);out}
+pub fn find_surfaces(photo: &Rgba, corr: Option<&[[f32; 2]]>, s: &FindSettings) -> Vec<Suggestion> {
+    if !photo.is_consistent() {
+        return Vec::new();
+    }
+    let total = f64::from(photo.width) * f64::from(photo.height);
+    let min = total * s.min_area_fraction;
+    let max = total * s.max_area_fraction;
+    let mut out: Vec<_> = facets::segment(
+        photo,
+        corr,
+        &facets::FacetSettings {
+            min_area: min,
+            ..Default::default()
+        },
+    )
+    .into_iter()
+    .filter(|f| f.area <= max)
+    .filter_map(|f| candidate(f.outline, f.area, total, f.flatness))
+    .collect();
+    let grey = Gray::from_rgba(photo);
+    let edges = features::canny(&features::blur(&grey, 1.0), 25.0, 65.0);
+    for outline in features::contours(&edges) {
+        let area = features::polygon_area(&outline);
+        if area >= min && area <= max {
+            if let Some(c) = candidate(outline, area, total, 0.7) {
+                out.push(c)
+            }
+        }
+    }
+    let max_r = f64::from(photo.width.min(photo.height)) * 0.35;
+    for (c, r, score) in features::hough_circles(&edges, 6.0, max_r, 0.55) {
+        let points = (0..32)
+            .map(|i| {
+                let a = std::f64::consts::TAU * f64::from(i) / 32.0;
+                Vec2::new(c.x + r * a.cos(), c.y + r * a.sin())
+            })
+            .collect();
+        out.push(Suggestion {
+            kind: SuggestionKind::Circle,
+            points,
+            score,
+            label: "Round".into(),
+        });
+    }
+    out.sort_by(|a, b| b.score.total_cmp(&a.score));
+    out.truncate(s.max);
+    out
+}
