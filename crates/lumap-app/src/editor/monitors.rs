@@ -75,3 +75,55 @@ impl Poller {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn display(name: &str, width: u32) -> MonitorInfo {
+        MonitorInfo {
+            name: name.into(),
+            x: 0,
+            y: 0,
+            width,
+            height: 1080,
+            scale: 1.0,
+        }
+    }
+
+    #[test]
+    fn hotplug_and_unplug_change_the_live_snapshot() {
+        let primary = display("DISPLAY1", 1920);
+        let projector = display("DISPLAY2", 1280);
+        let mut known = vec![primary.clone()];
+        assert!(!apply_snapshot(&mut known, vec![primary.clone()]));
+        assert!(apply_snapshot(
+            &mut known,
+            vec![primary.clone(), projector.clone()]
+        ));
+        assert_eq!(known, [primary.clone(), projector]);
+        assert!(apply_snapshot(&mut known, vec![primary.clone()]));
+        assert_eq!(known, [primary]);
+    }
+
+    #[test]
+    fn geometry_changes_are_seen_and_transient_empty_queries_are_ignored() {
+        let mut known = vec![display("DISPLAY1", 1920)];
+        assert!(!apply_snapshot(&mut known, Vec::new()));
+        assert_eq!(known[0].width, 1920);
+        assert!(apply_snapshot(&mut known, vec![display("DISPLAY1", 2560)]));
+        assert_eq!(known[0].width, 2560);
+    }
+
+    #[test]
+    fn poller_does_not_clear_displays_without_a_native_window() {
+        let mut poller = Poller::default();
+        let mut known = vec![display("DISPLAY1", 1920)];
+        poller.poll(
+            None,
+            &mut known,
+            Instant::now() + POLL_INTERVAL,
+        );
+        assert_eq!(known.len(), 1);
+    }
+}
