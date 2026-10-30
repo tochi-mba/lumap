@@ -114,7 +114,10 @@ pub fn prune(dir: &Path, keep: usize) {
         .filter(|p| {
             p.file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with("lumap-") && n.ends_with(".log"))
+                .is_some_and(|n| n.starts_with("lumap-"))
+                && p.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|e| e.eq_ignore_ascii_case("log"))
         })
         .collect();
     // Names start with the time, so name order is age order.
@@ -150,6 +153,7 @@ impl Log for Logger {
         metadata.level() <= self.filter.level_for(metadata.target())
     }
 
+    #[allow(clippy::print_stderr)] // A terminal mirror is one of this logger's deliberate sinks.
     fn log(&self, record: &Record<'_>) {
         if !self.enabled(record.metadata()) {
             return;
@@ -312,7 +316,7 @@ mod tests {
         assert_eq!(timestamp(UNIX_EPOCH), "1970-01-01T00:00:00.000Z");
         let t = UNIX_EPOCH + Duration::from_millis(1_793_398_970_123);
         assert_eq!(timestamp(t), "2026-10-30T22:22:50.123Z");
-        let leap = UNIX_EPOCH + Duration::from_secs(951_782_400); // 2000-02-29
+        let leap = UNIX_EPOCH + Duration::from_hours(264_384); // 2000-02-29
         assert!(timestamp(leap).starts_with("2000-02-29T"));
     }
 
@@ -364,9 +368,11 @@ mod tests {
 
     #[test]
     fn initialized_logger_writes_and_keeps_recent_lines() {
-        let path = init().expect("a run log");
+        let Some(path) = init() else {
+            panic!("a run log should be available");
+        };
         log::error!(target: "lumap::logging::test", "logger smoke test");
-        let text = std::fs::read_to_string(path).expect("read run log");
+        let text = std::fs::read_to_string(path).unwrap_or_default();
         assert!(text.contains("logger smoke test"), "{text:?}");
         assert!(recent(10, Level::Trace, Some("smoke test"))
             .iter()
