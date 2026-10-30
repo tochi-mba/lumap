@@ -8,7 +8,7 @@ use eframe::egui::{self, RichText};
 
 /// A consistent one-click update action on the welcome page, status bar and in Settings.
 pub fn check_button(ui: &mut egui::Ui, check: &CheckUi, actions: &mut Actions, label: &str) {
-    if check.checking && check.enabled == false {
+    if check.checking && !check.enabled {
         ui.spinner();
         ui.label("Checking…").on_hover_text(&check.detail);
     } else if ui
@@ -80,13 +80,13 @@ pub fn settings_window(
                 let mut mode = state.update_mode;
                 egui::ComboBox::from_label("Updates")
                     .selected_text(match mode {
-                        Mode::Notify => "Notify me",
-                        Mode::Download => "Download, then notify",
+                        Mode::Notify => "Notify only",
+                        Mode::Download => "Download automatically",
                         Mode::Off => "Off (manual only)",
                     })
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut mode, Mode::Notify, "Notify me");
-                        ui.selectable_value(&mut mode, Mode::Download, "Download, then notify");
+                        ui.selectable_value(&mut mode, Mode::Notify, "Notify only");
+                        ui.selectable_value(&mut mode, Mode::Download, "Download automatically");
                         ui.selectable_value(&mut mode, Mode::Off, "Off (manual only)");
                     });
                 if mode != state.update_mode {
@@ -97,7 +97,7 @@ pub fn settings_window(
             ui.label(RichText::new(&check.detail).color(crate::theme::MUTED).small());
             if let Some(p) = &settings.update.pending {
                 ui.add_space(6.0);
-                ui.label(RichText::new(format!("Update available: lumap {}", p.version)).strong());
+                ui.label(RichText::new(format!("lumap {} — update", p.version)).strong());
                 ui.horizontal_wrapped(|ui| {
                     match p.stage {
                         Stage::Available => {
@@ -107,11 +107,15 @@ pub fn settings_window(
                         }
                         Stage::Downloading => {
                             ui.spinner();
-                            ui.label("Downloading and verifying…");
+                            ui.label("Downloading and verifying securely in the background…");
                         }
                         Stage::Ready => {
+                            ui.label("Downloaded and verified. Install when you are ready.");
                             if crate::theme::primary_button(ui, "Install and restart").clicked() {
                                 actions.update = Some(Request::Install);
+                            }
+                            if ui.button("Later").clicked() {
+                                actions.update = Some(Request::Later);
                             }
                         }
                         Stage::Installing => {
@@ -132,7 +136,7 @@ pub fn settings_window(
                 }
             }
             ui.label(
-                RichText::new("Automatic checks run daily. Nothing checks or installs during a live show; installing always asks first.")
+                RichText::new("Checks run daily. By default, updates download and verify in the background. You choose when to install and restart. Updates pause during live shows.")
                     .weak()
                     .small(),
             );

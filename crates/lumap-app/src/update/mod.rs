@@ -1,6 +1,6 @@
 //! Keeping lumap current, modelled on rexplayer's updater and made show-safe: it asks GitHub
-//! for the latest release once a day, downloads the installer only when the mode or the user
-//! says so, verifies it against the published SHA-256, and installs only when the user clicks
+//! for the latest release once a day, downloads by default on a background worker,
+//! verifies it against the published SHA-256, and installs only when the user clicks
 //! "Install and restart". Nothing happens while show mode is on or an output window is open,
 //! and nothing happens in the first 45 seconds after launch.
 //!

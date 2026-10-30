@@ -88,6 +88,17 @@ impl FileDialogs for FakeDialogs {
     }
 }
 
+/// The user's explicit choice when an unsaved project blocks an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PendingChoice {
+    /// Save first; proceed only if writing succeeds.
+    Save,
+    /// Proceed without saving.
+    Discard,
+    /// Keep editing; do not proceed.
+    Cancel,
+}
+
 /// Things the panels ask the app to do; the app runs them after the frame.
 #[derive(Debug, Default)]
 #[allow(clippy::struct_excessive_bools)]
@@ -108,8 +119,8 @@ pub struct Actions {
     pub add_folder: bool,
     /// Create outputs for the detected monitors.
     pub create_outputs: bool,
-    /// The unsaved-changes prompt was answered: proceed or cancel.
-    pub resolve_pending: Option<bool>,
+    /// The unsaved-changes prompt response.
+    pub resolve_pending: Option<PendingChoice>,
     /// Show (true) or skip (false) the start page when lumap opens.
     pub start_page: Option<bool>,
     /// Leave the start page for the editor.
@@ -382,7 +393,7 @@ pub fn status_bar(
 
 /// The update offer in the status bar: a line and the choices it allows. Quiet when there is
 /// nothing to say.
-fn update_banner(ui: &mut egui::Ui, banner: &crate::update::flow::Banner, actions: &mut Actions) {
+pub(super) fn update_banner(ui: &mut egui::Ui, banner: &crate::update::flow::Banner, actions: &mut Actions) {
     use crate::update::flow::Banner;
     use crate::update::Request;
     let (text, choices): (&str, &[(&str, Request)]) = match banner {
