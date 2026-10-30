@@ -42,6 +42,7 @@ pub fn scene_for(editor: &mut Editor, output: &str) -> Option<lumap_render::Scen
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use lumap_core::project::demo_project;
 
     #[test]
     fn unit_conversions_and_monitor_lookup() {

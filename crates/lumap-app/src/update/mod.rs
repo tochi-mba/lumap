@@ -45,6 +45,7 @@ pub struct CheckUi {
 }
 
 /// The updater as the editor sees it.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Updater {
     worker: Worker,
     dir: PathBuf,
