@@ -69,8 +69,8 @@ pub fn segment(photo: &Rgba, corr: Option<&[[f32; 2]]>, s: &FacetSettings) -> Ve
         let mut sum = [0u64; 3];
         let mut valid = 0usize;
         for &i in &ids {
-            for c in 0..3 {
-                sum[c] += u64::from(photo.data[i * 4 + c])
+            for (c, total) in sum.iter_mut().enumerate() {
+                *total += u64::from(photo.data[i * 4 + c]);
             }
             if corr.is_some_and(|m| {
                 m.get(i)

@@ -49,8 +49,8 @@ fn solve(mut a: [[f64; 8]; 8], mut b: [f64; 8]) -> Option<[f64; 8]> {
         a.swap(col, pivot);
         b.swap(col, pivot);
         let d = a[col][col];
-        for j in col..8 {
-            a[col][j] /= d
+        for value in a[col].iter_mut().skip(col) {
+            *value /= d;
         }
         b[col] /= d;
         for i in 0..8 {
@@ -58,8 +58,9 @@ fn solve(mut a: [[f64; 8]; 8], mut b: [f64; 8]) -> Option<[f64; 8]> {
                 continue;
             }
             let f = a[i][col];
-            for j in col..8 {
-                a[i][j] -= f * a[col][j]
+            let pivot_row = a[col];
+            for (value, &pivot_value) in a[i].iter_mut().zip(&pivot_row).skip(col) {
+                *value -= f * pivot_value;
             }
             b[i] -= f * b[col];
         }
