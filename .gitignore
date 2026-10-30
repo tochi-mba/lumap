@@ -11,3 +11,4 @@ models/*.onnx
 # IDE
 .idea/
 .vscode/
+.claude/worktrees/
