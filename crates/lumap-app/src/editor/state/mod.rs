@@ -215,6 +215,17 @@ pub struct Editor {
     pub feedback: Option<OscFeedback>,
     /// Phone remote server.
     pub remote: Option<RemoteServer>,
+    /// Projector scans, loaded in the background.
+    pub scans: super::scan::ScanStore,
+    /// While a scan runs: the projector showing a pattern, and the pattern. Every other open
+    /// projector shows black.
+    pub scan_pattern: Option<(String, std::sync::Arc<lumap_sources::Frame>)>,
+    /// Where a tracked hand points on each projector (normalised) and whether it pinches.
+    pub hand_cursor: std::collections::HashMap<String, (lumap_core::geom::Vec2, bool)>,
+    /// A camera zone or gesture waiting to be learned: the address and the mode.
+    pub cam_learn: Option<(String, MidiMode)>,
+    /// Bumped whenever every source is reopened, so the app can attach live room content.
+    pub sources_epoch: u64,
 }
 
 /// Something the user asked for that would lose unsaved changes.
@@ -288,6 +299,11 @@ impl Editor {
             last_midi: None,
             feedback: None,
             remote: None,
+            scans: super::scan::ScanStore::default(),
+            scan_pattern: None,
+            hand_cursor: std::collections::HashMap::new(),
+            cam_learn: None,
+            sources_epoch: 0,
         }
         .with_sources(sources)
     }
@@ -317,6 +333,7 @@ impl Editor {
         let (mut sources, errors) = SourceSet::open(&self.project, &self.base_dir());
         sources.poll();
         self.sources = sources;
+        self.sources_epoch += 1;
         if !errors.is_empty() {
             self.status = format!("{} piece(s) of content failed to open", errors.len());
         }

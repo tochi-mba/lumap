@@ -129,6 +129,8 @@ pub struct OutputUiState {
     pub last_move: Instant,
     /// Last pointer position seen.
     pub last_pos: Option<egui::Pos2>,
+    /// The scan pattern on screen, as a texture, keyed by the frame it came from.
+    pub pattern: Option<(usize, egui::TextureHandle)>,
 }
 
 impl Default for OutputUiState {
@@ -137,6 +139,7 @@ impl Default for OutputUiState {
             handles: HandleState::default(),
             last_move: Instant::now(),
             last_pos: None,
+            pattern: None,
         }
     }
 }
@@ -148,6 +151,52 @@ pub fn cursor_idle(state: &mut OutputUiState, pos: Option<egui::Pos2>, now: Inst
         state.last_move = now;
     }
     now.duration_since(state.last_move) >= CURSOR_HIDE_AFTER
+}
+
+/// Draws a scan pattern pixel for pixel over the whole window.
+fn paint_pattern(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    id: &str,
+    frame: &Arc<lumap_sources::Frame>,
+    cache: &mut Option<(usize, egui::TextureHandle)>,
+) {
+    let key = Arc::as_ptr(frame) as usize;
+    if cache.as_ref().is_none_or(|(k, _)| *k != key) {
+        let image = egui::ColorImage::from_rgba_unmultiplied(
+            [frame.width as usize, frame.height as usize],
+            &frame.rgba,
+        );
+        let tex = ui.ctx().load_texture(
+            format!("scan-pattern:{id}"),
+            image,
+            egui::TextureOptions::NEAREST,
+        );
+        *cache = Some((key, tex));
+    }
+    if let Some((_, tex)) = cache {
+        ui.painter().image(
+            tex.id(),
+            rect,
+            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            egui::Color32::WHITE,
+        );
+    }
+}
+
+/// A ring where a tracked hand points, in normalised projector coordinates, with a filled
+/// centre while it pinches.
+fn draw_hand_cursor(painter: &egui::Painter, rect: egui::Rect, cursor: (lumap_core::geom::Vec2, bool)) {
+    let (p, pinching) = cursor;
+    let at = egui::pos2(
+        rect.min.x + p.x as f32 * rect.width(),
+        rect.min.y + p.y as f32 * rect.height(),
+    );
+    let r = rect.height() * 0.018;
+    painter.circle_stroke(at, r, egui::Stroke::new(3.0, crate::theme::SIGNAL));
+    if pinching {
+        painter.circle_filled(at, r * 0.45, crate::theme::SIGNAL);
+    }
 }
 
 /// Shows every open output window.
@@ -186,7 +235,17 @@ pub fn show_output_windows(
         if spec.locked {
             builder = builder.with_window_level(egui::WindowLevel::AlwaysOnTop);
         }
-        let scene = scene_for(editor, &id).map(Arc::new);
+        // While a scan runs, its projector shows the pattern and every other one stays black.
+        let scan = editor
+            .scan_pattern
+            .as_ref()
+            .map(|(pid, f)| (*pid == id, Arc::clone(f)));
+        let scene = if scan.is_some() {
+            None
+        } else {
+            scene_for(editor, &id).map(Arc::new)
+        };
+        let hand = editor.hand_cursor.get(&id).copied();
         let viewport_id = egui::ViewportId::from_hash_of(("lumap-output", &id));
         let mut close = false;
         let mut outer = None;
@@ -205,6 +264,12 @@ pub fn show_output_windows(
             ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
             if let Some(scene) = &scene {
                 paint_scene(ui, rect, format!("output:{id}"), Arc::clone(scene), format);
+            }
+            if let Some((true, frame)) = &scan {
+                paint_pattern(ui, rect, &id, frame, &mut state.pattern);
+            }
+            if let Some(p) = hand {
+                draw_hand_cursor(ui.painter(), rect, p);
             }
             if editing {
                 let response = ui.allocate_rect(rect, Sense::click_and_drag());
@@ -229,6 +294,9 @@ pub fn show_output_windows(
                 Some(ui.max_rect())
             };
         });
+        if scan.is_none() {
+            state.pattern = None;
+        }
         if let Some(r) = outer {
             editor
                 .window_positions

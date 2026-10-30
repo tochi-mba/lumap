@@ -36,6 +36,30 @@ pub struct CanvasState {
     pub stage_rects: Vec<(String, Rect)>,
     /// Output being dragged on the stage and the desktop offset accumulated so far.
     pub stage_drag: Option<(String, egui::Vec2)>,
+    /// Draw the projector's-eye photo from the scan over the canvas.
+    pub wall_photo: bool,
+    /// How strongly the wall photo shows.
+    pub wall_opacity: f32,
+    /// Show the surfaces the scan found.
+    pub show_found: bool,
+    /// What a click on the canvas does.
+    pub tool: Tool,
+    /// The outline Pick an object grew, waiting for a choice.
+    pub picked: Option<lumap_vision::wand::Outline>,
+    /// The found surface clicked, waiting for a choice.
+    pub found_pick: Option<usize>,
+    /// The wall photo's texture, keyed by the scan it came from.
+    pub wall_tex: Option<(usize, egui::TextureHandle)>,
+}
+
+/// What a click on the canvas does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Tool {
+    /// Select and drag handles.
+    #[default]
+    Edit,
+    /// Grow an object's outline from the wall photo.
+    Pick,
 }
 
 impl Default for CanvasState {
@@ -45,6 +69,7 @@ impl Default for CanvasState {
                 active: None,
                 snap: true,
                 grid: 0,
+                wall: None,
             },
             output: None,
             last_rect: None,
@@ -56,6 +81,13 @@ impl Default for CanvasState {
             stage: false,
             stage_rects: Vec::new(),
             stage_drag: None,
+            wall_photo: true,
+            wall_opacity: 0.6,
+            show_found: false,
+            tool: Tool::Edit,
+            picked: None,
+            found_pick: None,
+            wall_tex: None,
         }
     }
 }
@@ -171,6 +203,11 @@ pub fn show(
             format,
         );
     }
+    let scan = editor.scans.get(&output_id);
+    if let Some(scan) = &scan {
+        super::wall::backdrop(ui, rect, scan, state);
+    }
+    state.handles.wall.clone_from(&scan);
     painter.rect_stroke(
         rect,
         0.0,
@@ -207,8 +244,12 @@ pub fn show(
         state.pan += response.drag_delta();
     } else {
         let map = Mapping { rect };
-        state.readout =
-            handles::interact(ui, editor, &mut state.handles, &response, &map, &output_id);
+        let consumed =
+            super::wall::tools(ui, editor, state, &response, &map, &output_id, scan.as_ref());
+        if !consumed && state.tool == Tool::Edit {
+            state.readout =
+                handles::interact(ui, editor, &mut state.handles, &response, &map, &output_id);
+        }
     }
     if response.double_clicked_by(egui::PointerButton::Middle) {
         state.reset_view();
