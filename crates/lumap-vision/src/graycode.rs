@@ -196,12 +196,35 @@ impl Decoder {
                 })
             })
             .collect();
+        // Only patterns that really light about half the projector can be matched that way:
+        // with 1080 rows in an 11-bit code, the coarsest row stripe lights just the bottom 56.
+        let lit = |axis: Axis, bit: u32| {
+            let n = match axis {
+                Axis::X => self.code.w,
+                Axis::Y => self.code.h,
+            };
+            let on = (0..n).filter(|v| ((v ^ (v >> 1)) >> bit) & 1 != 0).count();
+            on as f64 / f64::from(n.max(1))
+        };
+        let mut balanced = vec![false; self.photos.len()];
+        let mut slot = 2;
+        for (axis, n, start) in [
+            (Axis::X, self.code.bx, self.code.sx),
+            (Axis::Y, self.code.by, self.code.sy),
+        ] {
+            for bit in (start..start + n).rev() {
+                if let Some(b) = balanced.get_mut(slot) {
+                    *b = (0.4..=0.6).contains(&lit(axis, bit));
+                }
+                slot += 2;
+            }
+        }
         let gain = |at: usize| {
             let (a, b) = (
                 means.get(at).copied().unwrap_or(0.0),
                 means.get(at + 1).copied().unwrap_or(0.0),
             );
-            if a > 1.0 && b > 1.0 {
+            if balanced.get(at).copied().unwrap_or(false) && a > 1.0 && b > 1.0 {
                 (a / b).clamp(0.25, 4.0)
             } else {
                 1.0
