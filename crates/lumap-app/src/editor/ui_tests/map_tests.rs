@@ -9,13 +9,13 @@ use egui_kittest::kittest::Queryable;
 use lumap_core::project::demo_project;
 use lumap_core::warp::WarpKind;
 
-fn on_map() -> egui_kittest::Harness<'static, LumapApp> {
+fn on_map() -> Harness<'static, LumapApp> {
     let mut h = harness(Editor::new(demo_project(), None));
     step(&mut h, "2 Map");
     h
 }
 
-fn z(h: &egui_kittest::Harness<'static, LumapApp>, id: &str) -> i32 {
+fn z(h: &Harness<'static, LumapApp>, id: &str) -> i32 {
     h.state().editor.project.surface(id).unwrap().z
 }
 
