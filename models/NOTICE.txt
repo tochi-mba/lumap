@@ -1,0 +1,40 @@
+lumap hand-tracking models
+==========================
+
+This folder holds the two neural-network models lumap uses to follow hands in a camera image.
+They are not lumap's own work and are not covered by lumap's MIT OR Apache-2.0 grant: they come
+from the projects named below under the Apache License, Version 2.0, and are redistributed
+unmodified. lumap runs them with tract, a Rust inference library compiled into lumap itself.
+
+palm_detection_mediapipe_2023feb.onnx
+  The MediaPipe palm detector (Google), converted from TensorFlow Lite to ONNX by OpenCV Zoo.
+  Source: https://huggingface.co/opencv/palm_detection_mediapipe/resolve/233e619dcea1759bf6de707b9b904fe30881ea55/palm_detection_mediapipe_2023feb.onnx
+  SHA-256: 78ff51c38496b7fc8b8ebdb6cc8c1abb02fa6c38427c6848254cdaba57fcce7c
+  Licence: Apache License 2.0, per the LICENSE and README files of that repository at that
+  revision ("All files in this directory are licensed under Apache 2.0 License").
+
+handpose_estimation_mediapipe_2023feb.onnx
+  The MediaPipe hand landmark model (Google), converted from TensorFlow Lite to ONNX by OpenCV Zoo.
+  Source: https://huggingface.co/opencv/handpose_estimation_mediapipe/resolve/4b2a0b446e5cf2f11fb6b2c7251091c035d2c1f7/handpose_estimation_mediapipe_2023feb.onnx
+  SHA-256: db0898ae717b76b075d9bf563af315b29562e11f8df5027a1ef07b02bef6d81c
+  Licence: Apache License 2.0, per the LICENSE and README files of that repository at that
+  revision ("All files in this directory are licensed under Apache 2.0 License").
+
+Where they come from
+  MediaPipe Hands, by Google: https://github.com/google-ai-edge/mediapipe (Apache License 2.0).
+  Model card: https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/models.md#hands
+  OpenCV Zoo, which converted and published the ONNX files: https://github.com/opencv/opencv_zoo
+  (Apache License 2.0).
+
+Licence
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not use these files
+  except in compliance with the License. You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  The full text is also LICENSE-APACHE in lumap's folder. Unless required by applicable law or
+  agreed to in writing, software distributed under the License is distributed on an "AS IS"
+  BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+  for the specific language governing permissions and limitations under the License.
+
+installer/fetch-models.ps1 downloads exactly these files and checks the SHA-256s above.
