@@ -4,6 +4,8 @@
 //! app scriptable and testable without a window: `render`, `validate`, `migrate`, `new`.
 
 #![forbid(unsafe_code)]
+// Normal Windows launches never open a companion console window.
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 mod autosave;
 mod cli;
@@ -23,6 +25,18 @@ use std::process::ExitCode;
 struct Args {
     /// Project file to open in the editor.
     project: Option<PathBuf>,
+
+    /// Start with a blank show (Start menu action).
+    #[arg(long, conflicts_with = "project")]
+    new_show: bool,
+
+    /// Show the native Open dialog at launch.
+    #[arg(long, conflicts_with = "project")]
+    open_show: bool,
+
+    /// Open updates and look for new releases at launch.
+    #[arg(long, conflicts_with = "project")]
+    check_updates: bool,
 
     /// UDP port for OSC control (0 disables).
     #[arg(long, default_value_t = 9000)]
@@ -97,6 +111,9 @@ fn main() -> ExitCode {
     let result = match args.command {
         None => editor::run(&editor::Launch {
             project: args.project,
+            new_show: args.new_show,
+            open_show: args.open_show,
+            check_updates: args.check_updates,
             osc_port: args.osc_port,
             show: false,
             restart_on_stall: None,
@@ -110,6 +127,9 @@ fn main() -> ExitCode {
             remote_port,
         }) => editor::run(&editor::Launch {
             project: Some(project),
+            new_show: false,
+            open_show: false,
+            check_updates: false,
             osc_port,
             show: true,
             restart_on_stall,

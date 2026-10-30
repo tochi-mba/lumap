@@ -233,6 +233,8 @@ pub struct Editor {
 pub enum Pending {
     /// Quit the application.
     Close,
+    /// Install a verified update, restarting the editor.
+    InstallUpdate,
     /// Start a new project.
     New,
     /// Open this project.

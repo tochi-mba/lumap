@@ -1,7 +1,7 @@
 //! Modal prompts.
 
 use super::super::{Editor, Pending};
-use super::{Actions, PanelState, SHORTCUTS};
+use super::{Actions, PanelState, PendingChoice, SHORTCUTS};
 use eframe::egui::{self, RichText};
 
 /// Modal prompts: autosave recovery, unsaved changes and the cheat sheet.
@@ -31,29 +31,44 @@ pub fn dialogs(
             });
     }
     if let Some(pending) = editor.pending.clone() {
-        let what = match &pending {
-            Pending::Close => "quitting",
-            Pending::New => "starting a new project",
-            Pending::Open(_) => "opening another project",
+        let (description, save_label, discard_label) = match &pending {
+            Pending::Close => (
+                "Save your show before quitting? Unsaved changes will be lost.",
+                "Save and quit",
+                "Quit without saving",
+            ),
+            Pending::InstallUpdate => (
+                "The update will restart lumap. Save your show before installing?",
+                "Save and install",
+                "Install without saving",
+            ),
+            Pending::New => (
+                "Save your current show before starting a new one?",
+                "Save and create",
+                "Create without saving",
+            ),
+            Pending::Open(_) => (
+                "Save your current show before opening another?",
+                "Save and open",
+                "Open without saving",
+            ),
         };
-        egui::Window::new("Unsaved changes")
-            .collapsible(false)
-            .resizable(false)
-            .show(ctx, |ui| {
-                ui.label(format!("Save before {what}?"));
-                ui.horizontal(|ui| {
-                    if ui.button("Save and continue").clicked() {
-                        actions.save = true;
-                        actions.resolve_pending = Some(true);
-                    }
-                    if crate::theme::danger_button(ui, "Discard changes").clicked() {
-                        actions.resolve_pending = Some(true);
-                    }
-                    if ui.button("Cancel").clicked() {
-                        actions.resolve_pending = Some(false);
-                    }
-                });
+        egui::Modal::new(egui::Id::new("lumap-unsaved-changes")).show(ctx, |ui| {
+            ui.heading("Unsaved changes");
+            ui.label(description);
+            ui.add_space(10.0);
+            ui.horizontal_wrapped(|ui| {
+                if crate::theme::primary_button(ui, save_label).clicked() {
+                    actions.resolve_pending = Some(PendingChoice::Save);
+                }
+                if ui.button("Cancel").clicked() {
+                    actions.resolve_pending = Some(PendingChoice::Cancel);
+                }
+                if crate::theme::danger_button(ui, discard_label).clicked() {
+                    actions.resolve_pending = Some(PendingChoice::Discard);
+                }
             });
+        });
     }
     if state.help {
         egui::Window::new("Keyboard shortcuts")
