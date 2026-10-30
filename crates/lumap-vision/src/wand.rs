@@ -1,5 +1,5 @@
 //! Click-to-outline selection on the projector-eye photograph.
-use crate::Rgba;
+use crate::{features::{self,shapes},Gray,Rgba};
 use lumap_core::geom::Vec2;
 /// A selected object outline.
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub fn pick(photo: &Rgba, seed: Vec2, tolerance: f64) -> Option<Outline> {
     let base = photo.get(sx as u32, sy as u32);
     let mut seen = vec![false; photo.width as usize * photo.height as usize];
     let mut stack = vec![(sx as u32, sy as u32)];
-    let (mut minx, mut maxx, mut miny, mut maxy) = (sx as u32, sx as u32, sy as u32, sy as u32);
+    let mut mask=Gray::new(photo.width,photo.height);
     let mut n = 0usize;
     while let Some((x, y)) = stack.pop() {
         let i = y as usize * photo.width as usize + x as usize;
@@ -35,10 +35,7 @@ pub fn pick(photo: &Rgba, seed: Vec2, tolerance: f64) -> Option<Outline> {
             continue;
         }
         n += 1;
-        minx = minx.min(x);
-        maxx = maxx.max(x);
-        miny = miny.min(y);
-        maxy = maxy.max(y);
+        mask.set(x,y,255);
         for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
             let (xx, yy) = (i64::from(x) + dx, i64::from(y) + dy);
             if xx >= 0 && yy >= 0 && xx < i64::from(photo.width) && yy < i64::from(photo.height) {
@@ -49,15 +46,13 @@ pub fn pick(photo: &Rgba, seed: Vec2, tolerance: f64) -> Option<Outline> {
     if n < 16 || n > photo.width as usize * photo.height as usize * 9 / 10 {
         return None;
     }
-    let q = [
-        Vec2::new(f64::from(minx), f64::from(miny)),
-        Vec2::new(f64::from(maxx) + 1.0, f64::from(miny)),
-        Vec2::new(f64::from(maxx) + 1.0, f64::from(maxy) + 1.0),
-        Vec2::new(f64::from(minx), f64::from(maxy) + 1.0),
-    ];
+    let raw=features::contours(&mask).into_iter().max_by_key(Vec::len)?;
+    let points=features::simplify(&raw,2.0,true);
+    if points.len()<3{return None}
+    let quad=shapes::quad_from_outline(&raw).filter(shapes::is_quad_like).map(|f|f.quad);
     Some(Outline {
-        points: q.to_vec(),
-        quad: Some(q),
+        points,
+        quad,
         area: n as f64,
     })
 }
