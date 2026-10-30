@@ -18,6 +18,7 @@ lumap-core = { path = "crates/lumap-core" }
 lumap-render = { path = "crates/lumap-render" }
 lumap-sources = { path = "crates/lumap-sources" }
 lumap-control = { path = "crates/lumap-control" }
+lumap-vision = { path = "crates/lumap-vision" }
 
 # Serialisation and project files
 serde = { version = "1.0", features = ["derive"] }

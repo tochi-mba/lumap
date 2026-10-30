@@ -3,6 +3,8 @@
 //! which exist, which this build carries, and how to open one. Nothing outside this module
 //! mentions a platform.
 
+pub mod camera;
+
 use crate::{FrameSource, SourceError};
 
 /// A live-input protocol.

@@ -23,6 +23,7 @@ lumap-core.workspace = true
 lumap-render.workspace = true
 lumap-sources.workspace = true
 lumap-control.workspace = true
+lumap-vision.workspace = true
 wgpu.workspace = true
 winit.workspace = true
 eframe.workspace = true

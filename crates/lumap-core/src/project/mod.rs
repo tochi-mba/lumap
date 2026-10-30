@@ -85,6 +85,45 @@ pub enum SourceKind {
         #[serde(default)]
         playback: Playback,
     },
+    /// A live camera.
+    Camera {
+        /// The device as the camera list names it; empty means the show's camera.
+        #[serde(default)]
+        device: String,
+    },
+    /// An effect drawn from a projector's scan of the room and the live camera.
+    Room {
+        /// The projector whose scan it draws from.
+        projector: String,
+        /// Which effect.
+        effect: RoomEffect,
+        /// Tint colour, RGBA in `[0,1]`.
+        #[serde(default = "default_white")]
+        color: [f32; 4],
+        /// Animation speed multiplier.
+        #[serde(default = "default_one_f32")]
+        speed: f32,
+    },
+    /// Strokes painted on the wall with a light or a hand, seen through the camera.
+    Paint {
+        /// The projector whose wall is painted on.
+        projector: String,
+        /// What draws.
+        #[serde(default)]
+        input: PaintInput,
+        /// How strokes look.
+        #[serde(default)]
+        brush: Brush,
+        /// Stroke colour, RGBA in `[0,1]` (the rainbow brush ignores it).
+        #[serde(default = "default_white")]
+        color: [f32; 4],
+        /// Stroke width in projector pixels.
+        #[serde(default = "default_brush_size")]
+        size: f32,
+        /// Seconds a stroke takes to fade away; `0` keeps strokes until cleared.
+        #[serde(default)]
+        fade_seconds: f32,
+    },
     /// A procedural animated pattern.
     Generator {
         /// Which pattern.
@@ -104,6 +143,10 @@ fn default_fps() -> f64 {
 
 fn default_one_f32() -> f32 {
     1.0
+}
+
+fn default_brush_size() -> f32 {
+    12.0
 }
 
 fn default_white() -> [f32; 4] {
@@ -328,6 +371,9 @@ impl SourceKind {
             Self::Solid { .. } => "solid",
             Self::Image { .. } => "image",
             Self::Spout { .. } => "spout",
+            Self::Camera { .. } => "camera",
+            Self::Room { .. } => "room",
+            Self::Paint { .. } => "paint",
             Self::Video { .. } => "video",
             Self::Sequence { .. } => "sequence",
             Self::Generator { .. } => "generator",
@@ -418,6 +464,10 @@ pub struct Output {
     /// Calibration overlay drawn on top of the content (never in show mode).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlay: Option<Overlay>,
+    /// Folder holding this projector's camera scan, relative to the project file when not
+    /// absolute.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scan: Option<String>,
 }
 
 /// A calibration pattern drawn over an output while aligning projectors.
@@ -569,6 +619,9 @@ pub struct Project {
     /// MIDI controller mappings.
     #[serde(default)]
     pub midi: crate::midimap::MidiMap,
+    /// The camera, its zones and what they drive.
+    #[serde(default, skip_serializing_if = "CameraSetup::is_empty")]
+    pub camera: CameraSetup,
 }
 
 impl Default for Project {
@@ -583,6 +636,7 @@ impl Default for Project {
             surfaces: Vec::new(),
             cues: Vec::new(),
             midi: crate::midimap::MidiMap::default(),
+            camera: CameraSetup::default(),
         }
     }
 }
@@ -850,11 +904,13 @@ pub fn is_valid_id(id: &str) -> bool {
 /// Brings a raw TOML document up to [`SCHEMA_VERSION`] in place.
 ///
 /// Each step is a pure function on the table; add a new arm when the schema changes and leave
+mod camera;
 mod demo;
 mod migrate;
 mod params;
 mod validate;
 
+pub use camera::{Brush, CameraSetup, PaintInput, RoomEffect, Zone};
 pub use demo::demo_project;
 pub use migrate::migrate;
 

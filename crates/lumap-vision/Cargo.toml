@@ -1,0 +1,24 @@
+[package]
+name = "lumap-vision"
+description = "Computer vision for the lumap projection mapper: structured-light scans, surface finding, tracking and room effects"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The synthetic camera used by tests here and by the app's UI tests.
+studio = []
+
+[dependencies]
+lumap-core.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

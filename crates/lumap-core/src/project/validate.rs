@@ -1,6 +1,6 @@
 //! Referential and geometric checks.
 
-use super::{is_valid_id, Issue, Project, SCHEMA_VERSION};
+use super::{is_valid_id, Issue, Project, SourceKind, SCHEMA_VERSION};
 use crate::warp::Warp;
 use std::collections::HashSet;
 
@@ -105,10 +105,45 @@ impl Project {
                 }
             }
         }
+        self.validate_camera(&mut issues);
         if self.outputs.is_empty() {
             issues.push(Issue::warn("project has no outputs"));
         }
         issues
+    }
+
+    /// Room and paint sources name a projector that exists; zones are well formed and unique.
+    fn validate_camera(&self, issues: &mut Vec<Issue>) {
+        for s in &self.sources {
+            if let SourceKind::Room { projector, .. } | SourceKind::Paint { projector, .. } =
+                &s.kind
+            {
+                if self.output(projector).is_none() {
+                    issues.push(Issue::err(format!(
+                        "source {:?} draws on unknown output {projector:?}",
+                        s.id
+                    )));
+                }
+            }
+        }
+        let mut seen = HashSet::new();
+        for z in &self.camera.zones {
+            if !is_valid_id(&z.id) {
+                issues.push(Issue::err(format!(
+                    "camera zone id {:?} must match [A-Za-z0-9_-]+",
+                    z.id
+                )));
+            }
+            if !seen.insert(z.id.as_str()) {
+                issues.push(Issue::err(format!("duplicate camera zone id {:?}", z.id)));
+            }
+            if !z.is_valid() {
+                issues.push(Issue::err(format!(
+                    "camera zone {:?} needs at least three corners inside the view",
+                    z.id
+                )));
+            }
+        }
     }
 
     /// True when [`Project::validate`] reports no errors.

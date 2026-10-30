@@ -399,6 +399,20 @@ fn describe(kind: &SourceKind) -> String {
         ),
         SourceKind::Sequence { path, .. } => format!("sequence {path}"),
         SourceKind::Generator { pattern, .. } => format!("generator {pattern:?}").to_lowercase(),
+        SourceKind::Camera { device } => format!(
+            "camera {}",
+            if device.is_empty() {
+                "(the show's camera)"
+            } else {
+                device
+            }
+        ),
+        SourceKind::Room {
+            projector, effect, ..
+        } => format!("{} on {projector}", effect.label()),
+        SourceKind::Paint {
+            projector, brush, ..
+        } => format!("{} paint on {projector}", brush.label()),
     }
 }
 

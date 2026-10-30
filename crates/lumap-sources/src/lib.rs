@@ -184,6 +184,10 @@ pub fn open_source(source: &Source, base_dir: &Path) -> Result<Box<dyn FrameSour
         SourceKind::Spout { sender } => {
             live_input::open(&source.id, live_input::Provider::Spout, sender)
         }
+        SourceKind::Camera { device } => live_input::camera::open_source(&source.id, device),
+        SourceKind::Room { .. } | SourceKind::Paint { .. } => Ok(Box::new(StaticSource(Arc::new(
+            Frame::solid(16, 16, [0, 0, 0, 0]),
+        )))),
         SourceKind::Video { path, playback } => Ok(Box::new(video::VideoSource::open(
             video::Tools::from_env(),
             &resolve(path, base_dir),
