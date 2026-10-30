@@ -32,6 +32,10 @@ const LAG_MARGIN: Duration = Duration::from_millis(250);
 /// The longest wait for the picture to hold still after it changed (auto-exposure settling: a
 /// phone's camera takes a couple of seconds after a big change in light).
 const STEADY_WAIT: Duration = Duration::from_millis(3000);
+/// After a change shows up, the least time before the picture can count as still: phones smooth
+/// their video over time, so a new pattern fades in over several frames that each look nearly
+/// like the last.
+const AFTER_CHANGE: Duration = Duration::from_millis(450);
 /// Frames in a row that must agree before the picture counts as still.
 const STEADY_FRAMES: u32 = 2;
 /// How long the camera must have been sending pictures before the first pattern: a phone used
@@ -470,7 +474,10 @@ impl ScanSession {
             .as_ref()
             .is_some_and(|p| difference(p, &small) < STEADY);
         self.still = if steady_now { self.still + 1 } else { 0 };
-        let steady = self.still >= STEADY_FRAMES;
+        let faded_in = self
+            .changed_at
+            .is_some_and(|t| now.duration_since(t) >= AFTER_CHANGE);
+        let steady = faded_in && self.still >= STEADY_FRAMES;
         self.previous = Some(small);
         let settled = self
             .changed_at
