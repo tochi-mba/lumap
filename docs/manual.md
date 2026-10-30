@@ -91,18 +91,23 @@ project, and never shown in show mode.
 A **cue** is a snapshot of every live parameter (opacities, visibility, master, blackout,
 output levels, blend widths, transport) plus a fade time.
 
-- **Store cue** in the cue panel at the bottom captures the current look after the selected
-  cue. **Update cue** overwrites the selected cue with the live look. Cues can be reordered,
-  renamed, given a new fade time and deleted.
-- **GO** (`Space`, the GO button, the cue's own button, `/cue/go`, `/cue/<id>/go`, a MIDI
+- **Store this look** in step 4, Show, keeps the live look as a new cue after the selected
+  one, with the name and fade typed above it. Cues are cards: click one to select it, then
+  rename it (its id, used by OSC, stays), change its fade, **Update cue** with the live look,
+  or delete it. Drag a card by its six dots to reorder; right-click for GO, update, move and
+  delete.
+- **GO** (`Space`, the big GO, a cue's own GO button, `/cue/go`, `/cue/<id>/go`, a MIDI
   button, the phone) fades to the next cue: numbers interpolate, booleans switch half way.
+  Under GO, *Next* names the cue it will fade to; the running cue carries a *live* pill.
   **Stop fade** freezes a fade where it is.
 - **Blackout** (`B`) and **master** are always live and are captured by cues too.
 
 ### OSC
 
-`--osc-port 9000` (default; `0` disables). One message per parameter, the first argument is
-the value; a message with no arguments means `true`.
+`--osc-port 9000` (default; `0` disables), or the OSC card in step 4, Show: set the port and
+*Listen* (lumap remembers it), *Stop OSC* to close it. The card's *OSC addresses* list
+every address. One message per parameter, the first argument is the value; a message with no
+arguments means `true`.
 
 ```text
 /show/blackout bool           /show/master 0..1
@@ -114,13 +119,14 @@ the value; a message with no arguments means `true`.
 /cue/go                       /cue/<id>/go              /cue/stop
 ```
 
-**OSC feedback**: type `host:port` under *OSC feedback* in the show inspector and *Apply*.
+**OSC feedback**: type `host:port` into *Feedback host:port* on the OSC card and *Apply*.
 Every change (from the UI, cues, MIDI or the remote) is sent back as the same address and
 value, so a TouchOSC or Lemur layout follows the app.
 
 ### MIDI learn
 
-1. Show inspector → *Refresh MIDI ports*, pick one, *Open MIDI port* (saved in settings).
+1. The MIDI card in step 4, Show → *Refresh MIDI ports*, pick one, *Open MIDI port* (saved in
+   settings).
 2. Type the address to drive (or press *MIDI learn opacity* in a surface inspector, which
    fills it in) and choose **Learn fader** (0–127 scaled to the parameter), **Learn button**
    (sends `true` on press, for GO and restart) or **Learn switch** (`true` on press, `false` on
@@ -129,7 +135,8 @@ value, so a TouchOSC or Lemur layout follows the app.
 
 ### Phone remote
 
-*Start remote* in the show inspector (or `lumap show … --remote-port 8080`) serves a page on
+*Start remote* on the Phone remote card in step 4, Show (or `lumap show … --remote-port 8080`)
+serves a page on
 the LAN; scan the QR code with a phone. The page has blackout, master, output levels,
 surface opacities and the cue list with GO. It is plain HTML and JavaScript, no app, no
 internet. The JSON API behind it: `GET /api/state`, `POST /api/param {address, value}`,
@@ -137,7 +144,11 @@ internet. The JSON API behind it: `GET /api/state`, `POST /api/param {address, v
 
 ## 6. Show mode
 
-`F10`, *Show mode* in the status bar, or `lumap show project.lumap.toml`. Editing is locked,
+**Go live** in the top bar checks the show first: projectors on their displays, content on
+every surface, ffmpeg when there is video, the show saved (autosave and crash recovery need a
+file) and cues to fade between. Each line ticks or offers one click that puts it right, such
+as *Place on free displays* or *Store the first cue*; *Go live anyway* is always there. `F10`
+goes live without the check, and `lumap show project.lumap.toml` starts in it. Editing is locked,
 every enabled output opens where it is placed, OSC/MIDI/remote stay live, overlays are
 hidden, autosave pauses, the editor window shows status only. Escape twice leaves.
 
@@ -192,5 +203,5 @@ possible. `lumap validate` reports every broken reference or degenerate warp.
 | `[` / `]` | Blend gamma of the shown output |
 | `B` | Blackout |
 | `Space` | GO |
-| `F10`, Escape Escape | Show mode in, out |
+| `F10`, Escape Escape | Go live without the check; leave show mode |
 | `?` | This list, in the app |

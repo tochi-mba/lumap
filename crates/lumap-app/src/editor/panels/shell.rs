@@ -111,12 +111,19 @@ pub fn top_bar(
                     .family(crate::theme::strong_family())
                     .color(crate::theme::SIGNAL),
             );
-            let mut name = editor.project.name.clone();
             let label = ui.label(RichText::new("Show").weak().small());
-            let r = ui.add(egui::TextEdit::singleline(&mut name).desired_width(170.0));
-            let r = r.labelled_by(label.id).on_hover_text("The show's name");
-            if r.lost_focus() && name != editor.project.name {
-                editor.edit(|p| p.name = name);
+            let current = editor.project.name.clone();
+            let (r, done) = super::draft_field(
+                ui,
+                &mut state.draft,
+                "show-name",
+                &current,
+                170.0,
+                "Untitled show",
+            );
+            r.labelled_by(label.id).on_hover_text("The show's name");
+            if let Some(name) = done {
+                editor.edit(|p| p.name = name.trim().to_string());
             }
             ui.add_space(10.0);
             for step in Step::ALL {
@@ -136,10 +143,13 @@ pub fn top_bar(
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if crate::theme::primary_button(ui, "Go live")
-                    .on_hover_text("Lock editing and open every projector (F10)")
+                    .on_hover_text(
+                        "Check the show, then lock editing and open every projector. F10 goes \
+                         live without the check.",
+                    )
                     .clicked()
                 {
-                    editor.enter_show_mode();
+                    state.golive = true;
                 }
                 param_slider(ui, editor, "Master", "/show/master", 0.0..=1.0);
                 let blackout = editor.project.blackout;

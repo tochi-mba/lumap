@@ -6,7 +6,7 @@ use super::super::super::canvas::CanvasState;
 use super::super::super::handles::{handles, Mapping};
 use super::super::super::{AlignOp, Editor, Selection};
 use super::super::shell::Step;
-use super::super::{param_slider, param_toggle, rename_box, surface_context_menu, PanelState};
+use super::super::{param_slider, param_toggle, rename_box, PanelState};
 use eframe::egui::{self, RichText, Sense, Stroke};
 use lumap_core::midimap::MidiMode;
 use lumap_core::params::ParamValue;
@@ -49,11 +49,11 @@ pub fn toolbar(ui: &mut egui::Ui, editor: &mut Editor, canvas: &mut CanvasState,
             .iter()
             .map(|o| o.id.clone())
             .collect();
-        // The tabs belong to Map, where the layers list shows one projector at a time.
-        for id in ids.iter().filter(|_| step == Step::Map) {
+        // One tab per projector: the canvas shows the one picked here. Setup has its cards.
+        for id in ids.iter().filter(|_| step != Step::Setup) {
             if ui
                 .selectable_label(current.as_deref() == Some(id), id)
-                .on_hover_text("Map this projector")
+                .on_hover_text("Show this projector on the canvas")
                 .clicked()
             {
                 canvas.output = Some(id.clone());
@@ -222,6 +222,43 @@ fn layer_row(
         if let Some(from) = ordered.iter().position(|(id, ..)| id == dragged.as_str()) {
             editor.move_surface(&dragged, pos as i32 - from as i32);
         }
+    }
+}
+
+/// Right-click on a layer.
+fn surface_context_menu(ui: &mut egui::Ui, editor: &mut Editor, sid: &str, locked: bool) {
+    if ui.button("Duplicate  (Ctrl+D)").clicked() {
+        editor.duplicate_surface(sid);
+        ui.close();
+    }
+    if ui
+        .button(if locked { "Unlock  (L)" } else { "Lock  (L)" })
+        .clicked()
+    {
+        editor.set_locked(sid, !locked);
+        ui.close();
+    }
+    if ui.button("Bring to front").clicked() {
+        editor.send_surface(sid, true);
+        ui.close();
+    }
+    if ui.button("Send to back").clicked() {
+        editor.send_surface(sid, false);
+        ui.close();
+    }
+    if ui.button("Reset warp to full frame").clicked() {
+        editor.set_warp(sid, WarpKind::default());
+        editor.commit();
+        ui.close();
+    }
+    if ui.button("Delete this surface").clicked() {
+        editor.selection = Selection::Surface {
+            id: sid.to_string(),
+            mask: None,
+        };
+        editor.extra_selected.clear();
+        editor.delete_selection();
+        ui.close();
     }
 }
 

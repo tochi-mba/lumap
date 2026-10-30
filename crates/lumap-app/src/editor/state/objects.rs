@@ -391,6 +391,49 @@ impl Editor {
         }
     }
 
+    /// Puts a projector on a display (full size, at the display's origin), or back to a
+    /// floating window with `None`.
+    pub fn place_output(&mut self, id: &str, monitor: Option<&super::super::MonitorInfo>) {
+        let id = id.to_string();
+        let target = monitor.map(|m| {
+            (
+                lumap_core::project::Placement {
+                    monitor: m.name.clone(),
+                    x: m.x,
+                    y: m.y,
+                },
+                m.width,
+                m.height,
+            )
+        });
+        self.edit(move |p| {
+            if let Some(o) = p.output_mut(&id) {
+                match target {
+                    Some((placement, w, h)) => {
+                        o.placement = Some(placement);
+                        o.width = w;
+                        o.height = h;
+                    }
+                    None => o.placement = None,
+                }
+            }
+        });
+    }
+
+    /// Puts each projector that is on in show mode but has no connected display onto a free
+    /// display (see [`Editor::free_displays`]). Returns how many it placed.
+    pub fn place_on_free_displays(&mut self, monitors: &[super::super::MonitorInfo]) -> usize {
+        let unplaced = self.unplaced_projectors(monitors);
+        let free: Vec<super::super::MonitorInfo> =
+            self.free_displays(monitors).into_iter().cloned().collect();
+        let mut placed = 0;
+        for (id, monitor) in unplaced.iter().zip(free) {
+            self.place_output(id, Some(&monitor));
+            placed += 1;
+        }
+        placed
+    }
+
     /// Creates one full-size, placed output per monitor (skipping the first, which is
     /// usually the editor's screen, when `skip_primary`), each with a grid surface. Returns
     /// the new output ids.

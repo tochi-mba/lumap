@@ -47,14 +47,17 @@ differences from the usual tools:
    (installs for you only, no administrator prompt, ffmpeg included). Prefer no installer? Each
    release also has `lumap-<version>-windows-x64.zip`: unzip and run `lumap.exe`. Or build:
    `cargo build --release -p lumap-app --features spout`.
-2. The welcome screen lists your displays. Click **Create N output(s) with a test grid**: each
-   secondary display gets a borderless output window showing an alignment grid.
-3. Press **I** to flash each output's name on its projector. Drag the four corner handles on
-   the canvas (or on the wall itself) until the grid sits on the surface. Scroll to zoom,
-   **G** for a grid, **S** for snapping, arrows to nudge.
-4. **Add media…** (or drop files on the window) and pick the source in the surface inspector.
-5. Set up a look, press **Store cue**, change something, store another. **Space** fades
-   between them. **F10** locks the show. Ctrl+S saves everything to one TOML file.
+2. **1 Setup.** The start page lists your displays. Click **Create N projector(s)**: each
+   secondary display gets a borderless projector window showing an alignment grid. Press
+   **I** to flash each projector's name on its wall.
+3. **2 Map.** Drag the four corner handles on the canvas (or on the wall itself) until the
+   grid sits on the surface. Scroll to zoom, **G** for a grid, **S** for snapping, arrows to
+   nudge.
+4. **3 Content.** Click a look in the library, or **Add media…** (or drop files on the window),
+   and drag it onto a surface.
+5. **4 Show.** Set up a look, press **Store this look**, change something, store another.
+   **GO** (or **Space**) fades between them. **Go live** checks the show and locks it.
+   Ctrl+S saves everything to one TOML file.
 
 The full guide is [docs/manual.md](docs/manual.md).
 
