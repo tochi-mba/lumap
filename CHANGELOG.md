@@ -6,6 +6,30 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-30
+
+### Added
+
+- A test that walks a first-timer from the start page through all four steps to a live show.
+
+### Changed
+
+- Plain words in the last corners that still said output or source: *Remove from the show*,
+  *Fit the projector*, *Match the content's shape*, projector window titles, the drop overlay,
+  the stage hint and the status messages.
+- The keyboard shortcuts window groups its keys by step: Everywhere, Setup, Map and Show.
+- Screenshots of every step and of the check before going live, with a short running order on
+  the Show step.
+
+### Fixed
+
+- F10 pressed while the check before going live is open closes it, instead of leaving it to
+  reappear after the show.
+
+## [0.5.0] - 2026-10-30
+
+lumap in four steps: Setup, Map, Content and Show.
+
 ### Changed
 
 - A new shell: lumap now works in four steps, **1 Setup** (projectors), **2 Map** (surfaces),
@@ -208,6 +232,8 @@ First release under the lumap name, as a REX Technologies product, in its own re
 - CPU reference renderer, wgpu renderer, golden-image tests and GPU-versus-oracle tests.
 - CI on Linux and Windows with clippy, cargo-deny, coverage floors and a release workflow.
 
-[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/tochi-mba/lumap/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/tochi-mba/lumap/compare/v0.4.0...v0.5.0
 [0.2.0]: https://github.com/tochi-mba/lumap/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tochi-mba/lumap/releases/tag/v0.1.0

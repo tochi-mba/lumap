@@ -748,7 +748,10 @@ fn render_doc_screenshots() {
             e.set_param("/show/master", lumap_core::params::ParamValue::Number(0.6));
             e.commit();
             e.store_cue("Warm wash", 5.0);
-            e.set_param("/surface/logo/opacity", lumap_core::params::ParamValue::Number(0.0));
+            e.set_param(
+                "/surface/logo/opacity",
+                lumap_core::params::ParamValue::Number(0.0),
+            );
             e.commit();
             e.store_cue("Logo out", 1.5);
             e.cue_go(0, 0.0);

@@ -1,5 +1,5 @@
-//! Go live through the real UI: the check before show mode, its one-click fixes, and going live
-//! when everything is ticked.
+//! Go live through the real UI: the check before show mode, its one-click fixes, going live
+//! when everything is ticked, and a first-timer's whole way from the start page to the show.
 
 #![allow(clippy::unwrap_used)]
 
@@ -113,4 +113,61 @@ fn go_live_checks_the_show_and_fixes_what_it_can() {
     assert!(h.state().editor.show_mode);
     assert!(!h.state().panels.golive);
     assert_eq!(h.state().editor.open_outputs, vec!["left".to_string()]);
+}
+
+#[test]
+fn a_first_timer_goes_from_the_start_page_to_a_live_show() {
+    let _settings = settings_guard();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("first.lumap.toml");
+    let mut h = harness(Editor::new(lumap_core::project::Project::default(), None));
+    h.state_mut().panels.home = true;
+    settle(&mut h);
+
+    // Start page: one projector per spare display, each with a full-size surface.
+    click(&mut h, "Create 1 projector(s)");
+    assert_eq!(h.state().panels.step, Step::Setup);
+    // The projector window is a separate OS window in the app; the harness embeds it.
+    h.state_mut().editor.open_outputs.clear();
+    settle(&mut h);
+    let projector = h.state().editor.project.outputs[0].id.clone();
+    let surface = h.state().editor.project.surfaces[0].id.clone();
+
+    // 1 Setup is done: the coach line moves on to Map, where the surface is a layer.
+    click(&mut h, "Next: Map");
+    assert_eq!(h.state().panels.step, Step::Map);
+    assert!(h.query_by_label(&surface).is_some());
+
+    // 2 Map is done: on to Content, and drag a look onto the surface.
+    click(&mut h, "Next: Content");
+    assert_eq!(h.state().panels.step, Step::Content);
+    let target = h.state().canvas.last_rect.unwrap().center();
+    h.get_by_label("Anniversary").scroll_to_me();
+    settle(&mut h);
+    let tile = h.get_by_label("Anniversary").rect().center();
+    drag(&mut h, tile, target);
+    assert_eq!(
+        h.state().editor.project.surface(&surface).unwrap().source,
+        "look-anniversary"
+    );
+
+    // 3 Content is done: on to Show, store the look as the first cue.
+    click(&mut h, "Next: Show");
+    assert_eq!(h.state().panels.step, Step::Show);
+    click(&mut h, "Store this look");
+    assert_eq!(h.state().editor.project.cues.len(), 1);
+
+    // Go live: only saving is left, and the check does it.
+    click(&mut h, "Go live");
+    assert!(h.query_by_label("Before you go live").is_some());
+    assert!(h.query_by_label("1 projector on its display").is_some());
+    assert!(h.query_by_label("Every surface has content").is_some());
+    assert!(h.query_by_label("1 cue ready for GO").is_some());
+    fake(&mut h, |d| d.save = Some(path.clone()));
+    click(&mut h, "Save the show");
+    assert!(path.exists());
+    assert!(h.query_by_label("Ready to go live").is_some());
+    click(&mut h, "Go live now");
+    assert!(h.state().editor.show_mode);
+    assert_eq!(h.state().editor.open_outputs, vec![projector]);
 }

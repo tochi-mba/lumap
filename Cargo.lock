@@ -2205,7 +2205,7 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "lumap-app"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2233,7 +2233,7 @@ dependencies = [
 
 [[package]]
 name = "lumap-control"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "log",
  "lumap-core",
@@ -2248,7 +2248,7 @@ dependencies = [
 
 [[package]]
 name = "lumap-core"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "proptest",
  "serde",
@@ -2259,7 +2259,7 @@ dependencies = [
 
 [[package]]
 name = "lumap-render"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "bytemuck",
  "image",
@@ -2275,7 +2275,7 @@ dependencies = [
 
 [[package]]
 name = "lumap-sources"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "image",
  "log",
@@ -5138,7 +5138,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "serde",
