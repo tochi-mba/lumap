@@ -21,6 +21,10 @@ pub fn render_at(scene: &Scene, width: u32, height: u32) -> RgbaImage {
     for draw in &scene.draws {
         draw_surface(draw, &mut buf, w, h);
     }
+    let amount = scene.post.color.sharpen;
+    if amount > 0.0 {
+        buf = sharpen(&buf, w, h, amount);
+    }
     let mut out = RgbaImage::new(w, h);
     for (i, px) in out.pixels_mut().enumerate() {
         let x = (i as u32 % w, i as u32 / w);
@@ -30,6 +34,29 @@ pub fn render_at(scene: &Scene, width: u32, height: u32) -> RgbaImage {
         *px = image::Rgba([to_u8(c[0]), to_u8(c[1]), to_u8(c[2]), 255]);
     }
     out
+}
+
+/// The unsharp mask both renderers apply before the colour adjustments: each pixel moves away
+/// from the mean of its four neighbours (edges repeat) by `amount`, clamped to `0..=1`.
+pub fn sharpen(buf: &[[f64; 3]], w: u32, h: u32, amount: f64) -> Vec<[f64; 3]> {
+    let at = |x: i64, y: i64| {
+        let x = x.clamp(0, i64::from(w) - 1) as usize;
+        let y = y.clamp(0, i64::from(h) - 1) as usize;
+        buf[y * w as usize + x]
+    };
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| (i64::from(x), i64::from(y))))
+        .map(|(x, y)| {
+            let c = at(x, y);
+            let (l, r, u, d) = (at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1));
+            let mut out = [0.0; 3];
+            for k in 0..3 {
+                let mean = (l[k] + r[k] + u[k] + d[k]) / 4.0;
+                out[k] = (c[k] + amount * (c[k] - mean)).clamp(0.0, 1.0);
+            }
+            out
+        })
+        .collect()
 }
 
 fn to_u8(v: f64) -> u8 {
@@ -125,6 +152,19 @@ fn covers(weight: f64, a: Vec2, b: Vec2, area: f64) -> bool {
 #[allow(clippy::float_cmp, clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sharpening_keeps_flat_areas_and_steepens_edges() {
+        let flat = vec![[0.4; 3]; 9];
+        assert_eq!(sharpen(&flat, 3, 3, 1.0), flat);
+        // A step from dark to light: the dark side dips, the light side lifts, within 0..1.
+        let step: Vec<[f64; 3]> = (0..4).map(|x| [if x < 2 { 0.2 } else { 0.8 }; 3]).collect();
+        let out = sharpen(&step, 4, 1, 1.0);
+        assert!(out[1][0] < 0.2 && out[2][0] > 0.8, "{out:?}");
+        assert_eq!(out[0][0], 0.2, "far from the edge nothing changes");
+        let hard = sharpen(&step, 4, 1, 50.0);
+        assert!(hard.iter().all(|c| (0.0..=1.0).contains(&c[0])));
+    }
     use crate::scene::{MaskRaster, Post};
     use lumap_core::blend::EdgeBlend;
     use lumap_core::project::{ColorAdjust, Crop};

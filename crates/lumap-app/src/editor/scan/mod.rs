@@ -8,6 +8,7 @@
 //! analysis afterwards run on worker threads, so the editor never waits.
 
 mod data;
+pub mod preview;
 mod session;
 
 pub use data::{ScanData, ScanStore};

@@ -80,6 +80,9 @@ pub enum Phase {
     Failed(String),
     /// Stopped by the user.
     Cancelled,
+    /// Paused before the stripes: the camera's view needs fixing first (the advice, worst
+    /// first). The projector stays white so the camera can be aimed.
+    Adjust(Vec<String>),
 }
 
 /// Progress for the scan sheet and the lab.
@@ -163,6 +166,17 @@ pub struct ScanSession {
     still: u32,
     /// When the camera was first seen sending pictures in this scan.
     live_since: Option<Instant>,
+    /// The camera's photos of the projector white and black.
+    white_gray: Option<Gray>,
+    black_gray: Option<Gray>,
+    /// The framing check of those photos.
+    framing: Option<lumap_vision::framing::Framing>,
+    /// Scan even though the framing check found problems.
+    accept_framing: bool,
+    /// The photo of the last stripe pattern, waiting for its inverse.
+    last_pattern: Option<Gray>,
+    /// The picture the scan sheet fills in.
+    preview: Option<super::preview::Preview>,
     workers: Vec<Receiver<WorkerResult>>,
     scans: Vec<ScanData>,
     drifts: Vec<DriftReport>,
@@ -220,6 +234,12 @@ impl ScanSession {
             lags: Vec::new(),
             still: 0,
             live_since: None,
+            white_gray: None,
+            black_gray: None,
+            framing: None,
+            accept_framing: false,
+            last_pattern: None,
+            preview: None,
             workers: Vec::new(),
             scans: Vec::new(),
             drifts: Vec::new(),
@@ -266,6 +286,37 @@ impl ScanSession {
         &self.drifts
     }
 
+    /// What the framing check found for the projector being scanned.
+    pub fn framing(&self) -> Option<&lumap_vision::framing::Framing> {
+        self.framing.as_ref()
+    }
+
+    /// The picture filling in as stripes are read.
+    pub fn preview(&self) -> Option<&super::preview::Preview> {
+        self.preview.as_ref()
+    }
+
+    /// After fixing the camera: photographs white and black again and checks again.
+    pub fn retry(&mut self) {
+        if matches!(self.phase, Phase::Adjust(_)) {
+            self.phase = Phase::Showing;
+            self.code = None;
+            self.decoder = None;
+            self.shown = false;
+            self.framing = None;
+            self.preview = None;
+        }
+    }
+
+    /// Scans with the camera as it is, problems and all.
+    pub fn accept(&mut self) {
+        if matches!(self.phase, Phase::Adjust(_)) {
+            self.accept_framing = true;
+            self.phase = Phase::Showing;
+            self.shown = false;
+        }
+    }
+
     /// Projectors that could not be scanned, and why (the others still were).
     pub fn problems(&self) -> &[String] {
         &self.problems
@@ -306,6 +357,10 @@ impl ScanSession {
         match self.phase {
             Phase::Showing => self.show(editor, hub, now),
             Phase::Decoding => self.collect_workers(editor),
+            Phase::Adjust(_) => {
+                // Keep the camera running so the sheet can show what it sees while aiming.
+                let _ = hub.ensure(&self.camera, now);
+            }
             Phase::Done | Phase::Failed(_) | Phase::Cancelled => {}
         }
     }
@@ -413,11 +468,16 @@ impl ScanSession {
                 }
             });
         }
+        let gray = Gray::from_rgba(&photo);
         if let Some(d) = &mut self.decoder {
-            d.add(self.frame, &Gray::from_rgba(&photo));
+            d.add(self.frame, &gray);
         }
+        let pattern = frames[self.frame];
         self.frame += 1;
         self.shown = false;
+        if self.read(editor, &id, pattern, gray) {
+            return;
+        }
         if self.frame >= frames.len() {
             self.dispatch(editor, &id);
             self.current += 1;
@@ -428,6 +488,55 @@ impl ScanSession {
                 editor.scan_pattern = None;
             }
         }
+    }
+
+    /// Uses each photo beyond the decoder: white and black give the framing check (and may
+    /// pause the scan for the camera to be fixed); each stripe and its inverse sharpen the
+    /// preview. Returns true when the scan paused.
+    fn read(&mut self, editor: &mut Editor, id: &str, pattern: PatternFrame, gray: Gray) -> bool {
+        match pattern {
+            PatternFrame::White => self.white_gray = Some(gray),
+            PatternFrame::Black => {
+                self.black_gray = Some(gray);
+                if let (Some(w), Some(b)) = (&self.white_gray, &self.black_gray) {
+                    let framing = lumap_vision::framing::check(w, b);
+                    self.preview = Some(super::preview::Preview::new(&framing.footprint));
+                    let advice: Vec<String> =
+                        framing.problems.iter().map(|p| p.advice()).collect();
+                    let blind = framing.problems.iter().any(|p| p.is_blocking());
+                    self.framing = Some(framing);
+                    if !advice.is_empty() && (!self.accept_framing || blind) {
+                        // Light the wall so the camera can be aimed by eye, and wait.
+                        let (w, h) = self
+                            .projectors
+                            .get(self.current)
+                            .map_or((1, 1), |(_, w, h)| (*w, *h));
+                        editor.scan_pattern =
+                            Some((id.to_string(), Arc::new(Frame::solid(w, h, [255; 4]))));
+                        self.accept_framing = self.accept_framing && !blind;
+                        self.frame = 0;
+                        self.phase = Phase::Adjust(advice);
+                        return true;
+                    }
+                }
+            }
+            PatternFrame::Bit { inverted: false, .. } => self.last_pattern = Some(gray),
+            PatternFrame::Bit {
+                axis,
+                inverted: true,
+                ..
+            } => {
+                if let (Some(p), Some(a), Some(w), Some(b)) = (
+                    &mut self.preview,
+                    &self.last_pattern,
+                    &self.white_gray,
+                    &self.black_gray,
+                ) {
+                    p.add(axis, a, &gray, w, b);
+                }
+            }
+        }
+        false
     }
 
     /// Decides, frame by frame, when the camera shows the pattern that is up and holds it still.

@@ -239,9 +239,17 @@ pub fn projector_inspector(
         ("Brightness", "brightness", 0.0..=2.0),
         ("Contrast", "contrast", 0.0..=2.0),
         ("Gamma", "gamma", 0.5..=2.5),
+        ("Sharpness", "sharpen", 0.0..=1.0),
     ] {
         param_slider(ui, editor, label, &format!("/output/{id}/{key}"), range);
     }
+    ui.label(
+        egui::RichText::new(
+            "Sharpness crisps up a projector a little out of focus. Focus the lens first.",
+        )
+        .weak()
+        .small(),
+    );
 
     crate::theme::section_header(ui, "Edge blending");
     if ui

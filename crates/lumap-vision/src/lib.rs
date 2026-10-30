@@ -8,6 +8,7 @@
 pub mod correspondence;
 pub mod facets;
 pub mod features;
+pub mod framing;
 pub mod find;
 pub mod gestures;
 pub mod graycode;

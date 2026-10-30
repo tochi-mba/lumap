@@ -717,6 +717,7 @@ impl LumapApp {
                 &self.editor,
                 self.scan.as_ref(),
                 &self.live.skipped,
+                &mut self.panels,
                 &mut actions,
             );
         }
@@ -842,6 +843,16 @@ impl LumapApp {
         self.run_scan_action(actions.scan.clone(), now);
         if actions.scan_cancel {
             self.cancel_scan();
+        }
+        if actions.scan_retry || actions.scan_accept {
+            if let Some(s) = &mut self.scan {
+                if actions.scan_retry {
+                    s.retry();
+                } else {
+                    s.accept();
+                }
+            }
+            self.live.outcome = None;
         }
         if actions.scan_close {
             self.close_scan();

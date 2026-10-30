@@ -5,7 +5,7 @@ struct PostUniforms {
     widths: vec4<f32>,   // left, right, top, bottom
     curves: vec4<u32>,   // 0 linear, 1 smooth, 2 cosine
     params: vec4<f32>,   // blend gamma, brightness, contrast, output gamma
-    params2: vec4<f32>,  // master, blackout, unused, unused
+    params2: vec4<f32>,  // master, blackout, sharpen, unused
 };
 
 @group(0) @binding(0) var<uniform> u: PostUniforms;
@@ -53,7 +53,17 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     if u.params2.y > 0.5 {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
-    let c_in = textureSample(composite, samp, in.uv).rgb;
+    var c_in = textureSample(composite, samp, in.uv).rgb;
+    // Unsharp mask, as the software renderer's `sharpen`: away from the four neighbours' mean.
+    if u.params2.z > 0.0 {
+        let texel = 1.0 / vec2<f32>(textureDimensions(composite));
+        let l = textureSample(composite, samp, in.uv - vec2<f32>(texel.x, 0.0)).rgb;
+        let r = textureSample(composite, samp, in.uv + vec2<f32>(texel.x, 0.0)).rgb;
+        let t = textureSample(composite, samp, in.uv - vec2<f32>(0.0, texel.y)).rgb;
+        let b = textureSample(composite, samp, in.uv + vec2<f32>(0.0, texel.y)).rgb;
+        let mean = (l + r + t + b) * 0.25;
+        c_in = clamp(c_in + u.params2.z * (c_in - mean), vec3<f32>(0.0), vec3<f32>(1.0));
+    }
     let x = in.uv.x;
     let y = in.uv.y;
     let lin = edge(u.widths.x, u.curves.x, x)

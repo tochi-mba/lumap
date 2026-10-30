@@ -203,10 +203,14 @@ pub fn sheet(
     editor: &Editor,
     session: Option<&ScanSession>,
     skipped: &[String],
+    state: &mut PanelState,
     actions: &mut Actions,
 ) {
     let Some(session) = session else { return };
     let progress = session.progress();
+    if matches!(progress.phase, Phase::Showing | Phase::Adjust(_)) {
+        state.want_camera = true;
+    }
     let modal = egui::Modal::new(egui::Id::unique("lumap-scan"))
         .frame(
             egui::Frame::new()
@@ -216,7 +220,7 @@ pub fn sheet(
                 .inner_margin(egui::Margin::same(18)),
         )
         .show(ctx, |ui| {
-            ui.set_width(460.0);
+            ui.set_width(620.0);
             let title = match session.kind {
                 Kind::Full => "Scanning the room",
                 Kind::Drift => "Checking alignment",
@@ -231,6 +235,7 @@ pub fn sheet(
                         progress.of,
                         progress.projector
                     ));
+                    live_view(ui, session, state);
                     let f = progress.frame as f32 / progress.frames.max(1) as f32;
                     ui.add(
                         egui::ProgressBar::new(f)
@@ -252,8 +257,40 @@ pub fn sheet(
                     }
                 }
                 Phase::Decoding => {
-                    ui.label("Working out where every pixel lands…");
-                    ui.add(egui::Spinner::new());
+                    live_view(ui, session, state);
+                    ui.horizontal(|ui| {
+                        ui.add(egui::Spinner::new().color(crate::theme::SIGNAL));
+                        ui.label("Working out where every pixel lands…");
+                    });
+                }
+                Phase::Adjust(advice) => {
+                    ui.label(
+                        RichText::new("Fix the camera first")
+                            .family(crate::theme::strong_family())
+                            .color(crate::theme::LIVE),
+                    );
+                    for a in advice {
+                        ui.label(a);
+                    }
+                    live_view(ui, session, state);
+                    ui.label(
+                        RichText::new(
+                            "The projector is lit white so you can see what the camera sees.",
+                        )
+                        .weak()
+                        .small(),
+                    );
+                    ui.horizontal(|ui| {
+                        if crate::theme::primary_button(ui, "Check again").clicked() {
+                            actions.scan_retry = true;
+                        }
+                        if ui.button("Scan anyway").clicked() {
+                            actions.scan_accept = true;
+                        }
+                        if ui.button("Stop scanning").clicked() {
+                            actions.scan_cancel = true;
+                        }
+                    });
                 }
                 Phase::Done => done(ui, editor, session, skipped, actions),
                 Phase::Failed(why) => {
@@ -278,6 +315,112 @@ pub fn sheet(
     if modal.should_close() && session.finished() {
         actions.scan_close = true;
     }
+}
+
+/// The camera's live picture, with the projection's outline from the framing check and a scan
+/// line sweeping across it, beside the map filling in as stripes are read.
+fn live_view(ui: &mut egui::Ui, session: &ScanSession, state: &mut PanelState) {
+    let t = ui.input(|i| i.time);
+    ui.ctx().request_repaint();
+    if let Some(frame) = state.camera_frame.clone() {
+        if state.camera_tex.as_ref().is_none_or(|(at, _)| t - *at >= 0.08) {
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [frame.width as usize, frame.height as usize],
+                &frame.rgba,
+            );
+            let tex = ui
+                .ctx()
+                .load_texture("camera-preview", image, egui::TextureOptions::LINEAR);
+            state.camera_tex = Some((t, tex));
+        }
+    }
+    let progress = session.progress();
+    let key = (progress.index * 1000 + progress.frame) as u64;
+    if let Some(p) = session.preview() {
+        if state.scan_tex.as_ref().is_none_or(|(k, _)| *k != key) {
+            let img = p.image();
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [img.width as usize, img.height as usize],
+                &img.data,
+            );
+            let tex = ui
+                .ctx()
+                .load_texture("scan-preview", image, egui::TextureOptions::NEAREST);
+            state.scan_tex = Some((key, tex));
+        }
+    }
+    let w = (ui.available_width() - 8.0) / 2.0;
+    let h = w * 9.0 / 16.0;
+    ui.horizontal(|ui| {
+        let (rect, response) = ui.allocate_exact_size(egui::vec2(w, h), egui::Sense::hover());
+        ui.painter().rect_filled(rect, 6.0, crate::theme::INK);
+        if let Some((_, tex)) = &state.camera_tex {
+            ui.painter().image(
+                tex.id(),
+                rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::Role::Image, true, "What the camera sees")
+        });
+        if let Some(f) = session.framing() {
+            if let Some([x0, y0, x1, y1]) = f.bounds {
+                let (cw, ch) = (f.footprint.width as f32, f.footprint.height as f32);
+                let to = |x: u32, y: u32| {
+                    egui::pos2(
+                        rect.min.x + x as f32 / cw * rect.width(),
+                        rect.min.y + y as f32 / ch * rect.height(),
+                    )
+                };
+                let colour = if f.problems.is_empty() {
+                    crate::theme::SIGNAL
+                } else {
+                    crate::theme::LIVE
+                };
+                ui.painter().rect_stroke(
+                    egui::Rect::from_min_max(to(x0, y0), to(x1, y1)),
+                    2.0,
+                    Stroke::new(2.0, colour),
+                    egui::StrokeKind::Outside,
+                );
+            }
+        }
+        if matches!(session.phase(), Phase::Showing) {
+            // A soft line sweeping down the picture while the stripes are photographed.
+            let y = rect.min.y + ((t * 0.45).fract() as f32) * rect.height();
+            for (k, a) in [(0.0, 200u8), (3.0, 90), (7.0, 35)] {
+                ui.painter().hline(
+                    rect.x_range(),
+                    y - k,
+                    Stroke::new(2.0, crate::theme::SIGNAL.gamma_multiply(f32::from(a) / 255.0)),
+                );
+            }
+        }
+        let (rect, response) = ui.allocate_exact_size(egui::vec2(w, h), egui::Sense::hover());
+        ui.painter().rect_filled(rect, 6.0, crate::theme::INK);
+        if let Some((_, tex)) = &state.scan_tex {
+            ui.painter().image(
+                tex.id(),
+                rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::Role::Image, true, "Where each pixel lands so far")
+        });
+    });
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("What the camera sees").weak().small());
+        ui.add_space(w - 110.0);
+        ui.label(
+            RichText::new("Where each pixel lands: colour across, brightness down")
+                .weak()
+                .small(),
+        );
+    });
 }
 
 /// What a finished scan found.

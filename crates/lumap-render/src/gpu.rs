@@ -173,7 +173,7 @@ impl PostUniforms {
             params2: [
                 post.master as f32,
                 if post.blackout { 1.0 } else { 0.0 },
-                0.0,
+                post.color.sharpen.clamp(0.0, 2.0) as f32,
                 0.0,
             ],
         }
@@ -863,6 +863,7 @@ mod tests {
                 brightness: 1.5,
                 contrast: 0.5,
                 gamma: 2.0,
+                sharpen: 0.5,
             },
             master: 0.7,
             blackout: true,
@@ -879,7 +880,7 @@ mod tests {
             [4.0, 1.5, 0.5, 2.0],
             "gamma sanitised to the 4.0 ceiling"
         );
-        assert_eq!(u.params2, [0.7, 1.0, 0.0, 0.0]);
+        assert_eq!(u.params2, [0.7, 1.0, 0.5, 0.0]);
     }
 
     #[test]

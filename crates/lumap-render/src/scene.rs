@@ -439,14 +439,12 @@ mod tests {
         assert_eq!(post.apply([0.25, 0.75, 0.5], 0.5, 0.5), [0.0, 1.0, 0.5]);
         post.color = ColorAdjust {
             brightness: 2.0,
-            contrast: 1.0,
-            gamma: 1.0,
+            ..ColorAdjust::default()
         };
         assert_eq!(post.apply([0.25, 0.75, 0.5], 0.5, 0.5), [0.5, 1.0, 1.0]);
         post.color = ColorAdjust {
-            brightness: 1.0,
-            contrast: 1.0,
             gamma: 2.0,
+            ..ColorAdjust::default()
         };
         assert!((post.apply([0.25, 0.0, 1.0], 0.5, 0.5)[0] - 0.5).abs() < 1e-12);
         post.color = ColorAdjust::default();

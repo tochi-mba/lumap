@@ -53,6 +53,7 @@ impl Project {
                     ["brightness"] => Some(Number(o.color.brightness)),
                     ["contrast"] => Some(Number(o.color.contrast)),
                     ["gamma"] => Some(Number(o.color.gamma)),
+                    ["sharpen"] => Some(Number(o.color.sharpen)),
                     ["blend", "gamma"] => Some(Number(o.blend.gamma)),
                     ["blend", edge, "width"] => {
                         let e = match *edge {
@@ -135,6 +136,7 @@ impl Project {
                     ["brightness"] => o.color.brightness = num()?.clamp(0.0, 4.0),
                     ["contrast"] => o.color.contrast = num()?.clamp(0.0, 4.0),
                     ["gamma"] => o.color.gamma = num()?.clamp(0.2, 5.0),
+                    ["sharpen"] => o.color.sharpen = num()?.clamp(0.0, 2.0),
                     ["blend", "gamma"] => o.blend.gamma = num()?.clamp(0.5, 4.0),
                     ["blend", edge, "width"] => {
                         let v = num()?.clamp(0.0, 1.0);
