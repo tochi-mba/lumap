@@ -32,7 +32,7 @@ pub fn sheet(
                 .inner_margin(egui::Margin::same(18)),
         )
         .show(ctx, |ui| {
-            ui.set_width(440.0);
+            ui.set_width(500.0);
             ui.heading(if ready {
                 "Ready to go live"
             } else {
@@ -47,25 +47,35 @@ pub fn sheet(
                 .small(),
             );
             ui.add_space(10.0);
-            for check in &checks {
-                ui.horizontal(|ui| {
-                    mark(ui, check.ok);
-                    let text = RichText::new(&check.text);
-                    ui.label(if check.ok {
-                        text
-                    } else {
-                        text.color(crate::theme::TEXT)
-                    });
-                    if let Some(f) = check.fix {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.small_button(f.label()).clicked() {
-                                fix = Some(f);
-                            }
+            // Mark, sentence (wrapping in its own column), fix: the button never covers the text.
+            egui::Grid::new("lumap-golive-checks")
+                .num_columns(3)
+                .spacing(egui::vec2(8.0, 8.0))
+                .show(ui, |ui| {
+                    for check in &checks {
+                        mark(ui, check.ok);
+                        ui.allocate_ui(egui::vec2(330.0, 0.0), |ui| {
+                            ui.set_width(330.0);
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(&check.text).color(crate::theme::TEXT),
+                                )
+                                .wrap(),
+                            );
                         });
+                        match check.fix {
+                            Some(f) => {
+                                if ui.small_button(f.label()).clicked() {
+                                    fix = Some(f);
+                                }
+                            }
+                            None => {
+                                ui.label("");
+                            }
+                        }
+                        ui.end_row();
                     }
                 });
-                ui.add_space(2.0);
-            }
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 if ready {
