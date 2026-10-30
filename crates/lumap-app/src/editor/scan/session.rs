@@ -45,6 +45,8 @@ const WARM_UP: Duration = Duration::from_millis(2500);
 /// new pattern arriving. Auto-exposure makes the whole picture brighter or darker, which keeps
 /// the correlation near 1; a new stripe pattern moves where the light is.
 const CHANGED: f64 = 0.15;
+/// Change in shape (1 - correlation) between frames below which the picture is holding still.
+const STEADY_SHAPE: f64 = 0.02;
 /// Mean brightness change between frames below which the picture is holding still.
 const STEADY: f64 = 2.5;
 /// Fresh frames whose median makes one photo.
@@ -440,7 +442,8 @@ impl ScanSession {
             Ready::Collect => {}
             Ready::Blind => {
                 self.problems.push(format!(
-                    "The camera cannot see {id}'s light: aim it at the wall where {id} shines,                      or turn the room lights down."
+                    "The camera cannot see {id}'s light: aim it at the wall where {id} shines, \
+                     or turn the room lights down."
                 ));
                 self.next_projector(editor);
                 return;
@@ -578,10 +581,11 @@ impl ScanSession {
             self.changed_at = Some(now);
             return Ready::Collect;
         }
-        let steady_now = self
-            .previous
-            .as_ref()
-            .is_some_and(|p| difference(p, &small) < STEADY);
+        // Still: the picture keeps its shape (a phone's exposure drifting on is fine; the
+        // decoder evens exposure out) and its brightness hardly moves.
+        let steady_now = self.previous.as_ref().is_some_and(|p| {
+            reshaped(p, &small) < STEADY_SHAPE && difference(p, &small) < STEADY * 3.0
+        });
         self.still = if steady_now { self.still + 1 } else { 0 };
         let faded_in = self
             .changed_at
