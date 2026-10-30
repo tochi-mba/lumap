@@ -43,6 +43,7 @@ use std::collections::HashMap;
 
 /// How the app was started.
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Launch {
     /// Project to open; `None` starts with the demo.
     pub project: Option<PathBuf>,

@@ -22,6 +22,7 @@ use std::process::ExitCode;
 /// Projection mapping editor and show player.
 #[derive(Debug, Parser)]
 #[command(name = "lumap", version, about, long_about = None)]
+#[allow(clippy::struct_excessive_bools)]
 struct Args {
     /// Project file to open in the editor.
     project: Option<PathBuf>,

@@ -53,7 +53,7 @@ pub fn dialogs(
                 "Open without saving",
             ),
         };
-        egui::Modal::new(egui::Id::new("lumap-unsaved-changes")).show(ctx, |ui| {
+        egui::Modal::new(egui::IdSalt::new("lumap-unsaved-changes")).show(ctx, |ui| {
             ui.heading("Unsaved changes");
             ui.label(description);
             ui.add_space(10.0);

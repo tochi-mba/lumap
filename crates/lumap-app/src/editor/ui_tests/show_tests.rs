@@ -321,6 +321,9 @@ fn starting_in_show_mode_and_osc_port_zero() {
     config_dir();
     let launch = Launch {
         project: None,
+        new_show: false,
+        open_show: false,
+        check_updates: false,
         osc_port: 0,
         show: true,
         restart_on_stall: Some(60.0),

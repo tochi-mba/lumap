@@ -307,6 +307,9 @@ fn settings_open_controllers_and_show_launch_takes_a_remote_port() {
     };
     let launch = Launch {
         project: None,
+        new_show: false,
+        open_show: false,
+        check_updates: false,
         osc_port: 0,
         show: true,
         restart_on_stall: None,
