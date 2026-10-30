@@ -147,6 +147,10 @@ pub struct Actions {
     pub scan_cancel: bool,
     /// Close the scan sheet.
     pub scan_close: bool,
+    /// The camera was fixed: check its view again.
+    pub scan_retry: bool,
+    /// Scan with the camera as it is.
+    pub scan_accept: bool,
     /// Put the scans' measured blend widths on the projectors.
     pub measured_blends: bool,
     /// Go to Map with the wall photo and the found surfaces showing.
@@ -234,6 +238,8 @@ pub struct PanelState {
     pub camera_meters: bool,
     /// Where a zone being drawn on the camera picture started.
     pub zone_drag: Option<egui::Pos2>,
+    /// The scan preview's texture, keyed by how far the scan has got.
+    pub scan_tex: Option<(u64, egui::TextureHandle)>,
 }
 
 impl Default for PanelState {
@@ -279,6 +285,7 @@ impl Default for PanelState {
             seen: None,
             camera_meters: false,
             zone_drag: None,
+            scan_tex: None,
         }
     }
 }

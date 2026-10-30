@@ -414,6 +414,14 @@ pub struct ColorAdjust {
     pub contrast: f64,
     /// Output gamma correction, `1` is neutral.
     pub gamma: f64,
+    /// Sharpening, `0` off and `1` strong: an unsharp mask that crisps up a projector a little
+    /// out of focus (focusing the lens comes first).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub sharpen: f64,
+}
+
+fn is_zero(v: &f64) -> bool {
+    *v == 0.0
 }
 
 impl Default for ColorAdjust {
@@ -422,6 +430,7 @@ impl Default for ColorAdjust {
             brightness: 1.0,
             contrast: 1.0,
             gamma: 1.0,
+            sharpen: 0.0,
         }
     }
 }

@@ -58,8 +58,15 @@ impl LumapApp {
         if self.editor.show_mode {
             return Err("Leave show mode to scan.".into());
         }
-        if self.scan.as_ref().is_some_and(|s| !s.finished()) {
-            return Err("A scan is already running.".into());
+        if let Some(s) = &mut self.scan {
+            if matches!(s.phase(), Phase::Adjust(_)) {
+                s.retry();
+                self.live.outcome = None;
+                return Ok(());
+            }
+            if !s.finished() {
+                return Err("A scan is already running.".into());
+            }
         }
         let device = self
             .camera_device()
@@ -127,6 +134,17 @@ impl LumapApp {
             return;
         };
         session.tick(&mut self.editor, &mut self.camera, now);
+        if let Phase::Adjust(advice) = session.phase() {
+            if self.live.outcome.is_none() {
+                self.live.outcome = Some(Ok(serde_json::json!({
+                    "ok": false,
+                    "adjust": advice,
+                    "bounds": session.framing().and_then(|f| f.bounds),
+                    "coverage": session.framing().map(|f| f.coverage),
+                })));
+            }
+            return;
+        }
         if !session.finished() || self.live.settled {
             return;
         }
@@ -172,7 +190,7 @@ impl LumapApp {
                 Err(e)
             }
             Phase::Cancelled => Err("The scan was cancelled.".into()),
-            Phase::Showing | Phase::Decoding => return,
+            Phase::Showing | Phase::Decoding | Phase::Adjust(_) => return,
         });
     }
 

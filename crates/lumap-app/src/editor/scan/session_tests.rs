@@ -216,6 +216,9 @@ fn a_scan_through_a_camera_that_lags_like_a_phone_still_decodes() {
             .push(editor.scan_pattern.as_ref().map(|(_, f)| Arc::clone(f)));
         fake.advance();
         session.tick(&mut editor, &mut hub, now);
+        if matches!(session.phase(), Phase::Adjust(_)) {
+            session.accept();
+        }
         now += Duration::from_millis(33);
         if session.finished() {
             break;
@@ -231,4 +234,54 @@ fn a_scan_through_a_camera_that_lags_like_a_phone_still_decodes() {
     let scan = editor.scans.get("p").unwrap();
     assert!(scan.stats.coverage > 0.5, "{:?}", scan.stats);
     assert!(editor.scan_pattern.is_none(), "the projector is given back");
+}
+
+/// Decodes a folder of photos saved by a scan with `LUMAP_SCAN_DEBUG` (`LUMAP_CAPTURES`, plus
+/// `LUMAP_PROJECTOR=WxH`), and writes `map.png` and the numbers beside them: for tuning the
+/// decoder against a real room without running the scan again.
+#[test]
+#[ignore = "needs a folder of real captures"]
+fn decode_saved_captures() {
+    let dir = std::path::PathBuf::from(std::env::var("LUMAP_CAPTURES").unwrap());
+    let size = std::env::var("LUMAP_PROJECTOR").unwrap_or_else(|_| "1920x1080".into());
+    let (w, h) = size.split_once('x').unwrap();
+    let code = GrayCode::new(w.parse().unwrap(), h.parse().unwrap());
+    let mut decoder = None;
+    for i in 0..code.frames().len() {
+        let img = image::open(dir.join(format!("{i:02}.png"))).unwrap().into_luma8();
+        let d = decoder.get_or_insert_with(|| Decoder::new(&code, img.width(), img.height()));
+        d.add(
+            i,
+            &Gray {
+                width: img.width(),
+                height: img.height(),
+                data: img.into_raw(),
+            },
+        );
+    }
+    let scan = decoder.unwrap().finish(&DecodeSettings::default());
+    let c = &scan.correspondence;
+    let pixels: Vec<u8> = (0..c.cam_h)
+        .flat_map(|y| (0..c.cam_w).map(move |x| (x, y)))
+        .flat_map(|(x, y)| match c.get(x, y) {
+            Some(p) => [
+                (p.x / f64::from(c.proj_w) * 255.0) as u8,
+                (p.y / f64::from(c.proj_h) * 255.0) as u8,
+                96,
+                255,
+            ],
+            None => [0, 0, 0, 255],
+        })
+        .collect();
+    image::RgbaImage::from_raw(c.cam_w, c.cam_h, pixels)
+        .unwrap()
+        .save(dir.join("map.png"))
+        .unwrap();
+    let inverse = c.invert();
+    eprintln!(
+        "valid {:.3} coverage {:.3} contrast {:.1}",
+        scan.stats.valid_fraction,
+        inverse.coverage(),
+        scan.stats.mean_contrast
+    );
 }
