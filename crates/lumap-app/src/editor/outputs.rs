@@ -308,6 +308,11 @@ pub fn show_output_windows(
         let editing = !editor.show_mode && editor.edit_on_wall && scan.is_none();
         ctx.show_viewport_immediate(viewport_id, builder, |ui, class| {
             let rect = ui.max_rect();
+            // The whole window, not just the content area, so no light-grey strip shows on the
+            // wall at an edge.
+            ui.ctx()
+                .layer_painter(egui::LayerId::background())
+                .rect_filled(ui.ctx().viewport_rect().expand(4.0), 0.0, egui::Color32::BLACK);
             ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
             if let Some(scene) = &scene {
                 paint_scene(ui, rect, format!("output:{id}"), Arc::clone(scene), format);

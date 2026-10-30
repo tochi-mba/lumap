@@ -37,53 +37,100 @@ impl Correspondence {
         )
     }
     /// Builds the inverse map by splatting camera samples and filling small holes.
+    /// Whether a camera pixel's reading matches its neighbourhood: a stripe misread near a
+    /// boundary lands far from where the pixels around it do, and would paint a stray band.
+    /// Within a 5x5 window, the median of the other readings must lie within `OUTLIER` projector
+    /// pixels (scaled by how many projector pixels one camera pixel spans). Pixels with too few
+    /// readings around them are kept.
+    fn agrees(&self, x: u32, y: u32, p: Vec2) -> bool {
+        let mut xs = Vec::with_capacity(24);
+        let mut ys = Vec::with_capacity(24);
+        for dy in -2i64..=2 {
+            for dx in -2i64..=2 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                let (nx, ny) = (i64::from(x) + dx, i64::from(y) + dy);
+                if nx < 0 || ny < 0 {
+                    continue;
+                }
+                if let Some(q) = self.get(nx as u32, ny as u32) {
+                    xs.push(q.x);
+                    ys.push(q.y);
+                }
+            }
+        }
+        if xs.len() < 6 {
+            return true;
+        }
+        let median = |v: &mut Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        let scale = (f64::from(self.proj_w) / f64::from(self.cam_w))
+            .max(f64::from(self.proj_h) / f64::from(self.cam_h))
+            .max(1.0);
+        let limit = OUTLIER * scale;
+        (p.x - median(&mut xs)).abs() <= limit && (p.y - median(&mut ys)).abs() <= limit
+    }
+
     pub fn invert(&self) -> ProjectorMap {
-        let mut cam = vec![[f32::NAN; 2]; self.proj_w as usize * self.proj_h as usize];
+        let (pw, ph) = (self.proj_w as usize, self.proj_h as usize);
+        // Every readable camera pixel that agrees with its neighbours: (projector pixel, camera
+        // position).
+        let mut samples: Vec<(usize, [f64; 2])> = Vec::new();
         for y in 0..self.cam_h {
             for x in 0..self.cam_w {
-                if let Some(p) = self.get(x, y) {
-                    let (px, py) = (p.x.floor() as i64, p.y.floor() as i64);
-                    if px >= 0
-                        && py >= 0
-                        && px < i64::from(self.proj_w)
-                        && py < i64::from(self.proj_h)
-                    {
-                        cam[py as usize * self.proj_w as usize + px as usize] =
-                            [x as f32 + 0.5, y as f32 + 0.5];
-                    }
+                let Some(p) = self.get(x, y) else { continue };
+                if !self.agrees(x, y, p) {
+                    continue;
+                }
+                let (px, py) = (p.x.floor() as i64, p.y.floor() as i64);
+                if px >= 0 && py >= 0 && (px as usize) < pw && (py as usize) < ph {
+                    let at = py as usize * pw + px as usize;
+                    samples.push((at, [f64::from(x) + 0.5, f64::from(y) + 0.5]));
                 }
             }
         }
-        for _ in 0..3 {
-            let old = cam.clone();
-            for y in 0..self.proj_h {
-                for x in 0..self.proj_w {
-                    let i = y as usize * self.proj_w as usize + x as usize;
-                    if old[i][0].is_finite() {
-                        continue;
-                    }
-                    let (mut sx, mut sy, mut n) = (0.0, 0.0, 0.0);
-                    for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                        let (xx, yy) = (i64::from(x) + dx, i64::from(y) + dy);
-                        if xx >= 0
-                            && yy >= 0
-                            && xx < i64::from(self.proj_w)
-                            && yy < i64::from(self.proj_h)
-                        {
-                            let q = old[yy as usize * self.proj_w as usize + xx as usize];
-                            if q[0].is_finite() {
-                                sx += q[0];
-                                sy += q[1];
-                                n += 1.0;
-                            }
-                        }
-                    }
-                    if n >= 2.0 {
-                        cam[i] = [sx / n, sy / n];
-                    }
-                }
-            }
+        // Light bounced off nearby walls decodes to projector pixels too, from far across the
+        // camera's picture. Within each block of projector pixels, keep only the samples close
+        // to the block's median camera position.
+        let (bw, bh) = (pw.div_ceil(BLOCK), ph.div_ceil(BLOCK));
+        let block = |at: usize| ((at / pw) / BLOCK) * bw + (at % pw) / BLOCK;
+        let mut per_block: Vec<(Vec<f64>, Vec<f64>)> = vec![(Vec::new(), Vec::new()); bw * bh];
+        for (at, c) in &samples {
+            let b = &mut per_block[block(*at)];
+            b.0.push(c[0]);
+            b.1.push(c[1]);
         }
+        let medians: Vec<Option<[f64; 2]>> = per_block
+            .into_iter()
+            .map(|(mut xs, mut ys)| {
+                if xs.is_empty() {
+                    return None;
+                }
+                xs.sort_by(f64::total_cmp);
+                ys.sort_by(f64::total_cmp);
+                Some([xs[xs.len() / 2], ys[ys.len() / 2]])
+            })
+            .collect();
+        // A block spans this many camera pixels, give or take: samples further than a few
+        // blocks' worth from the median came from somewhere else.
+        let span = (BLOCK as f64 * f64::from(self.cam_w) / f64::from(self.proj_w))
+            .max(BLOCK as f64 * f64::from(self.cam_h) / f64::from(self.proj_h));
+        let reach = CONSENSUS * span.max(1.0);
+        let mut sum = vec![[0.0f64; 3]; pw * ph];
+        for (at, c) in samples {
+            let Some(m) = medians[block(at)] else { continue };
+            if (c[0] - m[0]).abs() > reach || (c[1] - m[1]).abs() > reach {
+                continue;
+            }
+            let s = &mut sum[at];
+            s[0] += c[0];
+            s[1] += c[1];
+            s[2] += 1.0;
+        }
+        let cam = push_pull(&sum, pw, ph);
         ProjectorMap {
             proj_w: self.proj_w,
             proj_h: self.proj_h,
@@ -257,3 +304,141 @@ impl ProjectorMap {
         r
     }
 }
+
+/// Side, in projector pixels, of the blocks the projection's outline is judged in: a camera that
+/// sees the projector at a third of its resolution leaves samples a few pixels apart, and stripes
+/// it cannot resolve snap them further, so the outline is decided at this coarser scale.
+const BLOCK: usize = 16;
+
+/// How many blocks' span (in camera pixels) a sample may sit from its block's median camera
+/// position before it counts as stray light.
+const CONSENSUS: f64 = 2.0;
+
+/// How far, in camera pixels' worth of projector pixels, a reading may sit from its neighbours'
+/// median before it counts as a misread.
+const OUTLIER: f64 = 6.0;
+
+/// The coarser level's value at a finer pixel: bilinear between the four nearest coarse
+/// pixels, so a filled gap is a smooth ramp rather than steps; unfilled ones are left out.
+fn upsample(coarse: &[[f64; 2]], w: usize, h: usize, x: usize, y: usize) -> [f64; 2] {
+    let fx = ((x as f64 + 0.5) / 2.0 - 0.5).clamp(0.0, (w - 1) as f64);
+    let fy = ((y as f64 + 0.5) / 2.0 - 0.5).clamp(0.0, (h - 1) as f64);
+    let (x0, y0) = (fx.floor() as usize, fy.floor() as usize);
+    let (x1, y1) = ((x0 + 1).min(w - 1), (y0 + 1).min(h - 1));
+    let (tx, ty) = (fx - x0 as f64, fy - y0 as f64);
+    let mut acc = [0.0; 2];
+    let mut weight = 0.0;
+    for (cx, cy, wgt) in [
+        (x0, y0, (1.0 - tx) * (1.0 - ty)),
+        (x1, y0, tx * (1.0 - ty)),
+        (x0, y1, (1.0 - tx) * ty),
+        (x1, y1, tx * ty),
+    ] {
+        let v = coarse[cy * w + cx];
+        if wgt > 0.0 && v[0].is_finite() {
+            acc[0] += v[0] * wgt;
+            acc[1] += v[1] * wgt;
+            weight += wgt;
+        }
+    }
+    if weight > 0.0 {
+        [acc[0] / weight, acc[1] / weight]
+    } else {
+        coarse[(y / 2).min(h - 1) * w + (x / 2).min(w - 1)]
+    }
+}
+
+/// Fills the gaps between scattered samples (`[sum x, sum y, count]` per pixel) with a push-pull
+/// pyramid, inside the projection only: a pixel is filled when its block, or most of the blocks
+/// around it, holds a sample. Unseen pixels stay NaN.
+fn push_pull(sum: &[[f64; 3]], w: usize, h: usize) -> Vec<[f32; 2]> {
+    // Push: average down to 1x1.
+    let mut levels: Vec<(usize, usize, Vec<[f64; 3]>)> = vec![(w, h, sum.to_vec())];
+    while let Some((lw, lh, data)) = levels.last() {
+        if *lw <= 1 && *lh <= 1 {
+            break;
+        }
+        let (nw, nh) = (lw.div_ceil(2), lh.div_ceil(2));
+        let mut next = vec![[0.0; 3]; nw * nh];
+        for y in 0..*lh {
+            for x in 0..*lw {
+                let s = data[y * lw + x];
+                let n = &mut next[(y / 2) * nw + x / 2];
+                n[0] += s[0];
+                n[1] += s[1];
+                n[2] += s[2];
+            }
+        }
+        levels.push((nw, nh, next));
+    }
+    // Pull: each level fills its empty pixels from the (already filled) level above.
+    let mut filled: Vec<[f64; 2]> = Vec::new();
+    let (mut fw, mut fh) = (0usize, 0usize);
+    for (lw, lh, data) in levels.iter().rev() {
+        let mut out = vec![[f64::NAN; 2]; lw * lh];
+        for y in 0..*lh {
+            for x in 0..*lw {
+                let s = data[y * lw + x];
+                out[y * lw + x] = if s[2] > 0.0 {
+                    [s[0] / s[2], s[1] / s[2]]
+                } else if fw > 0 {
+                    upsample(&filled, fw, fh, x, y)
+                } else {
+                    [f64::NAN; 2]
+                };
+            }
+        }
+        filled = out;
+        fw = *lw;
+        fh = *lh;
+    }
+    // Inside: blocks that hold samples, closed so a few empty blocks inside count too.
+    let (bw, bh) = (w.div_ceil(BLOCK), h.div_ceil(BLOCK));
+    let mut has = vec![false; bw * bh];
+    for y in 0..h {
+        for x in 0..w {
+            if sum[y * w + x][2] > 0.0 {
+                has[(y / BLOCK) * bw + x / BLOCK] = true;
+            }
+        }
+    }
+    let inside: Vec<bool> = (0..bh)
+        .flat_map(|by| (0..bw).map(move |bx| (bx, by)))
+        .map(|(bx, by)| {
+            if has[by * bw + bx] {
+                return true;
+            }
+            let mut n = 0;
+            for dy in -1i64..=1 {
+                for dx in -1i64..=1 {
+                    let (x, y) = (bx as i64 + dx, by as i64 + dy);
+                    if (dx != 0 || dy != 0)
+                        && x >= 0
+                        && y >= 0
+                        && (x as usize) < bw
+                        && (y as usize) < bh
+                        && has[y as usize * bw + x as usize]
+                    {
+                        n += 1;
+                    }
+                }
+            }
+            n >= 5
+        })
+        .collect();
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            let v = filled[y * w + x];
+            if inside[(y / BLOCK) * bw + x / BLOCK] && v[0].is_finite() {
+                [v[0] as f32, v[1] as f32]
+            } else {
+                [f32::NAN; 2]
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+#[path = "correspondence_tests.rs"]
+mod tests;

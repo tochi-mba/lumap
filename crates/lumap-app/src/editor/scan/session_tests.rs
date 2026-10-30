@@ -278,6 +278,17 @@ fn decode_saved_captures() {
         .save(dir.join("map.png"))
         .unwrap();
     let inverse = c.invert();
+    let color = image::open(dir.join("00.png")).unwrap().into_rgba8();
+    let color = Rgba {
+        width: color.width(),
+        height: color.height(),
+        data: color.into_raw(),
+    };
+    let eye = lumap_vision::photo::projector_eye(&inverse, &color);
+    image::RgbaImage::from_raw(eye.width, eye.height, eye.data)
+        .unwrap()
+        .save(dir.join("photo.png"))
+        .unwrap();
     eprintln!(
         "valid {:.3} coverage {:.3} contrast {:.1}",
         scan.stats.valid_fraction,
