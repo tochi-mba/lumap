@@ -44,6 +44,12 @@ use std::collections::HashMap;
 pub struct Launch {
     /// Project to open; `None` starts with the demo.
     pub project: Option<PathBuf>,
+    /// Start with an empty show.
+    pub new_show: bool,
+    /// Ask for a project file on startup.
+    pub open_show: bool,
+    /// Show update controls and request a manual check at startup.
+    pub check_updates: bool,
     /// OSC port, `0` to disable.
     pub osc_port: u16,
     /// Start in show mode.
@@ -85,6 +91,7 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
             }
             editor
         }
+        None if launch.new_show => Editor::new(Project::default(), None),
         None => Editor::new(demo_project(), None),
     };
     let _ = &settings;
@@ -146,7 +153,23 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
                 render_state.target_format,
             );
             app.apply_settings(Settings::load());
-            app.panels.home = launch_for_app.project.is_none() && !app.settings.skip_welcome;
+            app.panels.home = !launch_for_app.new_show
+                && !launch_for_app.open_show
+                && launch_for_app.project.is_none()
+                && !app.settings.skip_welcome;
+            if launch_for_app.open_show {
+                app.open_dialog();
+            }
+            if launch_for_app.check_updates {
+                app.panels.settings_open = true;
+                if let Some(message) = app.updater.request(
+                    &mut app.settings.update,
+                    crate::update::Request::CheckNow,
+                    crate::update::now_unix(),
+                ) {
+                    app.editor.status = message;
+                }
+            }
             Ok(Box::new(app))
         }),
     )
@@ -291,11 +314,9 @@ impl LumapApp {
         if self.settings.update != before {
             self.settings.save();
         }
-        if self.updater.closing && !self.close_confirmed {
-            if self.editor.dirty && self.editor.path.is_some() {
-                self.save();
-            }
-            self.request(Pending::Close);
+        // The installer starts only after the unsaved-work confirmation has finished.
+        if self.updater.closing {
+            self.close_confirmed = true;
         }
     }
 
@@ -392,8 +413,21 @@ impl LumapApp {
                 self.close_confirmed = true;
                 self.editor.osc = None;
             }
+            Pending::InstallUpdate => {
+                if let Some(message) = self.updater.request(
+                    &mut self.settings.update,
+                    crate::update::Request::Install,
+                    crate::update::now_unix(),
+                ) {
+                    self.editor.status = message;
+                }
+                self.settings.save();
+                if self.updater.closing {
+                    self.close_confirmed = true;
+                }
+            }
             Pending::New => {
-                self.editor = Editor::new(demo_project(), None);
+                self.editor = Editor::new(Project::default(), None);
                 self.editor.set_osc_port(self.settings.osc_port);
                 self.canvas.reset_view();
                 self.panels.home = true;
@@ -557,7 +591,8 @@ impl LumapApp {
             !self.editor.open_outputs.is_empty(),
             now,
         ));
-        panels::start_page(ui, &self.monitors, &self.settings, &mut actions, &check);
+        let banner = self.update_banner(now);
+        panels::start_page(ui, &self.monitors, &self.settings, &mut actions, &check, &banner);
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions, &check);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
@@ -701,6 +736,12 @@ impl LumapApp {
         if self.editor.show_mode {
             let fps = self.fps();
             panels::show_mode_screen(ui, &self.editor, fps);
+            // A system close request needs its confirmation even during show mode.
+            if self.editor.pending.is_some() {
+                let mut actions = panels::Actions::default();
+                panels::dialogs(&ctx, &mut self.editor, &mut self.panels, &mut actions);
+                self.run_actions(actions, &ctx);
+            }
         } else if self.panels.home {
             self.home_frame(ui, &ctx, now);
         } else {
@@ -743,14 +784,18 @@ impl LumapApp {
             self.settings.save();
         }
         if let Some(request) = actions.update {
-            if let Some(message) = self.updater.request(
-                &mut self.settings.update,
-                request,
-                crate::update::now_unix(),
-            ) {
-                self.editor.status = message;
+            if request == crate::update::Request::Install {
+                self.request(Pending::InstallUpdate);
+            } else {
+                if let Some(message) = self.updater.request(
+                    &mut self.settings.update,
+                    request,
+                    crate::update::now_unix(),
+                ) {
+                    self.editor.status = message;
+                }
+                self.settings.save();
             }
-            self.settings.save();
         }
         if let Some(show) = actions.start_page {
             self.settings.skip_welcome = !show;
@@ -887,9 +932,25 @@ impl LumapApp {
             self.panels.home = false;
             self.go_to_first_open_step();
         }
-        if let Some(proceed) = actions.resolve_pending {
-            if let Some(action) = self.editor.resolve_pending(proceed) {
-                self.perform(action);
+        if let Some(choice) = actions.resolve_pending {
+            match choice {
+                panels::PendingChoice::Save => {
+                    self.save();
+                    // Cancelled Save As or a failed write must never drop the pending work.
+                    if !self.editor.dirty {
+                        if let Some(action) = self.editor.resolve_pending(true) {
+                            self.perform(action);
+                        }
+                    }
+                }
+                panels::PendingChoice::Discard => {
+                    if let Some(action) = self.editor.resolve_pending(true) {
+                        self.perform(action);
+                    }
+                }
+                panels::PendingChoice::Cancel => {
+                    self.editor.resolve_pending(false);
+                }
             }
         }
     }
