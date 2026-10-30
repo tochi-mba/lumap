@@ -109,6 +109,51 @@ impl Editor {
         self.selection = Selection::Surface { id, mask: None };
     }
 
+    /// Adds a surface on `output` with a shape (and cut-outs) found on the wall, showing the
+    /// show's first content, and selects it. One undo step. Returns its id.
+    pub fn add_surface_shaped(
+        &mut self,
+        output: &str,
+        name: &str,
+        warp: WarpKind,
+        masks: Vec<Mask>,
+    ) -> String {
+        if self.project.sources.is_empty() {
+            self.add_source(SourceKind::TestPattern {
+                pattern: TestPattern::Grid,
+            });
+        }
+        let source = self.project.sources[0].id.clone();
+        let base = if lumap_core::project::is_valid_id(name) {
+            name
+        } else {
+            "surface"
+        };
+        let id = self.fresh_id(base);
+        let new_id = id.clone();
+        let output = output.to_string();
+        self.edit(|p| {
+            p.surfaces.push(Surface {
+                id: new_id,
+                output,
+                source,
+                z: p.surfaces.len() as i32,
+                visible: true,
+                opacity: 1.0,
+                blend_mode: lumap_core::project::BlendMode::Normal,
+                crop: Crop::default(),
+                warp,
+                masks,
+                locked: false,
+            });
+        });
+        self.selection = Selection::Surface {
+            id: id.clone(),
+            mask: None,
+        };
+        id
+    }
+
     /// Adds a source.
     pub fn add_source(&mut self, kind: SourceKind) -> String {
         let id = self.fresh_id(kind.label());

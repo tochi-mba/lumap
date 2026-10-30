@@ -35,6 +35,8 @@ pub struct HandleState {
     pub snap: bool,
     /// Grid divisions per axis used for snapping and drawing (`0` disables the grid).
     pub grid: u32,
+    /// The projector's scan: corners snap to the real corners and edges it found.
+    pub wall: Option<std::sync::Arc<super::scan::ScanData>>,
 }
 
 /// Maps normalised output space onto a screen rectangle.
@@ -94,6 +96,17 @@ pub fn pick(map: &Mapping, list: &[(Handle, Vec2)], pos: Pos2, radius: f32) -> O
         .filter(|(_, d)| *d <= radius)
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(h, _)| h)
+}
+
+/// Snaps `p` (normalised) to a real corner or edge the scan found nearby, within the snap radius
+/// on screen.
+pub fn snap_to_wall(map: &Mapping, scan: &super::scan::ScanData, p: Vec2) -> Option<Vec2> {
+    let (w, h) = (f64::from(scan.photo.width), f64::from(scan.photo.height));
+    let px_per_point = w / f64::from(map.rect.width().max(1.0));
+    let radius = f64::from(SNAP_RADIUS) * px_per_point;
+    scan.snap
+        .nearest(Vec2::new(p.x * w, p.y * h), radius)
+        .map(|(q, _)| Vec2::new(q.x / w, q.y / h))
 }
 
 /// Snaps `p` to the nearest output edge, centre line or grid line when one is within
@@ -290,7 +303,8 @@ pub fn interact(
             let delta = map.delta(response.drag_delta());
             let mut p = map.to_norm(pos);
             if state.snap && !alt {
-                p = snap(map, p, state.grid, SNAP_RADIUS);
+                let walled = state.wall.as_ref().and_then(|w| snap_to_wall(map, w, p));
+                p = walled.unwrap_or_else(|| snap(map, p, state.grid, SNAP_RADIUS));
             }
             apply_move(editor, &id, &warp, mask_ref, h, p, delta);
         }
