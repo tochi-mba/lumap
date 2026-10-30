@@ -429,7 +429,10 @@ mod tests {
             Version::parse("0.3.0"),
             Instant::now(),
         );
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         assert_eq!(u.startup(&mut s), None);
         let now = 1_700_000_000;
 
@@ -564,7 +567,10 @@ mod tests {
             Version::parse("0.3.0"),
             Instant::now(),
         );
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         assert!(
             settle(&mut u, &mut s, calm(), 5).is_empty(),
             "a failed check says nothing"
