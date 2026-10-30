@@ -406,7 +406,10 @@ mod tests {
 
     #[test]
     fn a_check_replaces_drops_or_keeps_the_pending_update() {
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         assert_eq!(
             after_check(&mut s, Some(&offer("0.4.0"))),
             Some("lumap 0.4.0 is available.".into())
@@ -451,7 +454,10 @@ mod tests {
 
     #[test]
     fn downloads_succeed_fail_and_give_up() {
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         assert!(download_failed(&mut s, "x").is_empty());
         assert!(download_succeeded(&mut s).is_none());
         after_check(&mut s, Some(&offer("0.4.0")));
@@ -469,7 +475,10 @@ mod tests {
         assert_eq!(s.pending.as_ref().unwrap().stage, Stage::Installing);
         assert!(!start_install(&mut s), "only a ready update installs");
 
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         after_check(&mut s, Some(&offer("0.4.0")));
         request_download(&mut s);
         assert_eq!(
@@ -489,7 +498,10 @@ mod tests {
 
     #[test]
     fn later_and_skip() {
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         after_check(&mut s, Some(&offer("0.4.0")));
         remind_later(&mut s, 1000);
         assert_eq!(s.quiet_until, Some(1000 + LATER.as_secs()));
@@ -546,7 +558,10 @@ mod tests {
 
     #[test]
     fn the_banner_is_quiet_during_a_show_and_names_each_stage() {
-        let mut s = UpdateSettings::default();
+        let mut s = UpdateSettings {
+            mode: Mode::Notify,
+            ..UpdateSettings::default()
+        };
         assert_eq!(banner(&s, calm(), 0), Banner::None);
         after_check(&mut s, Some(&offer("0.4.0")));
         assert_eq!(
@@ -588,6 +603,20 @@ mod tests {
         );
         start_install(&mut s);
         assert_eq!(banner(&s, calm(), 0), Banner::None);
+    }
+
+    #[test]
+    fn automatic_download_is_default_but_install_always_needs_consent() {
+        let mut settings = UpdateSettings::default();
+        assert_eq!(settings.mode, Mode::Download);
+        after_check(&mut settings, Some(&offer("0.8.0")));
+        assert_eq!(settings.pending.as_ref().unwrap().stage, Stage::Downloading);
+        assert!(should_download(&settings, calm()));
+        download_succeeded(&mut settings);
+        assert_eq!(settings.pending.as_ref().unwrap().stage, Stage::Ready);
+        remind_later(&mut settings, 123);
+        assert_eq!(settings.pending.as_ref().unwrap().stage, Stage::Ready);
+        assert!(!should_download(&settings, calm()));
     }
 
     #[test]

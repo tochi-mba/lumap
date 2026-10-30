@@ -78,8 +78,11 @@ fn the_update_mode_is_chosen_in_the_show_inspector_and_saved() {
     let _settings = settings_guard();
     let dir = config_dir();
     let mut h = harness(Editor::new(demo_project(), None));
-    assert_eq!(h.state().settings.update.mode, Mode::Notify);
+    assert_eq!(h.state().settings.update.mode, Mode::Download);
     menu(&mut h, "Menu", "Settings…");
+    click(&mut h, "Updates");
+    click(&mut h, "Notify only");
+    assert_eq!(h.state().settings.update.mode, Mode::Notify);
     click(&mut h, "Updates");
     click(&mut h, "Off (manual only)");
     assert_eq!(h.state().settings.update.mode, Mode::Off);
