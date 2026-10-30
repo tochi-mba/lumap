@@ -443,7 +443,7 @@ impl ScanSession {
             Ready::Blind => {
                 self.problems.push(format!(
                     "The camera cannot see {id}'s light: aim it at the wall where {id} shines, \
-                     or turn the room lights down."
+                     and check that {id} is on."
                 ));
                 self.next_projector(editor);
                 return;
@@ -504,8 +504,7 @@ impl ScanSession {
                 if let (Some(w), Some(b)) = (&self.white_gray, &self.black_gray) {
                     let framing = lumap_vision::framing::check(w, b);
                     self.preview = Some(super::preview::Preview::new(&framing.footprint, w, b));
-                    let advice: Vec<String> =
-                        framing.problems.iter().map(|p| p.advice()).collect();
+                    let advice: Vec<String> = framing.problems.iter().map(|p| p.advice()).collect();
                     let blind = framing.problems.iter().any(|p| p.is_blocking());
                     self.framing = Some(framing);
                     if !advice.is_empty() && (!self.accept_framing || blind) {
@@ -523,7 +522,9 @@ impl ScanSession {
                     }
                 }
             }
-            PatternFrame::Bit { inverted: false, .. } => self.last_pattern = Some(gray),
+            PatternFrame::Bit {
+                inverted: false, ..
+            } => self.last_pattern = Some(gray),
             PatternFrame::Bit {
                 axis,
                 inverted: true,
@@ -642,8 +643,8 @@ impl ScanSession {
                 (Kind::Full | Kind::Realign, _) => {
                     if scan.stats.valid_fraction < 0.02 {
                         Err(format!(
-                            "The camera could not see {id}'s stripes. Point it at the wall and \
-                             make the room darker."
+                            "The camera could not see {id}'s stripes. Point it at the wall where \
+                             {id} shines, and check the camera is in focus."
                         ))
                     } else {
                         let data = ScanData::build(

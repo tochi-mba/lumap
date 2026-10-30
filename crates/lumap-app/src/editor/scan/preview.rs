@@ -44,7 +44,9 @@ impl Preview {
         let centre = |x: u32, y: u32| (x * CELL + CELL / 2, y * CELL + CELL / 2);
         let contrast = |x: u32, y: u32| {
             let (px, py) = centre(x, y);
-            white.at(px.into(), py.into()).saturating_sub(black.at(px.into(), py.into()))
+            white
+                .at(px.into(), py.into())
+                .saturating_sub(black.at(px.into(), py.into()))
         };
         let lit = |x: u32, y: u32| {
             let (px, py) = centre(x, y);
@@ -88,7 +90,10 @@ impl Preview {
                 if !cell.lit || *done {
                     continue;
                 }
-                let (a, b) = (pattern.at(px.into(), py.into()), inverse.at(px.into(), py.into()));
+                let (a, b) = (
+                    pattern.at(px.into(), py.into()),
+                    inverse.at(px.into(), py.into()),
+                );
                 let contrast = white
                     .at(px.into(), py.into())
                     .saturating_sub(black.at(px.into(), py.into()));
@@ -178,7 +183,11 @@ mod tests {
         let black = Gray::from_fn(16, 8, |_, _| 10);
         let mut p = Preview::new(&footprint, &white, &black);
         assert_eq!(p.progress(), 0.0);
-        assert_eq!(p.image().get(0, 0), [40, 48, 42, 255], "lit, nothing read yet");
+        assert_eq!(
+            p.image().get(0, 0),
+            [40, 48, 42, 255],
+            "lit, nothing read yet"
+        );
         assert_eq!(p.image().get(3, 0), [8, 10, 9, 255], "not lit");
         // Left half bright in the pattern: stripe 1 there, 0 on the right.
         let pattern = Gray::from_fn(16, 8, |x, _| if x < 8 { 200 } else { 10 });
@@ -188,7 +197,11 @@ mod tests {
         assert_ne!(p.image().get(0, 0), p.image().get(2, 0), "two bands now");
         // A flat pair cannot be read: those cells stop refining across.
         p.add(Axis::X, &white, &white, &white, &black);
-        assert!(p.cells.iter().filter(|c| c.lit).all(|c| c.done_x && c.nx == 1));
+        assert!(p
+            .cells
+            .iter()
+            .filter(|c| c.lit)
+            .all(|c| c.done_x && c.nx == 1));
         p.add(Axis::Y, &pattern, &inverse, &white, &black);
         assert_eq!(fraction(0b1, 1), 0.75);
         assert_eq!(fraction(0, 0), 0.5);

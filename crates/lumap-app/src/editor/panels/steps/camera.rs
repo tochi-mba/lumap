@@ -3,7 +3,7 @@
 //! the measured blends or to see the found surfaces in Map.
 
 use super::super::super::camera::{CameraHub, CameraStatus};
-use super::super::super::scan::{Kind, Phase, ScanSession};
+use super::super::super::scan::{Kind, Phase, Progress, ScanSession};
 use super::super::super::Editor;
 use super::super::{Actions, PanelState};
 use eframe::egui::{self, RichText, Stroke};
@@ -248,13 +248,7 @@ pub fn sheet(
                             .fill(crate::theme::SIGNAL)
                             .desired_height(6.0),
                     );
-                    ui.label(
-                        RichText::new(
-                            "Keep the camera still and stay out of the light. A dim room scans best, but lights on works too.",
-                        )
-                        .weak()
-                        .small(),
-                    );
+                    ui.label(RichText::new(scan_hint(session, &progress)).weak().small());
                     if ui.button("Stop scanning").clicked() {
                         actions.scan_cancel = true;
                     }
@@ -326,7 +320,11 @@ fn live_view(ui: &mut egui::Ui, session: &ScanSession, state: &mut PanelState) {
     let t = ui.input(|i| i.time);
     ui.ctx().request_repaint();
     if let Some(frame) = state.camera_frame.clone() {
-        if state.camera_tex.as_ref().is_none_or(|(at, _)| t - *at >= 0.08) {
+        if state
+            .camera_tex
+            .as_ref()
+            .is_none_or(|(at, _)| t - *at >= 0.08)
+        {
             let image = egui::ColorImage::from_rgba_unmultiplied(
                 [frame.width as usize, frame.height as usize],
                 &frame.rgba,
@@ -397,7 +395,10 @@ fn live_view(ui: &mut egui::Ui, session: &ScanSession, state: &mut PanelState) {
                 ui.painter().hline(
                     rect.x_range(),
                     y - k,
-                    Stroke::new(2.0, crate::theme::SIGNAL.gamma_multiply(f32::from(a) / 255.0)),
+                    Stroke::new(
+                        2.0,
+                        crate::theme::SIGNAL.gamma_multiply(f32::from(a) / 255.0),
+                    ),
                 );
             }
         }
@@ -511,4 +512,40 @@ fn done(
             actions.scan_close = true;
         }
     });
+}
+
+/// What the scan sheet says under the progress: what the scan is doing right now and how it is
+/// coping with the room's light, measured from the white and black photos.
+fn scan_hint(session: &ScanSession, progress: &Progress) -> String {
+    use lumap_vision::framing::Light;
+    let Some(framing) = session.framing() else {
+        return if progress.frame == 0 {
+            "Waiting for the camera to settle, then lighting the wall white and black to find \
+             the projection."
+                .into()
+        } else {
+            "Finding where the projection lands. Keep the camera still and stay out of the light."
+                .into()
+        };
+    };
+    let light = match framing.light() {
+        Light::Dark => "The room is dark, so the stripes read clearly.",
+        Light::Lit => "There is light in the room. lumap evens it out as it reads each stripe.",
+        Light::Bright => {
+            "The room is bright next to the projector. lumap reads the fainter stripes more \
+             carefully, so a few fine details may fill in from around them."
+        }
+    };
+    let left = progress.frames.saturating_sub(progress.frame);
+    let pace = session.lag().map_or(String::new(), |lag| {
+        // Each pattern waits out the camera's delay, its fade-in and a few still frames.
+        let each = lag.as_secs_f64() + 0.6;
+        let secs = (each * left as f64).round() as u64;
+        if secs >= 60 {
+            format!(" About {} min {} s to go.", secs / 60, secs % 60)
+        } else {
+            format!(" About {secs} s to go.")
+        }
+    });
+    format!("{light}{pace} Keep the camera still and stay out of the light.")
 }
