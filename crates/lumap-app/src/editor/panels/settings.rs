@@ -2,8 +2,24 @@
 
 use super::{Actions, PanelState};
 use crate::settings::Settings;
-use crate::update::flow::Mode;
+use crate::update::flow::{Mode, Stage};
+use crate::update::{CheckUi, Request};
 use eframe::egui::{self, RichText};
+
+/// A consistent one-click update action on the welcome page, status bar and in Settings.
+pub fn check_button(ui: &mut egui::Ui, check: &CheckUi, actions: &mut Actions, label: &str) {
+    if check.checking && check.enabled == false {
+        ui.spinner();
+        ui.label("Checking…").on_hover_text(&check.detail);
+    } else if ui
+        .add_enabled(check.enabled, egui::Button::new(label))
+        .on_hover_text(&check.detail)
+        .clicked()
+    {
+        actions.update = Some(Request::CheckNow);
+    }
+}
+
 
 /// Draws the Settings window while it is open.
 pub fn settings_window(
@@ -11,6 +27,7 @@ pub fn settings_window(
     state: &mut PanelState,
     settings: &Settings,
     actions: &mut Actions,
+    check: &CheckUi,
 ) {
     if !state.settings_open {
         return;
@@ -53,28 +70,69 @@ pub fn settings_window(
 
             crate::theme::section_header(ui, "Keeping lumap current");
             ui.horizontal(|ui| {
+                ui.strong(format!("lumap {}", env!("CARGO_PKG_VERSION")));
+                ui.separator();
+                ui.hyperlink_to("Latest releases", crate::update::offer::RELEASES_PAGE);
+            });
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                check_button(ui, check, actions, "Check for updates");
                 let mut mode = state.update_mode;
                 egui::ComboBox::from_label("Updates")
                     .selected_text(match mode {
-                        Mode::Notify => "tell me",
-                        Mode::Download => "download, then tell me",
-                        Mode::Off => "never check",
+                        Mode::Notify => "Notify me",
+                        Mode::Download => "Download, then notify",
+                        Mode::Off => "Off (manual only)",
                     })
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut mode, Mode::Notify, "tell me");
-                        ui.selectable_value(&mut mode, Mode::Download, "download, then tell me");
-                        ui.selectable_value(&mut mode, Mode::Off, "never check");
+                        ui.selectable_value(&mut mode, Mode::Notify, "Notify me");
+                        ui.selectable_value(&mut mode, Mode::Download, "Download, then notify");
+                        ui.selectable_value(&mut mode, Mode::Off, "Off (manual only)");
                     });
                 if mode != state.update_mode {
                     state.update_mode = mode;
                     actions.update_mode = Some(mode);
                 }
-                if ui.button("Check now").clicked() {
-                    actions.update = Some(crate::update::Request::CheckNow);
-                }
             });
+            ui.label(RichText::new(&check.detail).color(crate::theme::MUTED).small());
+            if let Some(p) = &settings.update.pending {
+                ui.add_space(6.0);
+                ui.label(RichText::new(format!("Update available: lumap {}", p.version)).strong());
+                ui.horizontal_wrapped(|ui| {
+                    match p.stage {
+                        Stage::Available => {
+                            if ui.button("Download update").clicked() {
+                                actions.update = Some(Request::Download);
+                            }
+                        }
+                        Stage::Downloading => {
+                            ui.spinner();
+                            ui.label("Downloading and verifying…");
+                        }
+                        Stage::Ready => {
+                            if crate::theme::primary_button(ui, "Install and restart").clicked() {
+                                actions.update = Some(Request::Install);
+                            }
+                        }
+                        Stage::Installing => {
+                            ui.label("Starting installer…");
+                        }
+                    }
+                    let page = if p.page_url.starts_with("https://github.com/tochi-mba/lumap/releases/") {
+                        p.page_url.as_str()
+                    } else {
+                        crate::update::offer::RELEASES_PAGE
+                    };
+                    ui.hyperlink_to("What's new", page);
+                });
+                if !p.notes.is_empty() {
+                    ui.collapsing("Release notes", |ui| {
+                        ui.label(&p.notes);
+                    });
+                }
+            }
             ui.label(
-                RichText::new("Never during a show. Installing always asks first.")
+                RichText::new("Automatic checks run daily. Nothing checks or installs during a live show; installing always asks first.")
                     .weak()
                     .small(),
             );

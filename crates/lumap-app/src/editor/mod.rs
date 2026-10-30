@@ -552,8 +552,13 @@ impl LumapApp {
     /// The start page, with the windows it can open.
     fn home_frame(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, now: Instant) {
         let mut actions = panels::Actions::default();
-        panels::start_page(ui, &self.monitors, &self.settings, &mut actions);
-        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
+        let check = self.updater.check_ui(self.updater.moment(
+            self.editor.show_mode,
+            !self.editor.open_outputs.is_empty(),
+            now,
+        ));
+        panels::start_page(ui, &self.monitors, &self.settings, &mut actions, &check);
+        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions, &check);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
         self.run_actions(actions, ctx);
@@ -579,6 +584,11 @@ impl LumapApp {
             &mut actions,
         );
         let banner = self.update_banner(now);
+        let check = self.updater.check_ui(self.updater.moment(
+            self.editor.show_mode,
+            !self.editor.open_outputs.is_empty(),
+            now,
+        ));
         panels::status_bar(
             ui,
             &self.editor,
@@ -586,6 +596,7 @@ impl LumapApp {
             self.fps(),
             now,
             &banner,
+            &check,
             &mut actions,
         );
         match step {
@@ -658,7 +669,7 @@ impl LumapApp {
         if self.panels.scan_sheet {
             panels::steps::camera::sheet(ctx, &self.editor, self.scan.as_ref(), &mut actions);
         }
-        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
+        panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions, &check);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
         self.run_actions(actions, ctx);

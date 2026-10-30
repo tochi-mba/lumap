@@ -33,6 +33,17 @@ pub enum Request {
     CheckNow,
 }
 
+/// State shown by the manual update controls (the worker never blocks the UI).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CheckUi {
+    /// A manual or automatic check is queued or running.
+    pub checking: bool,
+    /// Checking is safe right now and the worker is free.
+    pub enabled: bool,
+    /// Human-readable result or reason for being unavailable.
+    pub detail: String,
+}
+
 /// The updater as the editor sees it.
 pub struct Updater {
     worker: Worker,
@@ -42,6 +53,9 @@ pub struct Updater {
     /// Set when the installer has been started: the app should close.
     pub closing: bool,
     check_requested: bool,
+    check_in_flight: bool,
+    manual_in_flight: bool,
+    check_feedback: Option<String>,
 }
 
 impl std::fmt::Debug for Updater {
@@ -97,6 +111,9 @@ impl Updater {
             running,
             closing: false,
             check_requested: false,
+            check_in_flight: false,
+            manual_in_flight: false,
+            check_feedback: None,
         }
     }
 
@@ -143,22 +160,35 @@ impl Updater {
         if self.worker.busy() || self.closing {
             return message;
         }
-        let due = self.check_requested
-            || check_due(
-                settings
-                    .last_check
-                    .map(|s| UNIX_EPOCH + Duration::from_secs(s)),
-                UNIX_EPOCH + Duration::from_secs(now_unix),
-                flow::CHECK_EVERY,
-            );
-        let dev_build = self.running.is_none();
-        if self.check_requested && dev_build {
-            self.check_requested = false;
-            return Some("This is a development build; updates come from the repository.".into());
-        }
-        if let Some(current) = self.running {
-            if flow::should_check(settings, moment, due, dev_build) {
+        // A click is an explicit request: it overrides automatic-update preferences and the
+        // startup delay, but never the live-show/projector safety restriction.
+        if self.check_requested {
+            if self.running.is_none() {
                 self.check_requested = false;
+                let detail = "This is a development build; updates come from the repository.";
+                self.check_feedback = Some(detail.into());
+                return Some(detail.into());
+            }
+            if !moment.show_mode && !moment.outputs_open {
+                self.check_requested = false;
+                self.manual_in_flight = true;
+                self.check_in_flight = true;
+                if let Some(current) = self.running {
+                    self.worker.start_check(current);
+                }
+            }
+            return message;
+        }
+        let due = check_due(
+            settings
+                .last_check
+                .map(|s| UNIX_EPOCH + Duration::from_secs(s)),
+            UNIX_EPOCH + Duration::from_secs(now_unix),
+            flow::CHECK_EVERY,
+        );
+        if let Some(current) = self.running {
+            if flow::should_check(settings, moment, due, false) {
+                self.check_in_flight = true;
                 self.worker.start_check(current);
                 return message;
             }
@@ -179,16 +209,27 @@ impl Updater {
     ) -> Option<String> {
         match event {
             Event::Checked(Ok(offer)) => {
+                self.check_in_flight = false;
+                let manual = std::mem::take(&mut self.manual_in_flight);
                 settings.last_check = Some(now_unix);
                 let news = flow::after_check(settings, offer.as_ref());
                 if settings.pending.is_none() {
                     worker::discard_downloads(&self.dir);
                 }
-                news
+                let result = settings.pending.as_ref().map_or_else(
+                    || "No newer installable release found. You're up to date.".to_string(),
+                    |p| format!("lumap {} is available.", p.version),
+                );
+                self.check_feedback = Some(result.clone());
+                news.or_else(|| manual.then_some(result))
             }
             Event::Checked(Err(why)) => {
+                self.check_in_flight = false;
+                let manual = std::mem::take(&mut self.manual_in_flight);
                 log::info!("update check failed: {why}");
-                None
+                let result = format!("Couldn't check for updates: {why}");
+                self.check_feedback = Some(result.clone());
+                manual.then_some(result)
             }
             Event::Downloaded(Ok(_)) => flow::download_succeeded(settings),
             Event::Downloaded(Err(why)) => Some(flow::download_failed(settings, &why)),
@@ -242,9 +283,35 @@ impl Updater {
             }
             Request::CheckNow => {
                 self.check_requested = true;
+                self.check_feedback = None;
                 settings.quiet_until = None;
+                // An explicit check lets the user reconsider a version previously skipped.
+                settings.skipped = None;
                 Some("Checking for a newer lumap.".into())
             }
+        }
+    }
+
+    /// The live state of the one-click update controls.
+    pub fn check_ui(&self, moment: Moment) -> CheckUi {
+        let safe = !moment.show_mode && !moment.outputs_open;
+        let checking = self.check_requested || self.check_in_flight;
+        let enabled = safe && !checking && !self.worker.busy() && !self.closing;
+        let detail = if !safe {
+            "Close projector windows and leave show mode to check for updates.".to_string()
+        } else if checking {
+            "Checking GitHub releases…".to_string()
+        } else if self.worker.busy() {
+            "An update is downloading and being verified…".to_string()
+        } else {
+            self.check_feedback.clone().unwrap_or_else(|| {
+                "Check GitHub releases for a newer version. Installing always asks first.".into()
+            })
+        };
+        CheckUi {
+            checking,
+            enabled,
+            detail,
         }
     }
 
