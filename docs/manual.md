@@ -187,7 +187,7 @@ Projects are TOML with a `schema_version`; older files are migrated on load and
 `lumap migrate` rewrites them. Media paths are stored relative to the project file when
 possible. `lumap validate` reports every broken reference or degenerate warp.
 
-## 9. The camera
+## 8. The camera
 
 A webcam that sees the whole wall lets lumap scan the room, find surfaces and react to people.
 A laptop's own camera sitting on the projector works; a USB webcam on a tripod sees more of the
@@ -226,14 +226,14 @@ the list.
 projector is still where it was scanned; *Re-align* moves every surface of a bumped projector to
 follow it; if the camera itself moved, *Scan again*.
 
-## 10. The lab
+## 9. The lab
 
 `lumap --lab` (port 7414, or `--lab-port`) serves a local automation API for driving lumap from
 scripts on real hardware: change the show, put patterns on projectors, take camera photos and
 screenshots, click through the interface by label, run scans. It listens on 127.0.0.1 only and
 needs the token in `%LOCALAPPDATA%\lumap\lab\session.json`. See [lab.md](lab.md).
 
-## 8. Keyboard
+## 10. Keyboard
 
 | Key | Action |
 |---|---|
