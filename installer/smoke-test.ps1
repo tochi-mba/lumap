@@ -1,5 +1,5 @@
 # Proves an installer does what the website promises: installs for the current user without a
-# prompt, puts lumap.exe and its bundled ffmpeg where the app looks, validates and renders the
+# prompt, puts lumap.exe, ffmpeg and hand models where the app looks, validates and renders the
 # demo project with no ffmpeg on the PATH, registers the lumap command, and uninstalls cleanly.
 # CI runs it on every push (build-windows) and before every release.
 [CmdletBinding()]
@@ -18,7 +18,7 @@ if ($setup.ExitCode -ne 0) {
     throw "The installer exited with $($setup.ExitCode)."
 }
 
-foreach ($needed in @("lumap.exe", "ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "ffmpeg\LICENSE.txt", "ffmpeg\VERSION.txt", "examples\two-projector-demo.lumap.toml", "docs\manual.md", "unins000.exe")) {
+foreach ($needed in @("lumap.exe", "ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "ffmpeg\LICENSE.txt", "ffmpeg\VERSION.txt", "models\palm_detection_mediapipe_2023feb.onnx", "models\handpose_estimation_mediapipe_2023feb.onnx", "models\NOTICE.txt", "examples\two-projector-demo.lumap.toml", "docs\manual.md", "unins000.exe")) {
     if (-not (Test-Path (Join-Path $app $needed))) { throw "$needed was not installed." }
 }
 

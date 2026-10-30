@@ -1,7 +1,7 @@
 # Builds lumap for Windows and wraps it two ways: a per-user installer
 # (dist\lumap-Setup-<version>.exe) and a portable zip (dist\lumap-<version>-windows-x64.zip),
-# each with a .sha256 file beside it. Both carry the bundled ffmpeg, the demo project, the
-# manual and the licences.
+# each with a .sha256 file beside it. Both carry the bundled ffmpeg and hand-tracking models,
+# the demo project, the manual and the licences.
 #
 #   installer\build.ps1 -Version 0.3.0            build everything
 #   installer\build.ps1 -Version 0.3.0 -SkipBuild  reuse target\release\lumap.exe
@@ -32,6 +32,7 @@ if (-not (Test-Path $exe)) { throw "target\release\lumap.exe is missing." }
 Copy-Item $exe $payload
 
 & (Join-Path $root "installer\fetch-ffmpeg.ps1") -Destination (Join-Path $payload "ffmpeg")
+& (Join-Path $root "installer\fetch-models.ps1") -Destination (Join-Path $payload "models")
 
 New-Item -ItemType Directory -Path (Join-Path $payload "examples") | Out-Null
 Copy-Item (Join-Path $root "examples\*.lumap.toml") (Join-Path $payload "examples")
