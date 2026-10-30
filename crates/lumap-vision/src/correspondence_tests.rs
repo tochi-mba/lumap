@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 use super::*;
 
 /// A camera at half the projector's resolution looking straight at it: camera pixel (x, y)

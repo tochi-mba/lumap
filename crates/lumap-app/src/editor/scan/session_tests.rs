@@ -265,6 +265,7 @@ fn a_scan_through_a_camera_that_lags_like_a_phone_still_decodes() {
 /// decoder against a real room without running the scan again.
 #[test]
 #[ignore = "needs a folder of real captures"]
+#[allow(clippy::print_stderr)] // It reports what it decoded for a person to read.
 fn decode_saved_captures() {
     let dir = std::path::PathBuf::from(std::env::var("LUMAP_CAPTURES").unwrap());
     let size = std::env::var("LUMAP_PROJECTOR").unwrap_or_else(|_| "1920x1080".into());
