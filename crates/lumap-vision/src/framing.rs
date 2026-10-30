@@ -234,7 +234,7 @@ pub fn check(white: &Gray, black: &Gray) -> Framing {
     // Blocked: dark gaps inside the projection, row by row. (Something covering a corner
     // reads as a smaller projection; telling the two apart needs the projector's shape.)
     let mut inside = 0usize;
-    let mut holes = vec![0usize; 9];
+    let mut holes = [0usize; 9];
     for y in y0..=y1 {
         let row: Vec<u32> = (x0..=x1).filter(|&x| footprint.get(x, y) > 0).collect();
         let (Some(&first), Some(&last)) = (row.first(), row.last()) else {

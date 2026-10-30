@@ -420,6 +420,7 @@ pub struct ColorAdjust {
     pub sharpen: f64,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde hands `skip_serializing_if` a reference.
 fn is_zero(v: &f64) -> bool {
     *v == 0.0
 }
