@@ -300,7 +300,7 @@ fn surface_inspector_buttons_edit_the_project() {
 fn inline_rename_through_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
     click(&mut h, "logo");
-    let field = h.get_by_role_and_label(Role::TextInput, "Id");
+    let field = h.get_by_role_and_label(Role::TextInput, "Name");
     field.focus();
     field.type_text("-renamed");
     settle(&mut h);
@@ -325,7 +325,7 @@ fn inline_rename_through_the_inspector() {
         }
     );
     // An invalid id is reported and nothing changes.
-    let field = h.get_by_role_and_label(Role::TextInput, "Id");
+    let field = h.get_by_role_and_label(Role::TextInput, "Name");
     field.focus();
     field.type_text(" bad");
     settle(&mut h);
@@ -339,11 +339,22 @@ fn inline_rename_through_the_inspector() {
 #[test]
 fn output_inspector_places_and_opens_windows() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "1 Setup");
     click(&mut h, "left");
+    assert!(h.query_by_label("Projector left").is_some());
+    assert!(
+        h.get_all_by_label("Floating window").count() >= 2,
+        "the card and the display picker both say where it is"
+    );
     click(&mut h, "Open window");
     assert_eq!(h.state().editor.open_outputs, ["left"]);
     settle(&mut h);
+    assert!(
+        h.query_by_label("window open").is_some(),
+        "the card shows the open window"
+    );
     assert!(h.state().editor.window_positions.contains_key("left"));
+    click(&mut h, "Precise");
     click(&mut h, "Use current window position");
     assert!(h
         .state()
@@ -353,7 +364,13 @@ fn output_inspector_places_and_opens_windows() {
         .unwrap()
         .placement
         .is_some());
-    click(&mut h, "Unplace (back to preview window)");
+    click(&mut h, "Display");
+    // The open picker's option is the newest "Floating window" on screen.
+    h.get_all_by_label("Floating window")
+        .last()
+        .unwrap()
+        .click();
+    settle(&mut h);
     assert!(h
         .state()
         .editor
@@ -362,11 +379,17 @@ fn output_inspector_places_and_opens_windows() {
         .unwrap()
         .placement
         .is_none());
-    click(&mut h, "Fill monitor DISPLAY2 (1280x720 at 1920,0)");
+    click(&mut h, "Display");
+    click(&mut h, "Display 2 · 1280×720");
     let o = h.state().editor.project.output("left").unwrap().clone();
     assert_eq!(
         o.placement.as_ref().map(|p| p.monitor.as_str()),
         Some("DISPLAY2")
+    );
+    assert_eq!(
+        (o.width, o.height),
+        (1280, 720),
+        "it takes the display's size"
     );
     click(&mut h, "Identify on the projector");
     assert!(h.state().editor.identify_until.is_some());
@@ -375,9 +398,10 @@ fn output_inspector_places_and_opens_windows() {
     assert!(h.state().editor.open_outputs.is_empty());
     click(&mut h, "On in show mode");
     assert!(!h.state().editor.project.output("left").unwrap().enabled);
+    assert!(h.query_by_label("off in show").is_some());
     h.get_all_by_value("Smooth").next().unwrap().click();
     settle(&mut h);
-    click(&mut h, "Cosine");
+    click(&mut h, "Soft");
     assert_eq!(
         h.state()
             .editor
@@ -389,7 +413,18 @@ fn output_inspector_places_and_opens_windows() {
             .curve,
         lumap_core::blend::BlendCurve::Cosine
     );
-    click(&mut h, "Delete output");
+    // Precise size: scrub the width like a user would.
+    h.get_by_role_and_label(Role::SpinButton, "Width")
+        .scroll_to_me();
+    settle(&mut h);
+    let width = h.get_by_role_and_label(Role::SpinButton, "Width").rect();
+    drag(
+        &mut h,
+        width.center(),
+        width.center() + egui::vec2(30.0, 0.0),
+    );
+    assert!(h.state().editor.project.output("left").unwrap().width > 1280);
+    click(&mut h, "Delete projector");
     assert!(h.state().editor.project.output("left").is_none());
 }
 
@@ -472,11 +507,11 @@ fn tree_adds_removes_and_offers_context_menus() {
     click(&mut h, "Add surface");
     h.get_by_label("right").click_secondary();
     settle(&mut h);
-    click(&mut h, "Identify outputs");
+    click(&mut h, "Identify projectors");
     assert!(h.state().editor.identify_until.is_some());
     h.get_by_label("right").click_secondary();
     settle(&mut h);
-    click(&mut h, "Delete output");
+    click(&mut h, "Delete projector");
     assert!(h.state().editor.project.output("right").is_none());
 }
 
@@ -735,6 +770,12 @@ fn render_doc_screenshots() {
     std::fs::create_dir_all(out.join("steps")).unwrap();
     for step in super::panels::shell::Step::ALL {
         h.state_mut().panels.step = step;
+        // Setup shows a projector being set up; the other steps show the surfaces.
+        h.state_mut().editor.selection = if step == super::panels::shell::Step::Setup {
+            Selection::Output("left".into())
+        } else {
+            Selection::None
+        };
         h.run_steps(4);
         let name = step.label().to_lowercase();
         h.render()
@@ -745,4 +786,31 @@ fn render_doc_screenshots() {
     h.state_mut().panels.home = true;
     h.run_steps(4);
     h.render().unwrap().save(out.join("welcome.png")).unwrap();
+}
+
+#[test]
+fn setup_cards_list_projectors_and_add_or_create_them() {
+    let mut h = harness(Editor::new(lumap_core::project::Project::default(), None));
+    assert_eq!(h.state().panels.step, super::panels::shell::Step::Setup);
+    assert!(h.query_by_label("No projectors yet").is_some());
+    click(&mut h, "+ projector");
+    assert_eq!(h.state().editor.project.outputs.len(), 1);
+    click(&mut h, "One projector per display");
+    assert!(h.state().editor.project.outputs.len() >= 2);
+    // The new projectors' windows are separate OS windows in the app; the harness embeds them
+    // over the panels, so close them before clicking around.
+    h.state_mut().editor.open_outputs.clear();
+    settle(&mut h);
+    let first = h.state().editor.project.outputs[0].id.clone();
+    click(&mut h, &first);
+    assert_eq!(h.state().editor.selection, Selection::Output(first.clone()));
+    click(&mut h, "Grid");
+    assert_eq!(
+        h.state().editor.project.output(&first).unwrap().overlay,
+        Some(lumap_core::project::Overlay::Grid)
+    );
+    assert!(
+        h.get_all_by_label("Grid").count() >= 2,
+        "the card shows the overlay"
+    );
 }

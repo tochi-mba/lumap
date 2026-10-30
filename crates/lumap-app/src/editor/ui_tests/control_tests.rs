@@ -352,13 +352,12 @@ fn stage_view_selects_drags_and_the_calibration_tools_work() {
     click(&mut h, "Stage view");
     assert!(!h.state().canvas.stage);
     click(&mut h, "left");
-    click(&mut h, "Overlay");
     click(&mut h, "Crosshair");
     assert_eq!(
         h.state().editor.project.output("left").unwrap().overlay,
         Some(Overlay::Crosshair)
     );
-    click(&mut h, "Gamma match steps");
+    click(&mut h, "Gamma match");
     assert_eq!(
         h.state().editor.project.output("left").unwrap().overlay,
         Some(Overlay::GreySteps)
@@ -370,7 +369,7 @@ fn stage_view_selects_drags_and_the_calibration_tools_work() {
     h.key_press(Key::OpenBracket);
     settle(&mut h);
     assert!((h.state().editor.project.output("left").unwrap().blend.gamma - g).abs() < 1e-9);
-    click(&mut h, "Clear overlay");
+    click(&mut h, "Off");
     assert_eq!(
         h.state().editor.project.output("left").unwrap().overlay,
         None

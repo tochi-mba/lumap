@@ -25,6 +25,18 @@ pub enum BlendCurve {
 }
 
 impl BlendCurve {
+    /// Every curve, in menu order.
+    pub const ALL: [Self; 3] = [Self::Linear, Self::Smooth, Self::Cosine];
+
+    /// The menu label: what the edge looks like, not the maths behind it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Linear => "Straight",
+            Self::Smooth => "Smooth",
+            Self::Cosine => "Soft",
+        }
+    }
+
     /// Evaluates the curve at `t ∈ [0,1]`; `0` is fully faded, `1` is full brightness.
     ///
     /// Every curve is point-symmetric about `(0.5, 0.5)`, so `f(t) + f(1 − t) = 1`.
@@ -298,6 +310,15 @@ pub fn suggest_all(rects: &[(usize, PlacedRect)]) -> Vec<(usize, Edge, f64)> {
 #[cfg(test)]
 #[allow(clippy::float_cmp, clippy::unwrap_used)]
 mod tests {
+
+    #[test]
+    fn curves_have_plain_menu_labels() {
+        assert_eq!(
+            BlendCurve::ALL.map(BlendCurve::label),
+            ["Straight", "Smooth", "Soft"]
+        );
+    }
+
     use super::*;
     use proptest::prelude::*;
 

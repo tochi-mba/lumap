@@ -326,10 +326,21 @@ pub fn coach(
         });
 }
 
-/// The toggles above the canvas: grid, snap, handles on the wall, stage view, fit.
-pub fn canvas_toolbar(ui: &mut egui::Ui, editor: &mut Editor, canvas: &mut CanvasState) {
+/// The toggles above the canvas: grid, snap, handles on the wall, stage view, fit. On Setup's
+/// stage only the view toggles apply.
+pub fn canvas_toolbar(
+    ui: &mut egui::Ui,
+    editor: &mut Editor,
+    canvas: &mut CanvasState,
+    step: Step,
+) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
+        if step == Step::Setup && canvas.stage {
+            ui.toggle_value(&mut canvas.stage, "Stage view")
+                .on_hover_text("Every placed projector on your desktop (T)");
+            return;
+        }
         ui.toggle_value(&mut canvas.show_grid, "Grid")
             .on_hover_text("An alignment grid on the canvas (G)");
         ui.toggle_value(&mut canvas.handles.snap, "Snap")

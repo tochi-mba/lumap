@@ -4,12 +4,10 @@ use super::super::{AlignOp, Editor, MonitorInfo, Selection};
 use super::shell::Step;
 use super::{describe, param_slider, param_toggle, rename_box, Actions, PanelState};
 use eframe::egui::{self, Color32, RichText};
-use lumap_core::blend::BlendCurve;
 use lumap_core::midimap::MidiMode;
 use lumap_core::params::ParamValue;
-use lumap_core::project::{BlendMode, GeneratorKind, Overlay, Placement, SourceKind};
+use lumap_core::project::{BlendMode, GeneratorKind, SourceKind};
 use lumap_core::warp::{BezierMesh, WarpKind};
-use std::time::Instant;
 
 /// Right-hand inspector for the selection.
 pub fn inspector(
@@ -24,7 +22,9 @@ pub fn inspector(
         .show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| match editor.selection.clone() {
                 Selection::None => step_inspector(ui, editor, state, actions),
-                Selection::Output(id) => output_inspector(ui, editor, &id, monitors, state),
+                Selection::Output(id) => {
+                    super::steps::setup::projector_inspector(ui, editor, &id, monitors, state);
+                }
                 Selection::Surface { id, mask } => surface_inspector(ui, editor, &id, mask, state),
                 Selection::Source(id) => source_inspector(ui, editor, &id, state),
             });
@@ -119,226 +119,6 @@ fn step_inspector(
             });
             super::control::control_section(ui, editor, state, actions);
         }
-    }
-}
-
-#[allow(clippy::too_many_lines)]
-fn output_inspector(
-    ui: &mut egui::Ui,
-    editor: &mut Editor,
-    id: &str,
-    monitors: &[MonitorInfo],
-    state: &mut PanelState,
-) {
-    ui.heading(format!("Projector {id}"));
-    if rename_box(ui, editor, state, id) {
-        return;
-    }
-    if ui.button("Identify on the projector").clicked() {
-        editor.identify(Instant::now());
-    }
-    let Some(output) = editor.project.output(id).cloned() else {
-        return;
-    };
-    ui.horizontal(|ui| {
-        let (mut w, mut h) = (output.width, output.height);
-        ui.label("Size");
-        let rw = ui.add(egui::DragValue::new(&mut w).range(1..=16384));
-        let rh = ui.add(egui::DragValue::new(&mut h).range(1..=16384));
-        if (rw.lost_focus() || rh.lost_focus() || rw.drag_stopped() || rh.drag_stopped())
-            && (w, h) != (output.width, output.height)
-        {
-            let id = id.to_string();
-            editor.edit(move |p| {
-                if let Some(o) = p.output_mut(&id) {
-                    o.width = w;
-                    o.height = h;
-                }
-            });
-        }
-    });
-    param_toggle(
-        ui,
-        editor,
-        "On in show mode",
-        &format!("/output/{id}/enabled"),
-    );
-    let open = editor.open_outputs.contains(&id.to_string());
-    if ui
-        .button(if open { "Close window" } else { "Open window" })
-        .clicked()
-    {
-        editor.toggle_output_window(id);
-    }
-    ui.separator();
-    ui.label("Placement");
-    if let Some(p) = &output.placement {
-        ui.label(format!(
-            "{} at {}, {}",
-            if p.monitor.is_empty() {
-                "window"
-            } else {
-                &p.monitor
-            },
-            p.x,
-            p.y
-        ));
-        if ui.button("Unplace (back to preview window)").clicked() {
-            let id = id.to_string();
-            editor.edit(move |p| {
-                if let Some(o) = p.output_mut(&id) {
-                    o.placement = None;
-                }
-            });
-        }
-    } else {
-        ui.label(RichText::new("Not placed: the window opens as a draggable preview.").weak());
-        if let Some((x, y)) = editor.window_positions.get(id).copied() {
-            if ui.button("Use current window position").clicked() {
-                let scale =
-                    super::super::monitor_at(monitors, x as i32, y as i32).map_or(1.0, |m| m.scale);
-                let placement = Placement {
-                    monitor: String::new(),
-                    x: (f64::from(x) * scale).round() as i32,
-                    y: (f64::from(y) * scale).round() as i32,
-                };
-                let id = id.to_string();
-                editor.edit(move |p| {
-                    if let Some(o) = p.output_mut(&id) {
-                        o.placement = Some(placement);
-                    }
-                });
-            }
-        }
-    }
-    for m in monitors {
-        if ui
-            .button(format!(
-                "Fill monitor {} ({}x{} at {},{})",
-                m.name, m.width, m.height, m.x, m.y
-            ))
-            .clicked()
-        {
-            let placement = Placement {
-                monitor: m.name.clone(),
-                x: m.x,
-                y: m.y,
-            };
-            let (w, h) = (m.width, m.height);
-            let id = id.to_string();
-            editor.edit(move |p| {
-                if let Some(o) = p.output_mut(&id) {
-                    o.placement = Some(placement);
-                    o.width = w;
-                    o.height = h;
-                }
-            });
-        }
-    }
-    ui.separator();
-    ui.label("Colour");
-    param_slider(
-        ui,
-        editor,
-        "Brightness",
-        &format!("/output/{id}/brightness"),
-        0.0..=2.0,
-    );
-    param_slider(
-        ui,
-        editor,
-        "Contrast",
-        &format!("/output/{id}/contrast"),
-        0.0..=2.0,
-    );
-    param_slider(
-        ui,
-        editor,
-        "Gamma",
-        &format!("/output/{id}/gamma"),
-        0.5..=2.5,
-    );
-    ui.separator();
-    ui.label("Edge blend");
-    for edge in ["left", "right", "top", "bottom"] {
-        ui.horizontal(|ui| {
-            param_slider(
-                ui,
-                editor,
-                edge,
-                &format!("/output/{id}/blend/{edge}/width"),
-                0.0..=0.5,
-            );
-            let current = match edge {
-                "left" => output.blend.left.curve,
-                "right" => output.blend.right.curve,
-                "top" => output.blend.top.curve,
-                _ => output.blend.bottom.curve,
-            };
-            let mut curve = current;
-            egui::ComboBox::from_id_salt(("curve", id, edge))
-                .selected_text(format!("{curve:?}"))
-                .show_ui(ui, |ui| {
-                    for c in [BlendCurve::Linear, BlendCurve::Smooth, BlendCurve::Cosine] {
-                        ui.selectable_value(&mut curve, c, format!("{c:?}"));
-                    }
-                });
-            if curve != current {
-                let id = id.to_string();
-                editor.edit(move |p| {
-                    if let Some(o) = p.output_mut(&id) {
-                        match edge {
-                            "left" => o.blend.left.curve = curve,
-                            "right" => o.blend.right.curve = curve,
-                            "top" => o.blend.top.curve = curve,
-                            _ => o.blend.bottom.curve = curve,
-                        }
-                    }
-                });
-            }
-        });
-    }
-    param_slider(
-        ui,
-        editor,
-        "Blend gamma",
-        &format!("/output/{id}/blend/gamma"),
-        1.0..=3.0,
-    );
-    ui.separator();
-    ui.label("Calibration");
-    let mut overlay = output.overlay;
-    egui::ComboBox::from_label("Overlay")
-        .selected_text(overlay.map_or("none", Overlay::label))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut overlay, None, "none");
-            for k in Overlay::ALL {
-                ui.selectable_value(&mut overlay, Some(k), k.label());
-            }
-        });
-    if overlay != output.overlay {
-        editor.set_overlay(id, overlay);
-    }
-    ui.label(
-        RichText::new(
-            "Overlays never show in show mode. Gamma match: put Grey steps on both sides of a \
-             seam, then press [ or ] until the steps match across it.",
-        )
-        .weak()
-        .small(),
-    );
-    ui.horizontal(|ui| {
-        if ui.button("Gamma match steps").clicked() {
-            editor.set_overlay(id, Some(Overlay::GreySteps));
-        }
-        if ui.button("Clear overlay").clicked() {
-            editor.set_overlay(id, None);
-        }
-    });
-    ui.separator();
-    if ui.button("Delete output").clicked() {
-        editor.selection = Selection::Output(id.to_string());
-        editor.delete_selection();
     }
 }
 

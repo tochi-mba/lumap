@@ -62,9 +62,15 @@ impl Default for Settings {
     }
 }
 
-/// Where settings live.
+/// Where settings live: `LUMAP_CONFIG_DIR` when set, else the platform config directory.
 pub fn settings_path() -> Option<PathBuf> {
-    let dir = match std::env::var_os("LUMAP_CONFIG_DIR") {
+    settings_path_in(std::env::var_os("LUMAP_CONFIG_DIR"))
+}
+
+/// [`settings_path`] with the override passed in, so it is testable without touching the
+/// process environment (which tests running in parallel share).
+pub fn settings_path_in(override_dir: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let dir = match override_dir {
         Some(d) => PathBuf::from(d),
         None => dirs::config_dir()?.join("lumap"),
     };
@@ -164,19 +170,19 @@ mod tests {
 
     #[test]
     fn env_override_and_default_path() {
+        // The override is tested through the pure helper: the process environment is shared
+        // with the UI tests running alongside.
         let dir = tempfile::tempdir().unwrap();
-        // Set the override only for this check; other tests do not touch the env.
-        let prev = std::env::var_os("LUMAP_CONFIG_DIR");
-        // SAFETY-free: std::env::set_var is safe in Rust 2021 single-threaded test context.
-        std::env::set_var("LUMAP_CONFIG_DIR", dir.path());
-        assert_eq!(settings_path().unwrap(), dir.path().join("settings.toml"));
-        let mut s = Settings::load();
-        s.osc_port = 7;
-        s.save();
-        assert_eq!(Settings::load().osc_port, 7);
-        match prev {
-            Some(v) => std::env::set_var("LUMAP_CONFIG_DIR", v),
-            None => std::env::remove_var("LUMAP_CONFIG_DIR"),
-        }
+        let path = settings_path_in(Some(dir.path().as_os_str().to_owned())).unwrap();
+        assert_eq!(path, dir.path().join("settings.toml"));
+        let default = settings_path_in(None);
+        assert!(default.is_none_or(|p| p.ends_with("lumap/settings.toml")));
+        let s = Settings {
+            osc_port: 7,
+            ..Settings::default()
+        };
+        s.save_to(&path).unwrap();
+        assert_eq!(Settings::load_from(&path).unwrap().osc_port, 7);
+        assert!(settings_path().is_some());
     }
 }
