@@ -5,6 +5,21 @@
 
 pub mod camera;
 
+/// A command for a console program (ffmpeg, ffprobe) that never opens a console window. lumap is
+/// a windowed app on Windows, where a console child would otherwise pop up its own black
+/// terminal, possibly over a projector.
+pub fn background(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
+    #[allow(unused_mut)]
+    let mut command = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
+
 use crate::{FrameSource, SourceError};
 
 /// A live-input protocol.

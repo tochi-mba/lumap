@@ -712,7 +712,13 @@ impl LumapApp {
             &mut actions,
         );
         if self.panels.scan_sheet {
-            panels::steps::camera::sheet(ctx, &self.editor, self.scan.as_ref(), &mut actions);
+            panels::steps::camera::sheet(
+                ctx,
+                &self.editor,
+                self.scan.as_ref(),
+                &self.live.skipped,
+                &mut actions,
+            );
         }
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions, &check);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);

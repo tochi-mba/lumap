@@ -202,6 +202,7 @@ pub fn sheet(
     ctx: &egui::Context,
     editor: &Editor,
     session: Option<&ScanSession>,
+    skipped: &[String],
     actions: &mut Actions,
 ) {
     let Some(session) = session else { return };
@@ -254,7 +255,7 @@ pub fn sheet(
                     ui.label("Working out where every pixel lands…");
                     ui.add(egui::Spinner::new());
                 }
-                Phase::Done => done(ui, editor, session, actions),
+                Phase::Done => done(ui, editor, session, skipped, actions),
                 Phase::Failed(why) => {
                     ui.label(RichText::new(why).color(crate::theme::LIVE));
                     ui.horizontal(|ui| {
@@ -280,7 +281,13 @@ pub fn sheet(
 }
 
 /// What a finished scan found.
-fn done(ui: &mut egui::Ui, editor: &Editor, session: &ScanSession, actions: &mut Actions) {
+fn done(
+    ui: &mut egui::Ui,
+    editor: &Editor,
+    session: &ScanSession,
+    skipped: &[String],
+    actions: &mut Actions,
+) {
     if session.kind == Kind::Drift {
         let reports = session.drifts();
         for d in reports {
@@ -333,6 +340,19 @@ fn done(ui: &mut egui::Ui, editor: &Editor, session: &ScanSession, actions: &mut
                 ui.end_row();
             }
         });
+    for problem in session.problems() {
+        ui.label(RichText::new(problem).color(crate::theme::LIVE));
+    }
+    if !skipped.is_empty() {
+        ui.label(
+            RichText::new(format!(
+                "Left out, because they are not on a display: {}.",
+                skipped.join(", ")
+            ))
+            .weak()
+            .small(),
+        );
+    }
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
         if crate::theme::primary_button(ui, "See them in Map").clicked() {

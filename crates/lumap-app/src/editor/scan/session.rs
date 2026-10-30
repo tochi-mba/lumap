@@ -21,8 +21,20 @@ use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// How long a pattern stays up before frames count: projector, window and camera latency.
-const SETTLE: Duration = Duration::from_millis(350);
+/// The least time a pattern stays up before frames count.
+const SETTLE: Duration = Duration::from_millis(150);
+/// The longest wait for the camera to show a new pattern before the lag is known. Phone cameras
+/// streamed as webcams can lag by most of a second.
+const FIRST_WAIT: Duration = Duration::from_millis(2500);
+/// Once the lag is known, a pattern the camera shows no change for (stripes finer than the
+/// camera can see) is photographed after this much more than the lag.
+const LAG_MARGIN: Duration = Duration::from_millis(250);
+/// The longest wait for the picture to hold still after it changed (auto-exposure settling).
+const STEADY_WAIT: Duration = Duration::from_millis(1200);
+/// Mean brightness change (0..255) that means the camera now sees the new pattern.
+const CHANGED: f64 = 6.0;
+/// Mean brightness change between frames below which the picture is holding still.
+const STEADY: f64 = 2.5;
 /// Fresh frames whose median makes one photo.
 const FRAMES_PER_PATTERN: usize = 3;
 /// No new camera frame for this long ends the scan.
@@ -88,6 +100,17 @@ pub struct DriftReport {
     pub camera_moved: f64,
 }
 
+/// What to do with a fresh camera frame while a pattern is up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ready {
+    /// Not yet: the camera does not show the pattern, or is still settling.
+    Wait,
+    /// Photograph it.
+    Collect,
+    /// The camera does not see this projector at all.
+    Blind,
+}
+
 type WorkerResult = Result<Finished, String>;
 
 /// A worker's answer.
@@ -114,9 +137,19 @@ pub struct ScanSession {
     last_seen: u64,
     last_new_frame: Instant,
     white_color: Option<Rgba>,
+    /// What the camera saw when the pattern went up (a small grey thumbnail).
+    reference: Option<Vec<u8>>,
+    /// The previous fresh frame's thumbnail, for the holding-still test.
+    previous: Option<Vec<u8>>,
+    /// When the camera started showing the new pattern.
+    changed_at: Option<Instant>,
+    /// The camera's lag behind the projector, measured on the first patterns.
+    lag: Option<Duration>,
     workers: Vec<Receiver<WorkerResult>>,
     scans: Vec<ScanData>,
     drifts: Vec<DriftReport>,
+    /// Projectors that could not be scanned, and why.
+    problems: Vec<String>,
     restore_open: Vec<String>,
     phase: Phase,
     root: PathBuf,
@@ -162,9 +195,14 @@ impl ScanSession {
             last_seen: 0,
             last_new_frame: now,
             white_color: None,
+            reference: None,
+            previous: None,
+            changed_at: None,
+            lag: None,
             workers: Vec::new(),
             scans: Vec::new(),
             drifts: Vec::new(),
+            problems: Vec::new(),
             restore_open: editor.open_outputs.clone(),
             phase,
             root,
@@ -205,6 +243,16 @@ impl ScanSession {
     /// Drift reports of a finished drift check.
     pub fn drifts(&self) -> &[DriftReport] {
         &self.drifts
+    }
+
+    /// Projectors that could not be scanned, and why (the others still were).
+    pub fn problems(&self) -> &[String] {
+        &self.problems
+    }
+
+    /// The camera's measured lag behind the projectors.
+    pub fn lag(&self) -> Option<Duration> {
+        self.lag
     }
 
     /// Stops it, putting the projectors back the way they were.
@@ -291,17 +339,28 @@ impl ScanSession {
             self.seen_at_show = seen;
             self.collected.clear();
             self.collected_seen = seen;
+            self.reference = stream.latest().map(|f| thumbnail(&f));
+            self.previous = None;
+            self.changed_at = None;
             return;
         }
-        if now.duration_since(self.shown_at) < SETTLE || seen < self.seen_at_show + 2 {
+        if now.duration_since(self.shown_at) < SETTLE || seen <= self.collected_seen {
             return;
         }
-        if seen > self.collected_seen {
-            if let Some(f) = stream.latest() {
-                self.collected.push(f);
+        self.collected_seen = seen;
+        let Some(fresh) = stream.latest() else { return };
+        match self.ready(&fresh, frames[self.frame], now) {
+            Ready::Wait => return,
+            Ready::Collect => {}
+            Ready::Blind => {
+                self.problems.push(format!(
+                    "The camera cannot see {id}'s light: aim it at the wall where {id} shines,                      or turn the room lights down."
+                ));
+                self.next_projector(editor);
+                return;
             }
-            self.collected_seen = seen;
         }
+        self.collected.push(fresh);
         if self.collected.len() < FRAMES_PER_PATTERN {
             return;
         }
@@ -325,6 +384,65 @@ impl ScanSession {
                 self.phase = Phase::Decoding;
                 editor.scan_pattern = None;
             }
+        }
+    }
+
+    /// Decides, frame by frame, when the camera shows the pattern that is up and holds it still.
+    /// First the picture must change from what the camera showed when the pattern went up (or,
+    /// once the camera's lag is known, the lag must pass: stripes finer than the camera can see
+    /// change nothing); then two frames in a row must agree (auto-exposure settling). A camera
+    /// that does not react when its projector goes from white to black cannot see it.
+    fn ready(&mut self, fresh: &Arc<Frame>, pattern: PatternFrame, now: Instant) -> Ready {
+        let small = thumbnail(fresh);
+        let waited = now.duration_since(self.shown_at);
+        if self.changed_at.is_none() {
+            // No picture yet when the pattern went up: the first one is what to compare with.
+            let Some(reference) = &self.reference else {
+                self.reference = Some(small);
+                return Ready::Wait;
+            };
+            let moved = difference(reference, &small) > CHANGED;
+            let limit = self.lag.map_or(FIRST_WAIT, |lag| lag + LAG_MARGIN);
+            self.previous = Some(small);
+            if moved {
+                self.changed_at = Some(now);
+                // The lag is the longest any clear change took to show up; it only grows.
+                self.lag = Some(self.lag.map_or(waited, |l| l.max(waited)));
+                return Ready::Wait;
+            }
+            if waited < limit {
+                return Ready::Wait;
+            }
+            if pattern == PatternFrame::Black {
+                return Ready::Blind;
+            }
+            self.changed_at = Some(now);
+            return Ready::Collect;
+        }
+        let steady = self
+            .previous
+            .as_ref()
+            .is_some_and(|p| difference(p, &small) < STEADY);
+        self.previous = Some(small);
+        let settled = self
+            .changed_at
+            .is_some_and(|t| now.duration_since(t) >= STEADY_WAIT);
+        if steady || settled || !self.collected.is_empty() {
+            Ready::Collect
+        } else {
+            Ready::Wait
+        }
+    }
+
+    /// Gives up on the projector being photographed and moves to the next one.
+    fn next_projector(&mut self, editor: &mut Editor) {
+        self.current += 1;
+        self.code = None;
+        self.decoder = None;
+        self.shown = false;
+        if self.current >= self.projectors.len() {
+            self.phase = Phase::Decoding;
+            editor.scan_pattern = None;
         }
     }
 
@@ -384,21 +502,23 @@ impl ScanSession {
             match rx.try_recv() {
                 Ok(Ok(Finished::Scan(d))) => self.scans.push(*d),
                 Ok(Ok(Finished::Drift(r))) => self.drifts.push(r),
-                Ok(Err(e)) => {
-                    self.fail(editor, &e);
-                    return;
-                }
+                Ok(Err(e)) => self.problems.push(e),
                 Err(std::sync::mpsc::TryRecvError::Empty) => pending.push(rx),
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    self.fail(editor, "Decoding a scan failed.");
-                    return;
+                    self.problems.push("Decoding a scan failed.".into());
                 }
             }
         }
         self.workers = pending;
         if self.workers.is_empty() {
-            self.phase = Phase::Done;
-            self.restore(editor);
+            // One projector the camera cannot see does not cost the others their scans.
+            if self.scans.is_empty() && self.drifts.is_empty() && !self.problems.is_empty() {
+                let why = self.problems.join(" ");
+                self.fail(editor, &why);
+            } else {
+                self.phase = Phase::Done;
+                self.restore(editor);
+            }
         }
     }
 
@@ -490,6 +610,39 @@ fn realigned(editor: &Editor, old: &ScanData, new: &ScanData) -> Vec<Moved> {
         .collect()
 }
 
+/// Thumbnail width and height: enough to see a pattern change, cheap to compare every frame.
+const THUMB: (u32, u32) = (80, 45);
+
+/// A small grey version of a camera frame.
+fn thumbnail(f: &Frame) -> Vec<u8> {
+    let (tw, th) = THUMB;
+    let mut out = Vec::with_capacity((tw * th) as usize);
+    for ty in 0..th {
+        for tx in 0..tw {
+            let x = (u64::from(tx) * u64::from(f.width) / u64::from(tw)) as usize;
+            let y = (u64::from(ty) * u64::from(f.height) / u64::from(th)) as usize;
+            let i = (y * f.width as usize + x) * 4;
+            let p = f.rgba.get(i..i + 3).unwrap_or(&[0, 0, 0]);
+            let l = (u32::from(p[0]) * 54 + u32::from(p[1]) * 183 + u32::from(p[2]) * 19) >> 8;
+            out.push(l as u8);
+        }
+    }
+    out
+}
+
+/// Mean absolute difference of two thumbnails, in brightness levels.
+fn difference(a: &[u8], b: &[u8]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return f64::MAX;
+    }
+    let sum: u64 = a
+        .iter()
+        .zip(b)
+        .map(|(x, y)| u64::from(x.abs_diff(*y)))
+        .sum();
+    sum as f64 / a.len() as f64
+}
+
 /// A grey pattern as an opaque frame for a projector window.
 fn gray_frame(g: &Gray) -> Frame {
     Frame {
@@ -498,3 +651,7 @@ fn gray_frame(g: &Gray) -> Frame {
         rgba: g.data.iter().flat_map(|&v| [v, v, v, 255]).collect(),
     }
 }
+
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;
