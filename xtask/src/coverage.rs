@@ -269,6 +269,14 @@ mod tests {
 
     #[test]
     fn stale_exclusions_are_reported() {
-        assert_eq!(problems(&[]).len(), EXCLUDED.len());
+        let errors = problems(&[]);
+        // An empty report also fails the completeness and coverage baselines.
+        // Only count the stale-exclusion diagnostics for this assertion.
+        let stale = errors
+            .iter()
+            .filter(|error| error.ends_with(": excluded but not in the report"))
+            .count();
+        assert_eq!(stale, EXCLUDED.len());
+        assert!(errors.iter().any(|error| error.starts_with("incomplete report:")));
     }
 }
