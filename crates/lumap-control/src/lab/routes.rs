@@ -57,7 +57,11 @@ pub(crate) enum Dispatch {
 }
 
 /// [`route`], plus `GET /lab/ping`.
-pub(crate) fn dispatch(method: &str, path_and_query: &str, body: &[u8]) -> Result<Dispatch, Refusal> {
+pub(crate) fn dispatch(
+    method: &str,
+    path_and_query: &str,
+    body: &[u8],
+) -> Result<Dispatch, Refusal> {
     match (method, path_and_query.split('?').next().unwrap_or_default()) {
         ("GET", "/lab/ping") => Ok(Dispatch::Ping),
         (_, "/lab/ping") => Err((405, format!("/lab/ping answers GET, not {method}"))),
@@ -128,9 +132,9 @@ impl Endpoint {
             Self::Projector(id) => LabRequest::Projector { id },
             Self::Ui => LabRequest::Ui,
             Self::UiTree => LabRequest::UiTree,
-            Self::UiInput => {
-                LabRequest::UiInput(serde_json::from_slice::<UiEvent>(body).map_err(|e| bad_json(&e))?)
-            }
+            Self::UiInput => LabRequest::UiInput(
+                serde_json::from_slice::<UiEvent>(body).map_err(|e| bad_json(&e))?,
+            ),
             Self::Record => record(body)?,
             Self::Scan => scan(body)?,
             Self::ScanImage(projector, which) => LabRequest::ScanImage { projector, which },
@@ -159,7 +163,10 @@ fn id(text: &str, what: &str) -> Result<String, Refusal> {
     if is_valid_id(text) {
         Ok(text.to_owned())
     } else {
-        Err((400, format!("bad {what} id {text:?}: use letters, digits, `-` and `_`")))
+        Err((
+            400,
+            format!("bad {what} id {text:?}: use letters, digits, `-` and `_`"),
+        ))
     }
 }
 
@@ -184,7 +191,9 @@ fn camera(query: &[(&str, &str)]) -> Result<LabRequest, Refusal> {
             _ => {
                 return Err((
                     400,
-                    format!("unknown query parameter `{key}`; camera.png takes settle_ms and frames"),
+                    format!(
+                        "unknown query parameter `{key}`; camera.png takes settle_ms and frames"
+                    ),
                 ))
             }
         }
@@ -201,7 +210,12 @@ fn number(key: &str, value: &str, min: u64, max: u64) -> Result<u64, Refusal> {
         .parse::<u64>()
         .ok()
         .filter(|n| (min..=max).contains(n))
-        .ok_or_else(|| (400, format!("{key} must be a whole number from {min} to {max}, not {value:?}")))
+        .ok_or_else(|| {
+            (
+                400,
+                format!("{key} must be a whole number from {min} to {max}, not {value:?}"),
+            )
+        })
 }
 
 /// A JSON array of actions, or `{"actions": [...]}`.
@@ -235,7 +249,9 @@ fn check(actions: &[Action]) -> Result<(), Refusal> {
             Action::Step { step } if !(1..=4).contains(step) => {
                 Some(format!("step must be 1 to 4, not {step}"))
             }
-            Action::Param { address, .. } => ParamAddress::parse(address).err().map(|e| e.to_string()),
+            Action::Param { address, .. } => {
+                ParamAddress::parse(address).err().map(|e| e.to_string())
+            }
             Action::StoreCue { fade, .. } if *fade < 0.0 => {
                 Some(format!("fade must not be negative, not {fade}"))
             }

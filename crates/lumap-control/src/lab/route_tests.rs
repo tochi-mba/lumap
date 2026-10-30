@@ -203,7 +203,10 @@ fn queries_are_checked() {
 #[test]
 fn bodies_are_checked() {
     let bad = refused("POST", "/lab/act", "[{").1;
-    assert!(bad.starts_with("bad JSON: ") && bad.contains("line 1"), "{bad}");
+    assert!(
+        bad.starts_with("bad JSON: ") && bad.contains("line 1"),
+        "{bad}"
+    );
     assert!(refused("POST", "/lab/act", r#"[{"do":"fly"}]"#)
         .1
         .contains("unknown variant `fly`"));
@@ -213,12 +216,7 @@ fn bodies_are_checked() {
             .contains("unknown field `cue_id`"),
         "typos are caught, not ignored"
     );
-    for body in [
-        r#"{"actions":[{"do":"fly"}]}"#,
-        r#"{"steps":[]}"#,
-        "[]",
-        "",
-    ] {
+    for body in [r#"{"actions":[{"do":"fly"}]}"#, r#"{"steps":[]}"#, "[]", ""] {
         assert_eq!(status("POST", "/lab/act", body), 400, "{body:?}");
     }
     assert_eq!(refused("POST", "/lab/act", "[]").1, "no actions to run");
@@ -244,10 +242,12 @@ fn actions_are_checked() {
         (400, "actions[1]: step must be 1 to 4, not 5".into())
     );
     assert!(act(r#"[{"do":"param","address":"/show/master","value":0.5}]"#).is_ok());
-    assert!(act(r#"[{"do":"param","address":"show master","value":0.5}]"#)
-        .unwrap_err()
-        .1
-        .contains("must start with '/'"));
+    assert!(
+        act(r#"[{"do":"param","address":"show master","value":0.5}]"#)
+            .unwrap_err()
+            .1
+            .contains("must start with '/'")
+    );
     assert!(act(r#"[{"do":"store_cue","name":"Intro","fade":2}]"#).is_ok());
     assert!(act(r#"[{"do":"store_cue","name":"Intro","fade":-1}]"#).is_err());
     let checker = |size: u32| {
@@ -262,7 +262,10 @@ fn actions_are_checked() {
         .unwrap_err()
         .1
         .contains("20001 ms"));
-    let huge = format!(r#"[{{"do":"wait","ms":{}}},{{"do":"wait","ms":9}}]"#, u64::MAX);
+    let huge = format!(
+        r#"[{{"do":"wait","ms":{}}},{{"do":"wait","ms":9}}]"#,
+        u64::MAX
+    );
     assert!(act(&huge).is_err(), "adding waits does not overflow");
 }
 
@@ -470,10 +473,7 @@ fn requests_serialise_for_logs_and_read_back() {
     ];
     let wire = serde_json::to_value(&requests).unwrap();
     assert_eq!(wire[0], json!("state"));
-    assert_eq!(
-        wire[2],
-        json!({"camera": {"settle_ms": 300, "frames": 3}})
-    );
+    assert_eq!(wire[2], json!({"camera": {"settle_ms": 300, "frames": 3}}));
     assert_eq!(wire[3]["scan_image"]["which"], json!("footprint"));
     let again: Vec<LabRequest> = serde_json::from_value(wire).unwrap();
     assert_eq!(again, requests);
