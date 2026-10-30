@@ -381,9 +381,7 @@ fn zz_debug_square() {
         )],
     );
     let found = hough_circles(&Prepared::new(&square).edges, 5.0, 40.0, 0.0);
-    for f in found.iter().take(8) {
-        eprintln!("{f:?}");
-    }
+    assert!(found.len() < 100);
 }
 
 #[test]

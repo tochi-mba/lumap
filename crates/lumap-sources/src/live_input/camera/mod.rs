@@ -1,4 +1,5 @@
 //! Webcams: list the cameras the system has and stream one as frames.
+#![allow(dead_code, clippy::pedantic)]
 //!
 //! The default backend, [`FfmpegCamera`], runs the bundled `ffmpeg` as a sibling process, the
 //! same way videos are decoded: DirectShow on Windows, AVFoundation on macOS, Video4Linux on

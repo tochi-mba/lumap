@@ -1,4 +1,5 @@
 //! The server: security, the HTTP round trip with a test thread playing the app, timeouts,
+#![allow(clippy::unwrap_used, clippy::duration_suboptimal_units)]
 //! shutdown, limits, the token and the session file.
 
 use super::server::{

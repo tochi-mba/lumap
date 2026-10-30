@@ -42,6 +42,7 @@ pub(crate) struct Config {
     pub(crate) spawn: Spawn,
 }
 
+#[allow(clippy::duration_suboptimal_units)]
 impl Config {
     /// What `lumap --lab` uses.
     pub(crate) const DEFAULT: Self = Self {
