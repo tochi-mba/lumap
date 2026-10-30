@@ -703,6 +703,7 @@ fn snapping_locking_and_click_to_select_on_the_canvas() {
 }
 
 mod control_tests;
+mod looks_tests;
 mod show_tests;
 mod update_tests;
 

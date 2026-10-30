@@ -5,7 +5,7 @@ use super::thumbs::Thumbnails;
 use super::{Editor, Selection};
 use eframe::egui::{self, Color32, RichText};
 use lumap_core::params::ParamValue;
-use lumap_core::project::{GeneratorKind, SourceKind, TestPattern};
+use lumap_core::project::{SourceKind, TestPattern};
 use lumap_core::warp::WarpKind;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -123,6 +123,8 @@ pub struct Actions {
     pub update: Option<crate::update::Request>,
     /// A new update mode from the show inspector.
     pub update_mode: Option<crate::update::flow::Mode>,
+    /// A look picked on the welcome screen, to put on every surface.
+    pub look: Option<String>,
 }
 
 /// Transient UI state for the panels.
@@ -167,6 +169,8 @@ pub struct PanelState {
     pub remote_port: u16,
     /// Update mode shown in the show inspector.
     pub update_mode: crate::update::flow::Mode,
+    /// The look chosen in the surface inspector (index into `LOOKS`).
+    pub look: usize,
 }
 
 impl Default for PanelState {
@@ -193,6 +197,7 @@ impl Default for PanelState {
             feedback_target: String::new(),
             remote_port: 8080,
             update_mode: crate::update::flow::Mode::default(),
+            look: 0,
         }
     }
 }
@@ -591,12 +596,7 @@ pub fn left_panel(
                         ui.close();
                     }
                     ui.separator();
-                    for g in GeneratorKind::ALL {
-                        if ui.button(format!("Generator: {g:?}")).clicked() {
-                            editor.add_source(SourceKind::Generator { pattern: g, speed: 1.0, color: [1.0; 4] });
-                            ui.close();
-                        }
-                    }
+                    looks::generator_menu(ui, editor);
                     ui.separator();
                     for (label, pattern) in [("Grid", TestPattern::Grid), ("Bars", TestPattern::Bars), ("Checker", TestPattern::Checker), ("Ramp", TestPattern::Ramp)] {
                         if ui.button(format!("Pattern: {label}")).clicked() {
@@ -836,6 +836,7 @@ pub fn show_mode_screen(ui: &mut egui::Ui, editor: &Editor, fps: f32) {
 mod control;
 mod dialogs;
 mod inspectors;
+pub mod looks;
 
 pub use control::cue_panel;
 pub use dialogs::dialogs;

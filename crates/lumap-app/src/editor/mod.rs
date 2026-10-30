@@ -812,6 +812,12 @@ impl LumapApp {
                 Err(e) => self.panels.error = Some(e),
             }
         }
+        if let Some(name) = actions.look {
+            if let Some(look) = lumap_core::looks::find(&name) {
+                panels::looks::apply_look_everywhere(&mut self.editor, look);
+            }
+            self.panels.welcome = false;
+        }
         if actions.create_outputs {
             self.editor
                 .create_outputs_for_monitors(&self.monitors, true);

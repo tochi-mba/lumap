@@ -58,6 +58,32 @@ differences from the usual tools:
 
 The full guide is [docs/manual.md](docs/manual.md).
 
+## Looks
+
+Built-in animated content that needs no media: pick one on the welcome screen (*Try a look*),
+in a surface's inspector (*Looks*, then *Apply look*), or from the command line with
+`lumap new show.lumap.toml --look "Anniversary"`. `lumap looks` lists them all. Every look is a
+generator with a colour, a speed and a blend mode you can change afterwards, and each one is
+drawn by the same CPU reference renderer the GPU is tested against. Also: *Candlelight*
+(slow warm fire), *Plasma* and *Radar*.
+
+| Look | What it does | Preview |
+|---|---|---|
+| **Anniversary** | Soft hearts drifting up, beating together | ![Anniversary](docs/images/looks/hearts.png) |
+| **Edge chase** | A light running round the edge | ![Edge chase](docs/images/looks/edge-chase.png) |
+| **Neon outline** | A breathing neon border | ![Neon outline](docs/images/looks/outline.png) |
+| **Scanner** | A light bar sweeping across, then down | ![Scanner](docs/images/looks/scan.png) |
+| **Breathing bricks** | A brick wall breathing in waves | ![Breathing bricks](docs/images/looks/bricks.png) |
+| **Night windows** | Windows lighting up and going dark | ![Night windows](docs/images/looks/windows.png) |
+| **Tetris** | Blocks falling and stacking | ![Tetris](docs/images/looks/blocks.png) |
+| **Wire cube** | A rotating wireframe cube | ![Wire cube](docs/images/looks/wireframe.png) |
+| **Rain on glass** | Ripples spreading across | ![Rain on glass](docs/images/looks/water.png) |
+| **Campfire** | Flames rising | ![Campfire](docs/images/looks/fire.png) |
+| **Northern lights** | Slow curtains of light | ![Northern lights](docs/images/looks/aurora.png) |
+| **Starfield** | Twinkling stars drifting | ![Starfield](docs/images/looks/stars.png) |
+| **Disco floor** | Tiles flashing on the beat | ![Disco floor](docs/images/looks/disco.png) |
+| **Kaleido** | A turning kaleidoscope | ![Kaleido](docs/images/looks/kaleidoscope.png) |
+
 ## Use
 
 ```text

@@ -230,3 +230,35 @@ fn help_and_version() {
         .success()
         .stdout(predicate::str::contains("lumap"));
 }
+
+#[test]
+fn new_with_a_look_puts_it_on_every_surface_and_looks_lists_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("fire.lumap.toml");
+    lumap()
+        .args(["new", path.to_str().unwrap(), "--look", "campfire"])
+        .assert()
+        .success();
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.contains("look-campfire"), "{text}");
+    assert!(text.contains("pattern = \"fire\""), "{text}");
+    lumap()
+        .args(["validate", path.to_str().unwrap()])
+        .assert()
+        .success();
+    lumap()
+        .args([
+            "new",
+            dir.path().join("x.lumap.toml").to_str().unwrap(),
+            "--look",
+            "nope",
+        ])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("lumap looks"));
+    lumap()
+        .arg("looks")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Campfire").and(predicate::str::contains("Edges")));
+}

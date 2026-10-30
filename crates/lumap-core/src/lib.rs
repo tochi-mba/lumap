@@ -19,6 +19,7 @@
 pub mod blend;
 pub mod cues;
 pub mod geom;
+pub mod looks;
 pub mod mask;
 pub mod midimap;
 pub mod params;

@@ -70,7 +70,12 @@ enum Command {
         /// Overwrite an existing file.
         #[arg(long)]
         force: bool,
+        /// Put a built-in look (for example "Campfire") on every surface.
+        #[arg(long)]
+        look: Option<String>,
     },
+    /// List the built-in looks.
+    Looks,
     /// Write the app icon as a Windows `.ico` (the installer and the executable use it).
     Icon {
         /// Destination `.ico`.
@@ -104,7 +109,8 @@ fn main() -> ExitCode {
         Some(Command::Render(render)) => cli::render(&render),
         Some(Command::Validate { project }) => cli::validate(&project),
         Some(Command::Migrate { project, out }) => cli::migrate(&project, out.as_deref()),
-        Some(Command::New { path, force }) => cli::new_project(&path, force),
+        Some(Command::New { path, force, look }) => cli::new_project(&path, force, look.as_deref()),
+        Some(Command::Looks) => cli::list_looks(),
         Some(Command::Icon { out }) => cli::icon(&out),
     };
     match result {

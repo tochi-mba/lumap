@@ -366,6 +366,7 @@ fn surface_inspector(
     let Some(surface) = editor.project.surface(id).cloned() else {
         return;
     };
+    super::looks::surface_section(ui, editor, id, state);
     ui.horizontal(|ui| {
         let mut locked = surface.locked;
         if ui
@@ -697,10 +698,10 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
             ui.separator();
             let mut chosen = *pattern;
             egui::ComboBox::from_label("Pattern")
-                .selected_text(format!("{chosen:?}"))
+                .selected_text(chosen.label())
                 .show_ui(ui, |ui| {
                     for g in GeneratorKind::ALL {
-                        ui.selectable_value(&mut chosen, g, format!("{g:?}"));
+                        ui.selectable_value(&mut chosen, g, g.label());
                     }
                 });
             if chosen != *pattern {

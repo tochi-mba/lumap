@@ -6,6 +6,18 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+### Added
+
+- Looks: seventeen ready-made animated looks that need no media, chosen from *Try a look* on the
+  welcome screen, the surface inspector's *Looks* section, or `lumap new FILE --look NAME`
+  (`lumap looks` lists them). Among them *Anniversary* (soft hearts drifting up, beating
+  together), *Candlelight*, *Edge chase*, *Night windows*, *Campfire*, *Northern lights* and
+  *Disco floor*.
+- Fourteen new generators behind them, grouped in the *+ source* menu: Edges (edge chase,
+  outline, scan), Facade (bricks, windows, blocks, wireframe), Nature (water, fire, aurora,
+  stars), Party (disco, kaleidoscope) and Romance (hearts). All are drawn by the CPU reference
+  renderer and proven against the GPU by a new golden case.
+
 ### Changed
 
 - CI publishes releases: every green push to main whose `Cargo.toml` version has no release

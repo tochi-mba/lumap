@@ -398,6 +398,7 @@ fn source_inspector_transport_and_generator_controls() {
 
     // Generators from the menu, with the pattern combo.
     click(&mut h, "+ source");
+    click(&mut h, "Classic");
     click(&mut h, "Generator: Plasma");
     assert!(h.state().editor.project.source("generator").is_some());
     click(&mut h, "generator");
