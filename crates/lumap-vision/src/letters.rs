@@ -1,11 +1,128 @@
 //! Text Rain: falling glyphs that land on silhouettes and fall again when they move.
-use crate::{Gray,Rgba};
+use crate::{Gray, Rgba};
 /// A compact 5×7 uppercase bitmap glyph, one five-bit row per byte.
-pub fn glyph(c:char)->Option<[u8;7]>{let g=match c.to_ascii_uppercase(){'A'=>[14,17,17,31,17,17,17],'E'=>[31,16,16,30,16,16,31],'H'=>[17,17,17,31,17,17,17],'I'=>[31,4,4,4,4,4,31],'L'=>[16,16,16,16,16,16,31],'M'=>[17,27,21,21,17,17,17],'N'=>[17,25,21,19,17,17,17],'O'=>[14,17,17,17,17,17,14],'R'=>[30,17,17,30,20,18,17],'S'=>[15,16,16,14,1,1,30],'T'=>[31,4,4,4,4,4,4],'U'=>[17,17,17,17,17,17,14],'V'=>[17,17,17,17,17,10,4],'Y'=>[17,17,10,4,4,4,4],' '=>[0;7],_ if c.is_ascii_alphanumeric()=>[14,17,1,6,8,16,31],_=>return None};Some(g)}
-#[derive(Clone)]struct Drop{c:char,x:f64,y:f64,speed:f64,resting:bool}
+pub fn glyph(c: char) -> Option<[u8; 7]> {
+    let g = match c.to_ascii_uppercase() {
+        'A' => [14, 17, 17, 31, 17, 17, 17],
+        'E' => [31, 16, 16, 30, 16, 16, 31],
+        'H' => [17, 17, 17, 31, 17, 17, 17],
+        'I' => [31, 4, 4, 4, 4, 4, 31],
+        'L' => [16, 16, 16, 16, 16, 16, 31],
+        'M' => [17, 27, 21, 21, 17, 17, 17],
+        'N' => [17, 25, 21, 19, 17, 17, 17],
+        'O' => [14, 17, 17, 17, 17, 17, 14],
+        'R' => [30, 17, 17, 30, 20, 18, 17],
+        'S' => [15, 16, 16, 14, 1, 1, 30],
+        'T' => [31, 4, 4, 4, 4, 4, 4],
+        'U' => [17, 17, 17, 17, 17, 17, 14],
+        'V' => [17, 17, 17, 17, 17, 10, 4],
+        'Y' => [17, 17, 10, 4, 4, 4, 4],
+        ' ' => [0; 7],
+        _ if c.is_ascii_alphanumeric() => [14, 17, 1, 6, 8, 16, 31],
+        _ => return None,
+    };
+    Some(g)
+}
+#[derive(Clone)]
+struct Drop {
+    c: char,
+    x: f64,
+    y: f64,
+    speed: f64,
+    resting: bool,
+}
 /// Deterministic falling-letter simulation.
-pub struct LetterRain{w:u32,h:u32,drops:Vec<Drop>,cursor:usize,clock:f64,text:Vec<char>,seed:u64}
-impl LetterRain{/// Creates a rain stream from repeating text.
-pub fn new(w:u32,h:u32,text:&str,seed:u64)->Self{Self{w,h,drops:Vec::new(),cursor:0,clock:0.0,text:text.chars().collect(),seed}}/// Advances letters and collides their baselines with obstacle pixels.
-pub fn step(&mut self,dt:f64,obstacles:&Gray){self.clock+=dt.max(0.0);while self.clock>=0.12&&!self.text.is_empty(){self.clock-=0.12;let c=self.text[self.cursor%self.text.len()];self.cursor+=1;self.seed^=self.seed<<13;self.seed^=self.seed>>7;self.seed^=self.seed<<17;let x=(self.seed%u64::from(self.w.max(1)))as f64;let speed=28.0+((self.seed>>16)%45)as f64;self.drops.push(Drop{c,x,y:-8.0,speed,resting:false});}for d in&mut self.drops{let px=d.x.round().clamp(0.0,f64::from(obstacles.width.saturating_sub(1)))as u32;let below=(d.y+8.0).round()as i64;let blocked=below>=0&&below<i64::from(obstacles.height)&&obstacles.get(px,below as u32)>0;if d.resting&&!blocked{d.resting=false}if !d.resting{let next=d.y+d.speed*dt;if blocked{d.resting=true}else{d.y=next}}}self.drops.retain(|d|d.y<f64::from(self.h)+12.0);if self.drops.len()>512{self.drops.drain(..self.drops.len()-512);}}/// Renders all glyph particles.
-pub fn render(&self,out:&mut Rgba,color:[f32;4],scale:f32){*out=Rgba::new(self.w,self.h);let rgba=color.map(|v|(v.clamp(0.0,1.0)*255.0)as u8);let s=scale.max(1.0).round()as i64;for d in&self.drops{let Some(rows)=glyph(d.c)else{continue};for(row,bits)in rows.iter().enumerate(){for col in 0..5{if(bits>>(4-col))&1==0{continue}for yy in 0..s{for xx in 0..s{let x=d.x as i64+col*s+xx;let y=d.y as i64+row as i64*s+yy;if x>=0&&y>=0&&x<i64::from(self.w)&&y<i64::from(self.h){out.set(x as u32,y as u32,rgba)}}}}}}}}
+pub struct LetterRain {
+    w: u32,
+    h: u32,
+    drops: Vec<Drop>,
+    cursor: usize,
+    clock: f64,
+    text: Vec<char>,
+    seed: u64,
+}
+impl LetterRain {
+    /// Creates a rain stream from repeating text.
+    pub fn new(w: u32, h: u32, text: &str, seed: u64) -> Self {
+        Self {
+            w,
+            h,
+            drops: Vec::new(),
+            cursor: 0,
+            clock: 0.0,
+            text: text.chars().collect(),
+            seed,
+        }
+    }
+    /// Advances letters and collides their baselines with obstacle pixels.
+    pub fn step(&mut self, dt: f64, obstacles: &Gray) {
+        self.clock += dt.max(0.0);
+        while self.clock >= 0.12 && !self.text.is_empty() {
+            self.clock -= 0.12;
+            let c = self.text[self.cursor % self.text.len()];
+            self.cursor += 1;
+            self.seed ^= self.seed << 13;
+            self.seed ^= self.seed >> 7;
+            self.seed ^= self.seed << 17;
+            let x = (self.seed % u64::from(self.w.max(1))) as f64;
+            let speed = 28.0 + ((self.seed >> 16) % 45) as f64;
+            self.drops.push(Drop {
+                c,
+                x,
+                y: -8.0,
+                speed,
+                resting: false,
+            });
+        }
+        for d in &mut self.drops {
+            let px =
+                d.x.round()
+                    .clamp(0.0, f64::from(obstacles.width.saturating_sub(1)))
+                    as u32;
+            let below = (d.y + 8.0).round() as i64;
+            let blocked = below >= 0
+                && below < i64::from(obstacles.height)
+                && obstacles.get(px, below as u32) > 0;
+            if d.resting && !blocked {
+                d.resting = false
+            }
+            if !d.resting {
+                let next = d.y + d.speed * dt;
+                if blocked {
+                    d.resting = true
+                } else {
+                    d.y = next
+                }
+            }
+        }
+        self.drops.retain(|d| d.y < f64::from(self.h) + 12.0);
+        if self.drops.len() > 512 {
+            self.drops.drain(..self.drops.len() - 512);
+        }
+    }
+    /// Renders all glyph particles.
+    pub fn render(&self, out: &mut Rgba, color: [f32; 4], scale: f32) {
+        *out = Rgba::new(self.w, self.h);
+        let rgba = color.map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8);
+        let s = scale.max(1.0).round() as i64;
+        for d in &self.drops {
+            let Some(rows) = glyph(d.c) else { continue };
+            for (row, bits) in rows.iter().enumerate() {
+                for col in 0..5 {
+                    if (bits >> (4 - col)) & 1 == 0 {
+                        continue;
+                    }
+                    for yy in 0..s {
+                        for xx in 0..s {
+                            let x = d.x as i64 + col * s + xx;
+                            let y = d.y as i64 + row as i64 * s + yy;
+                            if x >= 0 && y >= 0 && x < i64::from(self.w) && y < i64::from(self.h) {
+                                out.set(x as u32, y as u32, rgba)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
