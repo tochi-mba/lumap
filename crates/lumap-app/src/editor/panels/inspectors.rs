@@ -221,7 +221,7 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
             if matches!(source.kind, SourceKind::Video { .. }) && !state.ffmpeg_ok {
                 ui.colored_label(
                     crate::theme::LIVE,
-                    "ffmpeg not found: this video cannot play. Set the path in the Show panel.",
+                    "ffmpeg not found: this video cannot play. Set its path in Menu ▸ Settings.",
                 );
             }
         }
@@ -244,11 +244,11 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
                 }
             });
         }
-        SourceKind::TestPattern { .. }
-        | SourceKind::Spout { .. }
-        | SourceKind::Camera { .. }
-        | SourceKind::Room { .. }
-        | SourceKind::Paint { .. } => {}
+        SourceKind::Camera { .. } | SourceKind::Room { .. } | SourceKind::Paint { .. } => {
+            let kind = source.kind.clone();
+            super::steps::room::controls(ui, editor, id, &kind);
+        }
+        SourceKind::TestPattern { .. } | SourceKind::Spout { .. } => {}
     }
     ui.separator();
     let used = editor

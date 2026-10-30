@@ -63,9 +63,14 @@ fn app(editor: Editor) -> LumapApp {
         show: false,
         restart_on_stall: None,
         remote_port: None,
+        lab: None,
     };
     let mut app = LumapApp::new(editor, &launch, monitors(), wgpu::TextureFormat::Rgba8Unorm);
     app.panels.dialogs = Box::new(FakeDialogs::default());
+    // A fake camera, so no test touches a real webcam or lists the machine's devices.
+    app.camera = super::camera::CameraHub::new(std::sync::Arc::new(
+        lumap_sources::live_input::camera::FakeCamera::solid("Test camera", 64, 36, [30, 30, 30, 255]),
+    ));
     app
 }
 

@@ -46,6 +46,8 @@ pub fn projector_list(
     ui: &mut egui::Ui,
     editor: &mut Editor,
     monitors: &[MonitorInfo],
+    camera: &mut crate::editor::camera::CameraHub,
+    state: &mut super::super::PanelState,
     actions: &mut Actions,
 ) {
     egui::Panel::left("lumap-left")
@@ -86,6 +88,7 @@ pub fn projector_list(
                     .weak()
                     .small(),
                 );
+                super::camera::card(ui, editor, camera, state, actions);
             });
         });
 }

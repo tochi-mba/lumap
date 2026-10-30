@@ -50,6 +50,8 @@ pub struct CanvasState {
     pub found_pick: Option<usize>,
     /// The wall photo's texture, keyed by the scan it came from.
     pub wall_tex: Option<(usize, egui::TextureHandle)>,
+    /// Track hands so a pinch on the wall can grab a corner.
+    pub hands_map: bool,
 }
 
 /// What a click on the canvas does.
@@ -88,6 +90,7 @@ impl Default for CanvasState {
             picked: None,
             found_pick: None,
             wall_tex: None,
+            hands_map: false,
         }
     }
 }

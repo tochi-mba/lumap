@@ -83,6 +83,38 @@ pub fn toolbar(ui: &mut egui::Ui, editor: &mut Editor, canvas: &mut CanvasState,
             }
             ui.separator();
         }
+        if let Some(scan) = current.as_deref().and_then(|o| editor.scans.get(o)) {
+            ui.toggle_value(&mut canvas.wall_photo, "Wall photo")
+                .on_hover_text("What this projector sees, from the camera scan");
+            if canvas.wall_photo {
+                ui.add(
+                    egui::Slider::new(&mut canvas.wall_opacity, 0.1..=1.0)
+                        .show_value(false)
+                        .text("Photo"),
+                );
+            }
+            ui.toggle_value(
+                &mut canvas.show_found,
+                format!("Find surfaces ({})", scan.found.len()),
+            )
+            .on_hover_text("Surfaces the scan found; click one to use it");
+            let picking = canvas.tool == super::super::super::canvas::Tool::Pick;
+            if ui
+                .selectable_label(picking, "Pick an object")
+                .on_hover_text("Click an object on the wall photo to outline it")
+                .clicked()
+            {
+                canvas.tool = if picking {
+                    super::super::super::canvas::Tool::Edit
+                } else {
+                    super::super::super::canvas::Tool::Pick
+                };
+                canvas.picked = None;
+            }
+            ui.toggle_value(&mut canvas.hands_map, "Hands")
+                .on_hover_text("Pinch near a corner on the wall to grab it (needs Edit on the wall)");
+            ui.separator();
+        }
         ui.toggle_value(&mut canvas.show_grid, "Grid")
             .on_hover_text("An alignment grid on the canvas (G)");
         ui.toggle_value(&mut canvas.handles.snap, "Snap")

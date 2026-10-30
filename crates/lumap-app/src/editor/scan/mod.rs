@@ -11,7 +11,7 @@ mod data;
 mod session;
 
 pub use data::{ScanData, ScanStore};
-pub use session::{Kind, Phase, Progress, ScanSession};
+pub use session::{DriftReport, Kind, Phase, Progress, ScanSession, CAMERA_MOVED};
 
 /// Where a show's scans live: `<show>.scan/` beside the project file, or a temporary folder for
 /// a show that has not been saved yet (moved beside it on the first save).

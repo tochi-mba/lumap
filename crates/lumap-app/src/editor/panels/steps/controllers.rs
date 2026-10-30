@@ -34,7 +34,8 @@ const KEYS: &[(&str, &str)] = &[
     ("Esc Esc", "Leave show mode"),
 ];
 
-/// The right-hand panel on Show with nothing selected.
+/// The right-hand panel on Show with nothing selected: keyboard, phone remote, OSC, camera and
+/// MIDI.
 pub fn controllers(
     ui: &mut egui::Ui,
     editor: &mut Editor,
@@ -73,6 +74,14 @@ pub fn controllers(
     card(ui, "OSC", &osc_pill, osc.is_some(), |ui| {
         osc_card(ui, editor, osc, state, actions);
     });
+    let watching = state.seen.is_some();
+    card(
+        ui,
+        "Camera",
+        if watching { "Watching" } else { "Off" },
+        watching,
+        |ui| super::watch::card(ui, editor, state),
+    );
     let midi = editor.midi.as_ref().map(|m| m.name().to_string());
     card(
         ui,
