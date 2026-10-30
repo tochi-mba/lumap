@@ -348,7 +348,10 @@ fn respond(request: tiny_http::Request, reply: Reply) {
         ),
     };
     let mut response = tiny_http::Response::from_data(body).with_status_code(status);
-    for header in [format!("Content-Type: {mime}"), "Cache-Control: no-store".into()] {
+    for header in [
+        format!("Content-Type: {mime}"),
+        "Cache-Control: no-store".into(),
+    ] {
         if let Ok(header) = header.parse::<tiny_http::Header>() {
             response.add_header(header);
         }
@@ -359,15 +362,23 @@ fn respond(request: tiny_http::Request, reply: Reply) {
 
 /// Checks a request's headers: a local `Host` (DNS rebinding), no `Origin` (browsers send one,
 /// so web pages are refused) and the session token. Header names match in any case.
-pub(crate) fn authorize(headers: &[(String, String)], token: &str, port: u16) -> Result<(), Refusal> {
+pub(crate) fn authorize(
+    headers: &[(String, String)],
+    token: &str,
+    port: u16,
+) -> Result<(), Refusal> {
     let local = [format!("127.0.0.1:{port}"), format!("localhost:{port}")];
-    if !one(headers, "Host").is_some_and(|host| local.iter().any(|l| l.eq_ignore_ascii_case(host))) {
+    if !one(headers, "Host").is_some_and(|host| local.iter().any(|l| l.eq_ignore_ascii_case(host)))
+    {
         return Err((
             403,
             format!("the Host header must be {} or {}", local[0], local[1]),
         ));
     }
-    if headers.iter().any(|(name, _)| name.eq_ignore_ascii_case("Origin")) {
+    if headers
+        .iter()
+        .any(|(name, _)| name.eq_ignore_ascii_case("Origin"))
+    {
         return Err((
             403,
             "requests from web pages (with an Origin header) are refused".into(),
