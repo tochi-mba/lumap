@@ -206,16 +206,16 @@ fn blur(image: &Rgba, radius: f64) -> Rgba {
                 for xx in (x as i32 - whole)..=(x as i32 + whole) {
                     if xx >= 0 && yy >= 0 && xx < image.width as i32 && yy < image.height as i32 {
                         let i = (yy as usize * image.width as usize + xx as usize) * 4;
-                        for c in 0..3 {
-                            sum[c] += u32::from(image.data[i + c])
+                        for (c, total) in sum.iter_mut().enumerate() {
+                            *total += u32::from(image.data[i + c]);
                         }
                         n += 1
                     }
                 }
             }
             let i = (y as usize * image.width as usize + x as usize) * 4;
-            for c in 0..3 {
-                let average = f64::from(sum[c]) / f64::from(n);
+            for (c, &total) in sum.iter().enumerate() {
+                let average = f64::from(total) / f64::from(n);
                 out.data[i + c] =
                     ((1.0 - mix) * f64::from(image.data[i + c]) + mix * average).round() as u8
             }

@@ -102,7 +102,7 @@ impl SpotTracker {
         }
         let n = f.width as usize * f.height as usize;
         let mut hot = vec![false; n];
-        for i in 0..n {
+        for (i, is_hot) in hot.iter_mut().enumerate() {
             let p = &f.data[i * 4..i * 4 + 3];
             let bright = *p.iter().max().unwrap_or(&0);
             let base = expected.map_or(self.background[i], |g| {
@@ -114,7 +114,7 @@ impl SpotTracker {
                     .sum::<u32>();
                 d < 280
             });
-            hot[i] = bright >= self.s.min_brightness && f32::from(bright) > base + 24.0 && color_ok;
+            *is_hot = bright >= self.s.min_brightness && f32::from(bright) > base + 24.0 && color_ok;
             self.background[i] = if self.background[i] == 0.0 {
                 f32::from(bright)
             } else {

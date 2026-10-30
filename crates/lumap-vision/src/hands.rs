@@ -43,7 +43,9 @@ impl HandTracker {
     }
     /// Tracks up to two hands in one camera frame.
     pub fn track(&mut self, frame: &Rgba) -> Vec<HandPose> {
-        let input = image_tensor(frame, 192, None);
+        let Some(input) = image_tensor(frame, 192, None) else {
+            return Vec::new();
+        };
         let Ok(outputs) = self.palm.run(tvec!(input.into_tvalue())) else {
             return Vec::new();
         };
@@ -100,7 +102,7 @@ impl HandTracker {
     }
     fn landmarks(&self, frame: &Rgba, p: Palm) -> Option<HandPose> {
         let rect = (p.x - p.w * 0.5, p.y - p.h * 0.5, p.w, p.h);
-        let input = image_tensor(frame, 224, Some(rect));
+        let input = image_tensor(frame, 224, Some(rect))?;
         let out = self.landmark.run(tvec!(input.into_tvalue())).ok()?;
         let mut coords = None;
         let mut scalars = Vec::new();
@@ -162,7 +164,7 @@ fn anchors() -> Vec<Anchor> {
     }
     out
 }
-fn image_tensor(frame: &Rgba, size: usize, rect: Option<(f32, f32, f32, f32)>) -> Tensor {
+fn image_tensor(frame: &Rgba, size: usize, rect: Option<(f32, f32, f32, f32)>) -> Option<Tensor> {
     let rect = rect.unwrap_or((0.0, 0.0, 1.0, 1.0));
     let mut data = vec![0.0f32; size * size * 3];
     for y in 0..size {
@@ -182,6 +184,5 @@ fn image_tensor(frame: &Rgba, size: usize, rect: Option<(f32, f32, f32, f32)>) -
             }
         }
     }
-    Tensor::from_shape(&[1, size, size, 3], &data)
-        .unwrap_or_else(|_| Tensor::zero::<f32>(&[1, size, size, 3]).unwrap())
+    Tensor::from_shape(&[1, size, size, 3], &data).ok()
 }
