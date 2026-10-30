@@ -277,6 +277,8 @@ mod tests {
             .filter(|error| error.ends_with(": excluded but not in the report"))
             .count();
         assert_eq!(stale, EXCLUDED.len());
-        assert!(errors.iter().any(|error| error.starts_with("incomplete report:")));
+        assert!(errors
+            .iter()
+            .any(|error| error.starts_with("incomplete report:")));
     }
 }
