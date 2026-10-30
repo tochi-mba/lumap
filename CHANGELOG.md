@@ -6,6 +6,8 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-30
+
 ### Added
 
 - **The camera.** Point a webcam at the wall (a laptop's own camera sitting on the projector
@@ -257,7 +259,8 @@ First release under the lumap name, as a REX Technologies product, in its own re
 - CPU reference renderer, wgpu renderer, golden-image tests and GPU-versus-oracle tests.
 - CI on Linux and Windows with clippy, cargo-deny, coverage floors and a release workflow.
 
-[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/tochi-mba/lumap/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/tochi-mba/lumap/compare/v0.5.1...v0.7.0
 [0.5.1]: https://github.com/tochi-mba/lumap/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/tochi-mba/lumap/compare/v0.4.0...v0.5.0
 [0.2.0]: https://github.com/tochi-mba/lumap/compare/v0.1.0...v0.2.0
