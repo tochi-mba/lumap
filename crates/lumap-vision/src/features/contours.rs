@@ -101,7 +101,12 @@ fn dir_index(dx: i64, dy: i64) -> usize {
 /// Moore-neighbour trace of the outer boundary of the 8-connected region containing `start`,
 /// which must be the region's first pixel in raster order (so its west neighbour is outside).
 /// `inside` says which pixels belong to the region. Returns pixel indices, clockwise on screen.
-pub(crate) fn trace(w: usize, h: usize, start: usize, inside: impl Fn(usize) -> bool) -> Vec<usize> {
+pub(crate) fn trace(
+    w: usize,
+    h: usize,
+    start: usize,
+    inside: impl Fn(usize) -> bool,
+) -> Vec<usize> {
     let at = |x: i64, y: i64| {
         (x >= 0 && y >= 0 && x < w as i64 && y < h as i64).then(|| y as usize * w + x as usize)
     };

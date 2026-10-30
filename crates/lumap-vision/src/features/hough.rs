@@ -168,7 +168,10 @@ fn measure(
             hist[(d.round() as usize).min(top)] += 1;
         }
     }
-    let (lo, hi) = ((min_r.ceil() as usize).max(1), (max_r.floor() as usize).min(top - 1));
+    let (lo, hi) = (
+        (min_r.ceil() as usize).max(1),
+        (max_r.floor() as usize).min(top - 1),
+    );
     let mut best = (0.0, 0usize);
     for r in lo..=hi {
         let s = f64::from(hist[r - 1] + hist[r] + hist[r + 1]) / r as f64;

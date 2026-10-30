@@ -127,8 +127,18 @@ pub(crate) fn scene() -> &'static Scene {
         let top = [t0, t1, t2, t3];
         let left = [t0, t3, b3, b0];
         let right = [t3, t2, b2, b3];
-        let frame_outer = [v(200.0, 40.0), v(290.0, 44.0), v(288.0, 108.0), v(202.0, 112.0)];
-        let frame_inner = [v(211.0, 51.0), v(279.0, 54.0), v(277.0, 97.0), v(213.0, 101.0)];
+        let frame_outer = [
+            v(200.0, 40.0),
+            v(290.0, 44.0),
+            v(288.0, 108.0),
+            v(202.0, 112.0),
+        ];
+        let frame_inner = [
+            v(211.0, 51.0),
+            v(279.0, 54.0),
+            v(277.0, 97.0),
+            v(213.0, 101.0),
+        ];
         let disc = (v(165.0, 140.0), 22.0);
         let photo = paint(
             W,

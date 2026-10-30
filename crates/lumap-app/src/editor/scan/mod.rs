@@ -18,10 +18,9 @@ pub use session::{DriftReport, Kind, Phase, Progress, ScanSession, CAMERA_MOVED}
 pub fn scan_root(project: Option<&std::path::Path>) -> std::path::PathBuf {
     match project {
         Some(p) => {
-            let stem = p
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map_or("show", |n| n.trim_end_matches(".toml").trim_end_matches(".lumap"));
+            let stem = p.file_name().and_then(|n| n.to_str()).map_or("show", |n| {
+                n.trim_end_matches(".toml").trim_end_matches(".lumap")
+            });
             p.with_file_name(format!("{stem}.scan"))
         }
         None => std::env::temp_dir()

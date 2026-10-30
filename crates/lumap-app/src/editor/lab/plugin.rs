@@ -209,7 +209,11 @@ mod tests {
 
     #[test]
     fn widgets_are_found_exactly_then_by_part_of_their_label() {
-        let tree = vec![w("Go live", 0.0), w("Go live now", 20.0), w("Go live", 40.0)];
+        let tree = vec![
+            w("Go live", 0.0),
+            w("Go live now", 20.0),
+            w("Go live", 40.0),
+        ];
         assert_eq!(find(&tree, "Go live", 1).unwrap().rect[0], 40.0);
         assert_eq!(find(&tree, "now", 0).unwrap().label, "Go live now");
         assert!(find(&tree, "Scan", 0).is_none());

@@ -121,7 +121,6 @@ pub fn window_spec(output: &lumap_core::project::Output, monitors: &[MonitorInfo
 pub const CURSOR_HIDE_AFTER: Duration = Duration::from_secs(2);
 
 /// Per-window interaction state.
-#[derive(Debug)]
 pub struct OutputUiState {
     /// Handle interaction on the wall.
     pub handles: HandleState,
@@ -186,7 +185,11 @@ fn paint_pattern(
 
 /// A ring where a tracked hand points, in normalised projector coordinates, with a filled
 /// centre while it pinches.
-fn draw_hand_cursor(painter: &egui::Painter, rect: egui::Rect, cursor: (lumap_core::geom::Vec2, bool)) {
+fn draw_hand_cursor(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    cursor: (lumap_core::geom::Vec2, bool),
+) {
     let (p, pinching) = cursor;
     let at = egui::pos2(
         rect.min.x + p.x as f32 * rect.width(),

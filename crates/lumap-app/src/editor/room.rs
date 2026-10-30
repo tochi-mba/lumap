@@ -147,7 +147,10 @@ fn render_loop(
         last = now;
         let t = now.duration_since(started).as_secs_f64();
         let kind = kind.lock().unwrap_or_else(PoisonError::into_inner).clone();
-        let inputs = inputs.lock().unwrap_or_else(PoisonError::into_inner).clone();
+        let inputs = inputs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         let wipe = clears.load(Ordering::Relaxed);
         let frame = render(&kind, &inputs, &mut state, dt, t, wipe);
         *latest.lock().unwrap_or_else(PoisonError::into_inner) = Some(Arc::new(frame));
@@ -279,9 +282,10 @@ fn pen_position(inputs: &Inputs, input: PaintInput, size: (u32, u32)) -> Option<
     match input {
         PaintInput::Light => seen.spot.and_then(|(p, _)| to_source(scan, p, size)),
         PaintInput::Hand => {
-            let pinching = seen.gestures.iter().any(|g| {
-                g.gesture == lumap_core::cammap::Gesture::Pinch && g.value >= 0.5
-            });
+            let pinching = seen
+                .gestures
+                .iter()
+                .any(|g| g.gesture == lumap_core::cammap::Gesture::Pinch && g.value >= 0.5);
             let hand = seen.hands.first()?;
             if !pinching {
                 return None;
@@ -399,7 +403,13 @@ fn monsters(out: &mut Rgba, mask: &Gray, color: [f32; 4], t: f64) {
             } else {
                 disc(out, Vec2::new(ex, eye_y), r, 1.0, [255, 255, 255, 255]);
                 let look = Vec2::new((t * 0.7).sin() * r * 0.4, 0.0);
-                disc(out, Vec2::new(ex, eye_y) + look, r * 0.45, 1.0, [10, 10, 10, 255]);
+                disc(
+                    out,
+                    Vec2::new(ex, eye_y) + look,
+                    r * 0.45,
+                    1.0,
+                    [10, 10, 10, 255],
+                );
             }
         }
         let tooth = [
@@ -485,9 +495,10 @@ impl Runtime {
                 scan: editor.scans.get(&projector),
                 vision: vision.cloned(),
             };
-            let same_kind = self.attached.get(&id).is_some_and(|(k, _)| {
-                std::mem::discriminant(k) == std::mem::discriminant(&kind)
-            });
+            let same_kind = self
+                .attached
+                .get(&id)
+                .is_some_and(|(k, _)| std::mem::discriminant(k) == std::mem::discriminant(&kind));
             if same_kind {
                 if let Some((k, shared)) = self.attached.get_mut(&id) {
                     *shared.lock().unwrap_or_else(PoisonError::into_inner) = inputs;
@@ -591,7 +602,11 @@ mod tests {
             color: [1.0; 4],
             speed: 1.0,
         };
-        let mut src = RoomSource::start("snow", kind.clone(), Arc::new(Mutex::new(Inputs::default())));
+        let mut src = RoomSource::start(
+            "snow",
+            kind.clone(),
+            Arc::new(Mutex::new(Inputs::default())),
+        );
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut frame = src.frame(0.0);
         while frame.is_none() && Instant::now() < deadline {

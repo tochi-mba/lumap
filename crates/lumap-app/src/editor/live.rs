@@ -141,7 +141,9 @@ impl LumapApp {
                     Kind::Realign => format!("Re-aligned {adopted} projector(s)."),
                     Kind::Drift => "Checked the projectors with the camera.".into(),
                 };
-                Ok(serde_json::json!({ "ok": true, "kind": format!("{kind:?}"), "adopted": adopted, "drift": drift }))
+                Ok(
+                    serde_json::json!({ "ok": true, "kind": format!("{kind:?}"), "adopted": adopted, "drift": drift }),
+                )
             }
             Phase::Failed(e) => {
                 self.editor.status = e.clone();
@@ -173,7 +175,8 @@ impl LumapApp {
         let wanted = spot
             || hands
             || shadows
-            || (!zones.is_empty() && (!setup.map.mappings.is_empty() || learning || self.panels.camera_meters));
+            || (!zones.is_empty()
+                && (!setup.map.mappings.is_empty() || learning || self.panels.camera_meters));
         if !wanted || self.editor.scan_pattern.is_some() {
             self.vision = None;
             self.editor.hand_cursor.clear();
@@ -265,7 +268,8 @@ impl LumapApp {
             if let Some(e) = events.iter().find(|e| e.value >= 0.5) {
                 let key = e.key.clone();
                 let label = key.label();
-                self.editor.edit(move |p| p.camera.map.learn(key, &address, mode));
+                self.editor
+                    .edit(move |p| p.camera.map.learn(key, &address, mode));
                 self.editor.status = format!("Learned: {label}");
                 self.editor.cam_learn = None;
             }
@@ -281,11 +285,19 @@ impl LumapApp {
         }
         // A fist clears hand-drawn paint.
         let was_fist = self.live.previous.iter().any(|e| {
-            e.key == CamKey::Gesture { gesture: Gesture::Fist } && e.value >= 0.5
+            e.key
+                == CamKey::Gesture {
+                    gesture: Gesture::Fist,
+                }
+                && e.value >= 0.5
         });
-        let fist = events
-            .iter()
-            .any(|e| e.key == CamKey::Gesture { gesture: Gesture::Fist } && e.value >= 0.5);
+        let fist = events.iter().any(|e| {
+            e.key
+                == CamKey::Gesture {
+                    gesture: Gesture::Fist,
+                }
+                && e.value >= 0.5
+        });
         if fist && !was_fist {
             for s in &self.editor.project.sources {
                 if matches!(
@@ -376,7 +388,11 @@ impl LumapApp {
     }
 
     /// Carries out a scan request from the panels.
-    pub(crate) fn run_scan_action(&mut self, request: Option<(Kind, Option<String>)>, now: Instant) {
+    pub(crate) fn run_scan_action(
+        &mut self,
+        request: Option<(Kind, Option<String>)>,
+        now: Instant,
+    ) {
         let Some((kind, projector)) = request else {
             return;
         };
@@ -476,7 +492,10 @@ fn in_camera(corr: &lumap_vision::correspondence::Correspondence, projected: &Gr
         f64::from(projected.height) / f64::from(corr.proj_h.max(1)),
     );
     Gray::from_fn(corr.cam_w, corr.cam_h, |x, y| match corr.get(x, y) {
-        Some(p) => projected.sample(p.x * sx, p.y * sy).round().clamp(0.0, 255.0) as u8,
+        Some(p) => projected
+            .sample(p.x * sx, p.y * sy)
+            .round()
+            .clamp(0.0, 255.0) as u8,
         None => 0,
     })
 }

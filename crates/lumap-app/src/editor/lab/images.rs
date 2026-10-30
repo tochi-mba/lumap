@@ -23,7 +23,10 @@ pub fn png_reply(width: u32, height: u32, rgba: Vec<u8>) -> Reply {
         return Reply::Error(500, "image has the wrong size".into());
     };
     let mut bytes = Vec::new();
-    match img.write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png) {
+    match img.write_to(
+        &mut std::io::Cursor::new(&mut bytes),
+        image::ImageFormat::Png,
+    ) {
         Ok(()) => Reply::Png(bytes),
         Err(e) => Reply::Error(500, e.to_string()),
     }
@@ -212,7 +215,10 @@ pub fn vision(app: &mut LumapApp, name: &str, now: Instant) -> Reply {
     if let Some(p) = name.strip_prefix("shadow-") {
         return match seen.and_then(|s| s.shadows.get(p).cloned()) {
             Some(mask) => gray_png(&mask),
-            None => Reply::Error(404, format!("No shadow picture for {p} (no shadow effect running).")),
+            None => Reply::Error(
+                404,
+                format!("No shadow picture for {p} (no shadow effect running)."),
+            ),
         };
     }
     let Some(device) = app.camera_device() else {
@@ -295,7 +301,11 @@ mod tests {
         let mut img = Rgba::new(20, 20);
         polyline(
             &mut img,
-            &[Vec2::new(2.0, 2.0), Vec2::new(30.0, 2.0), Vec2::new(2.0, 15.0)],
+            &[
+                Vec2::new(2.0, 2.0),
+                Vec2::new(30.0, 2.0),
+                Vec2::new(2.0, 15.0),
+            ],
             true,
             [1, 2, 3, 255],
         );

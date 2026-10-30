@@ -70,7 +70,11 @@ pub(crate) fn split(color: [f32; 4]) -> ([f32; 3], f32) {
 
 /// RGB (`0..=1`) of a hue in turns (wrapped), a saturation and a value.
 pub(crate) fn hsv(h: f64, s: f32, v: f32) -> [f32; 3] {
-    let h6 = if h.is_finite() { h.rem_euclid(1.0) * 6.0 } else { 0.0 };
+    let h6 = if h.is_finite() {
+        h.rem_euclid(1.0) * 6.0
+    } else {
+        0.0
+    };
     let i = h6.floor();
     let f = (h6 - i) as f32;
     let (p, q, t) = (v * (1.0 - s), v * (1.0 - s * f), v * (1.0 - s * (1.0 - f)));
@@ -217,17 +221,29 @@ mod tests {
     fn segments_cover_their_reach_and_leave_the_far_end_to_the_next() {
         let mut out = Rgba::new(20, 10);
         begin(&mut out, 20, 10);
-        segment(&mut out, Vec2::new(2.0, 5.0), Vec2::new(10.0, 5.0), 2.0, false, |_, _| {
-            [1.0; 4]
-        });
+        segment(
+            &mut out,
+            Vec2::new(2.0, 5.0),
+            Vec2::new(10.0, 5.0),
+            2.0,
+            false,
+            |_, _| [1.0; 4],
+        );
         assert_eq!(out.get(5, 4)[3], 255);
         assert_eq!(out.get(5, 8)[3], 0);
         assert_eq!(out.get(11, 4)[3], 0);
-        segment(&mut out, Vec2::new(2.0, 5.0), Vec2::new(10.0, 5.0), 2.0, true, |_, _| {
-            [1.0; 4]
-        });
+        segment(
+            &mut out,
+            Vec2::new(2.0, 5.0),
+            Vec2::new(10.0, 5.0),
+            2.0,
+            true,
+            |_, _| [1.0; 4],
+        );
         assert_eq!(out.get(11, 4)[3], 255);
-        radial(&mut out, Vec2::new(17.0, 5.0), 1.0, |d, _| [0.0, 0.0, 0.0, disc(d, 1.0)]);
+        radial(&mut out, Vec2::new(17.0, 5.0), 1.0, |d, _| {
+            [0.0, 0.0, 0.0, disc(d, 1.0)]
+        });
         assert!(out.get(16, 4)[3] > 0);
         radial(&mut out, Vec2::new(f64::NAN, 0.0), 1.0, |_, _| [1.0; 4]);
     }

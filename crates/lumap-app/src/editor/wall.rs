@@ -22,8 +22,10 @@ pub fn backdrop(ui: &egui::Ui, rect: Rect, scan: &Arc<ScanData>, state: &mut Can
     let key = Arc::as_ptr(scan) as usize;
     if state.wall_tex.as_ref().is_none_or(|(k, _)| *k != key) {
         let f = scan.photo_frame();
-        let image =
-            egui::ColorImage::from_rgba_unmultiplied([f.width as usize, f.height as usize], &f.rgba);
+        let image = egui::ColorImage::from_rgba_unmultiplied(
+            [f.width as usize, f.height as usize],
+            &f.rgba,
+        );
         let tex = ui
             .ctx()
             .load_texture("wall-photo", image, egui::TextureOptions::LINEAR);
@@ -63,7 +65,15 @@ pub fn tools(
         for (i, s) in scan.found.iter().enumerate() {
             let pts: Vec<Pos2> = s.points.iter().map(|p| to_screen(*p)).collect();
             let chosen = state.found_pick == Some(i);
-            dashed(&painter, &pts, if chosen { crate::theme::SIGNAL } else { Color32::from_rgba_unmultiplied(215, 255, 63, 150) });
+            dashed(
+                &painter,
+                &pts,
+                if chosen {
+                    crate::theme::SIGNAL
+                } else {
+                    Color32::from_rgba_unmultiplied(215, 255, 63, 150)
+                },
+            );
             if let Some(first) = pts.first() {
                 painter.text(
                     *first + egui::vec2(4.0, 4.0),
@@ -91,10 +101,7 @@ pub fn tools(
                 }
                 consumed = true;
             } else if state.show_found {
-                let hit = scan
-                    .found
-                    .iter()
-                    .position(|s| contains(&s.points, px));
+                let hit = scan.found.iter().position(|s| contains(&s.points, px));
                 if hit.is_some() {
                     state.found_pick = hit;
                     consumed = true;
@@ -134,10 +141,7 @@ fn popups(
                             add_suggestion(editor, output, &s, size);
                             close = true;
                         }
-                        if ui
-                            .button(format!("Use all {}", scan.found.len()))
-                            .clicked()
-                        {
+                        if ui.button(format!("Use all {}", scan.found.len())).clicked() {
                             for s in &scan.found {
                                 add_suggestion(editor, output, s, size);
                             }
@@ -248,7 +252,12 @@ fn add_bounded(editor: &mut Editor, output: &str, name: &str, pts: &[Vec2]) {
         .iter()
         .map(|p| Vec2::new((p.x - lo.x) / w, (p.y - lo.y) / h))
         .collect();
-    editor.add_surface_shaped(output, name, WarpKind::Quad(quad), vec![Mask::window(local)]);
+    editor.add_surface_shaped(
+        output,
+        name,
+        WarpKind::Quad(quad),
+        vec![Mask::window(local)],
+    );
 }
 
 /// Cuts an outline out of a surface (a hole where the object is).
@@ -297,7 +306,12 @@ fn dashed(painter: &egui::Painter, pts: &[Pos2], color: Color32) {
     }
     let mut closed = pts.to_vec();
     closed.push(pts[0]);
-    painter.add(egui::Shape::dashed_line(&closed, Stroke::new(2.0, color), 7.0, 5.0));
+    painter.add(egui::Shape::dashed_line(
+        &closed,
+        Stroke::new(2.0, color),
+        7.0,
+        5.0,
+    ));
 }
 
 #[cfg(test)]

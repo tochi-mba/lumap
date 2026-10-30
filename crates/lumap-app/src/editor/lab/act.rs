@@ -144,7 +144,10 @@ fn apply(
                 Some(name) => Some(
                     Overlay::ALL
                         .into_iter()
-                        .find(|o| o.label().eq_ignore_ascii_case(name) || format!("{o:?}").eq_ignore_ascii_case(name))
+                        .find(|o| {
+                            o.label().eq_ignore_ascii_case(name)
+                                || format!("{o:?}").eq_ignore_ascii_case(name)
+                        })
                         .ok_or_else(|| format!("No overlay {name}."))?,
                 ),
             };
@@ -245,7 +248,14 @@ mod tests {
         assert_eq!(&c.rgba[16..20], &[0, 0, 0, 255]);
         let s = pattern_frame(&Pattern::Solid { rgb: [1, 2, 3] }, 2, 2).unwrap();
         assert_eq!(&s.rgba[..4], &[1, 2, 3, 255]);
-        assert!(pattern_frame(&Pattern::Png { path: "missing.png".into() }, 2, 2).is_err());
+        assert!(pattern_frame(
+            &Pattern::Png {
+                path: "missing.png".into()
+            },
+            2,
+            2
+        )
+        .is_err());
         assert_eq!(pattern_frame(&Pattern::Clear, 2, 2).unwrap().rgba[0], 0);
     }
 }

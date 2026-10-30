@@ -16,6 +16,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
 /// Everything one projector's scan gives.
+#[derive(Debug)]
 pub struct ScanData {
     /// The projector.
     pub projector: String,
@@ -216,7 +217,10 @@ enum Slot {
 #[derive(Default)]
 pub struct ScanStore {
     slots: HashMap<String, Slot>,
-    inbox: Option<(Sender<(String, PathBuf, Result<ScanData, String>)>, Receiver<(String, PathBuf, Result<ScanData, String>)>)>,
+    inbox: Option<(
+        Sender<(String, PathBuf, Result<ScanData, String>)>,
+        Receiver<(String, PathBuf, Result<ScanData, String>)>,
+    )>,
 }
 
 impl ScanStore {

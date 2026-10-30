@@ -112,7 +112,9 @@ pub fn toolbar(ui: &mut egui::Ui, editor: &mut Editor, canvas: &mut CanvasState,
                 canvas.picked = None;
             }
             ui.toggle_value(&mut canvas.hands_map, "Hands")
-                .on_hover_text("Pinch near a corner on the wall to grab it (needs Edit on the wall)");
+                .on_hover_text(
+                    "Pinch near a corner on the wall to grab it (needs Edit on the wall)",
+                );
             ui.separator();
         }
         ui.toggle_value(&mut canvas.show_grid, "Grid")

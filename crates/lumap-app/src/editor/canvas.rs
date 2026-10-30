@@ -12,7 +12,6 @@ pub const MIN_ZOOM: f32 = 0.25;
 pub const MAX_ZOOM: f32 = 16.0;
 
 /// Canvas state.
-#[derive(Debug)]
 pub struct CanvasState {
     /// Handle interaction.
     pub handles: HandleState,
@@ -247,8 +246,15 @@ pub fn show(
         state.pan += response.drag_delta();
     } else {
         let map = Mapping { rect };
-        let consumed =
-            super::wall::tools(ui, editor, state, &response, &map, &output_id, scan.as_ref());
+        let consumed = super::wall::tools(
+            ui,
+            editor,
+            state,
+            &response,
+            &map,
+            &output_id,
+            scan.as_ref(),
+        );
         if !consumed && state.tool == Tool::Edit {
             state.readout =
                 handles::interact(ui, editor, &mut state.handles, &response, &map, &output_id);

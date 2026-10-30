@@ -13,7 +13,11 @@ impl Rng {
     pub(crate) fn new(seed: u64) -> Self {
         let state = mix(seed);
         // Zero is xorshift's only fixed point.
-        Self(if state == 0 { 0x9E37_79B9_7F4A_7C15 } else { state })
+        Self(if state == 0 {
+            0x9E37_79B9_7F4A_7C15
+        } else {
+            state
+        })
     }
 
     /// The next 64 random bits.

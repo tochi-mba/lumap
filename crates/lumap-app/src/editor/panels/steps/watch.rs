@@ -24,7 +24,11 @@ pub fn card(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState) {
         .small(),
     );
     picture(ui, editor, state, &zones);
-    let readings = state.seen.as_ref().map(|s| s.zones.clone()).unwrap_or_default();
+    let readings = state
+        .seen
+        .as_ref()
+        .map(|s| s.zones.clone())
+        .unwrap_or_default();
     for z in &zones {
         ui.horizontal(|ui| {
             ui.label(RichText::new(&z.id).family(crate::theme::strong_family()));
@@ -61,7 +65,11 @@ pub fn card(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState) {
             }
         });
     }
-    if ui.button("Add a zone").on_hover_text("Or drag across the camera picture").clicked() {
+    if ui
+        .button("Add a zone")
+        .on_hover_text("Or drag across the camera picture")
+        .clicked()
+    {
         add_zone(editor, Vec2::new(0.05, 0.55), Vec2::new(0.35, 0.95));
     }
     if let Some(seen) = &state.seen {
@@ -112,7 +120,10 @@ pub fn card(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState) {
                 CamKey::Zone { zone } => zone.clone(),
                 CamKey::Gesture { gesture } => gesture.label().to_string(),
             };
-            if ui.small_button(format!("Forget {what} {}", m.address)).clicked() {
+            if ui
+                .small_button(format!("Forget {what} {}", m.address))
+                .clicked()
+            {
                 let key = m.key.clone();
                 let address = m.address.clone();
                 editor.edit(move |p| {
@@ -134,7 +145,11 @@ fn picture(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, zones
         return;
     };
     let t = ui.input(|i| i.time);
-    if state.camera_tex.as_ref().is_none_or(|(at, _)| t - *at >= 0.1) {
+    if state
+        .camera_tex
+        .as_ref()
+        .is_none_or(|(at, _)| t - *at >= 0.1)
+    {
         let image = egui::ColorImage::from_rgba_unmultiplied(
             [frame.width as usize, frame.height as usize],
             &frame.rgba,
@@ -144,7 +159,9 @@ fn picture(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, zones
             .load_texture("camera-preview", image, egui::TextureOptions::LINEAR);
         state.camera_tex = Some((t, tex));
     }
-    let Some((_, tex)) = &state.camera_tex else { return };
+    let Some((_, tex)) = &state.camera_tex else {
+        return;
+    };
     let w = ui.available_width().min(300.0);
     let h = w * frame.height as f32 / frame.width.max(1) as f32;
     let (rect, response) = ui.allocate_exact_size(egui::vec2(w, h), egui::Sense::drag());
@@ -154,7 +171,9 @@ fn picture(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, zones
         egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
         egui::Color32::WHITE,
     );
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, true, "Camera picture with zones"));
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::Role::Image, true, "Camera picture with zones")
+    });
     let to_screen = |p: Vec2| egui::pos2(rect.min.x + p.x as f32 * w, rect.min.y + p.y as f32 * h);
     let to_norm = |p: egui::Pos2| {
         Vec2::new(
@@ -202,9 +221,21 @@ fn picture(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, zones
 
 /// Adds a rectangle zone with a fresh id ("zone", "zone-2"…), as one undo step.
 fn add_zone(editor: &mut Editor, min: Vec2, max: Vec2) {
-    let taken: Vec<String> = editor.project.camera.zones.iter().map(|z| z.id.clone()).collect();
+    let taken: Vec<String> = editor
+        .project
+        .camera
+        .zones
+        .iter()
+        .map(|z| z.id.clone())
+        .collect();
     let id = (1..)
-        .map(|i| if i == 1 { "zone".to_string() } else { format!("zone-{i}") })
+        .map(|i| {
+            if i == 1 {
+                "zone".to_string()
+            } else {
+                format!("zone-{i}")
+            }
+        })
         .find(|c| !taken.contains(c))
         .unwrap_or_else(|| "zone".into());
     let zone = Zone::rect(&id, min, max);

@@ -128,8 +128,14 @@ struct Contact {
 
 fn contact(grid: &Grid, p: Vec2, r: f64) -> Option<Contact> {
     let c = grid.cell;
-    let (cx0, cx1) = (((p.x - r) / c).floor() as i64, ((p.x + r) / c).floor() as i64);
-    let (cy0, cy1) = (((p.y - r) / c).floor() as i64, ((p.y + r) / c).floor() as i64);
+    let (cx0, cx1) = (
+        ((p.x - r) / c).floor() as i64,
+        ((p.x + r) / c).floor() as i64,
+    );
+    let (cy0, cy1) = (
+        ((p.y - r) / c).floor() as i64,
+        ((p.y + r) / c).floor() as i64,
+    );
     let mut found: Option<Contact> = None;
     for cy in cy0..=cy1 {
         for cx in cx0..=cx1 {
@@ -215,10 +221,7 @@ impl World {
                 self.rng.range(r, (w - r).max(r)),
                 self.rng.range(r, (h * 0.6).max(r)),
             );
-            let v = Vec2::new(
-                self.rng.range(-0.4, 0.4) * h,
-                self.rng.range(-0.3, 0.1) * h,
-            );
+            let v = Vec2::new(self.rng.range(-0.4, 0.4) * h, self.rng.range(-0.3, 0.1) * h);
             let ball = self.new_ball(p, v);
             self.balls.push(ball);
         }
@@ -322,7 +325,11 @@ impl World {
     fn settle_ball(&mut self, mut b: Ball, touching: bool, feel: Feel) -> Ball {
         let (w, h) = (f64::from(self.width), f64::from(self.height));
         let slow = b.v.length() < STILL_SPEED * h;
-        b.still = if slow && touching { b.still + STEP } else { 0.0 };
+        b.still = if slow && touching {
+            b.still + STEP
+        } else {
+            0.0
+        };
         match self.kind {
             Kind::Marble => {
                 let gone = b.p.y - b.r > h || b.p.x + b.r < 0.0 || b.p.x - b.r > w;

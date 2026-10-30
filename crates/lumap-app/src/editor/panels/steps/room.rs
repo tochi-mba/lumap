@@ -138,7 +138,11 @@ pub fn controls(ui: &mut egui::Ui, editor: &mut Editor, id: &str, kind: &SourceK
 /// Room and paint content need the projector's scan: say so when there is none.
 fn scan_note(ui: &mut egui::Ui, editor: &Editor, projector: &str) {
     if editor.scans.get(projector).is_some() {
-        ui.label(RichText::new(format!("Drawn on {projector}'s wall.")).weak().small());
+        ui.label(
+            RichText::new(format!("Drawn on {projector}'s wall."))
+                .weak()
+                .small(),
+        );
     } else if editor.scans.loading(projector) {
         ui.label(RichText::new("Loading the scan…").weak().small());
     } else {

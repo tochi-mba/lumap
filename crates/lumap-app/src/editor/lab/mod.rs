@@ -259,10 +259,9 @@ impl LabRuntime {
                         .ok_or_else(|| format!("No key called {key:?}."))?;
                     plugin::key(k, plugin::modifiers(modifiers))
                 }
-                UiEvent::Drag { from, to } => plugin::drag(
-                    egui::pos2(from[0], from[1]),
-                    egui::pos2(to[0], to[1]),
-                ),
+                UiEvent::Drag { from, to } => {
+                    plugin::drag(egui::pos2(from[0], from[1]), egui::pos2(to[0], to[1]))
+                }
                 UiEvent::Scroll { x, y, dy } => plugin::scroll(egui::pos2(*x, *y), *dy),
             })
         })?;
@@ -402,9 +401,7 @@ impl LabRuntime {
                 mut seen,
                 mut count,
             } => {
-                let stream = app
-                    .camera_device()
-                    .and_then(|d| app.camera.ensure(&d, now));
+                let stream = app.camera_device().and_then(|d| app.camera.ensure(&d, now));
                 if let Some(s) = stream {
                     if s.frames_seen() > seen {
                         seen = s.frames_seen();
