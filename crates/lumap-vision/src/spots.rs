@@ -114,7 +114,8 @@ impl SpotTracker {
                     .sum::<u32>();
                 d < 280
             });
-            *is_hot = bright >= self.s.min_brightness && f32::from(bright) > base + 24.0 && color_ok;
+            *is_hot =
+                bright >= self.s.min_brightness && f32::from(bright) > base + 24.0 && color_ok;
             self.background[i] = if self.background[i] == 0.0 {
                 f32::from(bright)
             } else {
