@@ -239,10 +239,7 @@ impl Editor {
             });
         }
         checks.push(if self.path.is_none() {
-            Check::fix(
-                "Not saved yet: autosave and crash recovery need a file",
-                Fix::Save,
-            )
+            Check::fix("Not saved yet: autosave needs a file", Fix::Save)
         } else if self.dirty {
             Check::fix("Unsaved changes", Fix::Save)
         } else {
@@ -293,7 +290,7 @@ mod tests {
                 ("No projectors yet".to_string(), Some(Fix::Setup)),
                 ("No surfaces yet".to_string(), Some(Fix::Map)),
                 (
-                    "Not saved yet: autosave and crash recovery need a file".to_string(),
+                    "Not saved yet: autosave needs a file".to_string(),
                     Some(Fix::Save)
                 ),
                 (

@@ -130,7 +130,7 @@ fn phone(ui: &mut egui::Ui, url: Option<&str>, state: &mut PanelState, actions: 
             if ui.button("Stop remote").clicked() {
                 actions.remote_port = Some(0);
             }
-        } else if crate::theme::primary_button(ui, "Start remote").clicked() {
+        } else if ui.button("Start remote").clicked() {
             actions.remote_port = Some(state.remote_port);
         }
     });
@@ -187,7 +187,7 @@ fn osc_card(
             if ui.button("Stop OSC").clicked() {
                 actions.osc_port = Some(0);
             }
-        } else if crate::theme::primary_button(ui, "Listen").clicked() {
+        } else if ui.button("Listen").clicked() {
             actions.osc_port = Some(state.osc_port);
         }
     });
