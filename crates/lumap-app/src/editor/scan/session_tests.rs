@@ -38,6 +38,15 @@ fn frame(v: u8) -> Arc<Frame> {
     Arc::new(Frame::solid(CW, CH, [v, v, v, 255]))
 }
 
+/// A frame lit on its left half (or its right half), at brightness `v`.
+fn half(v: u8, left: bool) -> Arc<Frame> {
+    Arc::new(Frame::from_fn(CW, CH, |x, _| {
+        let lit = (x < CW / 2) == left;
+        let l = if lit { v } else { v / 8 };
+        [l, l, l, 255]
+    }))
+}
+
 fn session(now: Instant) -> ScanSession {
     let editor = editor_with("p");
     let dir = std::env::temp_dir().join("lumap-scan-tests");
@@ -52,6 +61,14 @@ fn thumbnails_compare_by_mean_brightness() {
     assert!((difference(&dark, &light) - 20.0).abs() < 1.0);
     assert_eq!(difference(&dark, &dark), 0.0);
     assert_eq!(difference(&dark, &[]), f64::MAX);
+    // Shape: the same picture brighter is unchanged; the other half lit is a new pattern.
+    let left = thumbnail(&half(200, true));
+    assert!(reshaped(&left, &thumbnail(&half(100, true))) < 0.01);
+    assert!(reshaped(&left, &thumbnail(&half(200, false))) > 1.5);
+    // Flat pictures compare by brightness.
+    assert!(reshaped(&dark, &light) > 0.5);
+    assert!(reshaped(&dark, &dark) < 0.01);
+    assert_eq!(reshaped(&dark, &[]), 1.0);
 }
 
 #[test]
@@ -61,28 +78,38 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
     s.shown_at = t0;
     s.reference = Some(thumbnail(&frame(20)));
     let at = |ms| t0 + Duration::from_millis(ms);
-    // The camera still shows the old picture: wait.
-    assert_eq!(s.ready(&frame(20), PatternFrame::Black, at(200)), Ready::Wait);
+    s.reference = Some(thumbnail(&half(200, true)));
+    // The camera still shows the old picture, only darker (auto-exposure): wait.
+    assert_eq!(s.ready(&half(120, true), PatternFrame::Black, at(200)), Ready::Wait);
     // The new pattern arrives 400 ms later: that is the lag; one more frame to see it hold.
-    assert_eq!(s.ready(&frame(120), PatternFrame::Black, at(400)), Ready::Wait);
+    assert_eq!(s.ready(&half(120, false), PatternFrame::Black, at(400)), Ready::Wait);
     assert_eq!(s.lag(), Some(Duration::from_millis(400)));
     // Auto-exposure still moving: wait; then steady: photograph.
-    assert_eq!(s.ready(&frame(150), PatternFrame::Black, at(433)), Ready::Wait);
-    assert_eq!(s.ready(&frame(151), PatternFrame::Black, at(466)), Ready::Collect);
+    assert_eq!(s.ready(&half(150, false), PatternFrame::Black, at(433)), Ready::Wait);
+    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(466)), Ready::Collect);
     // Once collecting, the next frames count too.
-    s.collected.push(frame(151));
-    assert_eq!(s.ready(&frame(170), PatternFrame::Black, at(500)), Ready::Collect);
+    s.collected.push(half(151, false));
+    assert_eq!(s.ready(&half(170, false), PatternFrame::Black, at(500)), Ready::Collect);
     // Later patterns: 300 ms, then one slow 2.5 s frame; the lag is the median, not the worst.
     for (start, seen_after) in [(1_000, 300), (5_000, 2_500)] {
         s.shown_at = at(start);
         s.changed_at = None;
         s.collected.clear();
-        s.reference = Some(thumbnail(&frame(20)));
+        s.reference = Some(thumbnail(&half(200, true)));
         assert_eq!(
-            s.ready(&frame(200), PatternFrame::Black, at(start + seen_after)),
+            s.ready(&half(200, false), PatternFrame::Black, at(start + seen_after)),
             Ready::Wait
         );
     }
+    // A change sooner than half the lag is the camera adjusting, not the pattern.
+    s.shown_at = at(9_000);
+    s.changed_at = None;
+    s.reference = Some(thumbnail(&half(200, true)));
+    assert_eq!(
+        s.ready(&half(200, false), PatternFrame::Black, at(9_100)),
+        Ready::Wait
+    );
+    assert!(s.changed_at.is_none());
     assert_eq!(s.lag(), Some(Duration::from_millis(400)));
 }
 

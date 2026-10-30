@@ -31,8 +31,10 @@ const FIRST_WAIT: Duration = Duration::from_millis(2500);
 const LAG_MARGIN: Duration = Duration::from_millis(250);
 /// The longest wait for the picture to hold still after it changed (auto-exposure settling).
 const STEADY_WAIT: Duration = Duration::from_millis(1200);
-/// Mean brightness change (0..255) that means the camera now sees the new pattern.
-const CHANGED: f64 = 6.0;
+/// How different in shape (1 - correlation) the camera's picture must become to count as the
+/// new pattern arriving. Auto-exposure makes the whole picture brighter or darker, which keeps
+/// the correlation near 1; a new stripe pattern moves where the light is.
+const CHANGED: f64 = 0.15;
 /// Mean brightness change between frames below which the picture is holding still.
 const STEADY: f64 = 2.5;
 /// Fresh frames whose median makes one photo.
@@ -416,7 +418,10 @@ impl ScanSession {
                 self.reference = Some(small);
                 return Ready::Wait;
             };
-            let moved = difference(reference, &small) > CHANGED;
+            // Before half the known lag has passed, a change is the camera adjusting, not the
+            // pattern arriving.
+            let too_soon = self.lag.is_some_and(|lag| waited < lag / 2);
+            let moved = !too_soon && reshaped(reference, &small) > CHANGED;
             let limit = self.lag.map_or(FIRST_WAIT, |lag| lag + LAG_MARGIN);
             self.previous = Some(small);
             if moved {
@@ -647,6 +652,31 @@ fn thumbnail(f: &Frame) -> Vec<u8> {
         }
     }
     out
+}
+
+/// How differently two thumbnails are lit, ignoring overall brightness: 1 minus their
+/// correlation (0 = the same picture, however bright; 1 = unrelated; up to 2 = inverted). Two
+/// flat pictures have no shape to compare, so their mean brightness difference decides.
+fn reshaped(a: &[u8], b: &[u8]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 1.0;
+    }
+    let n = a.len() as f64;
+    let mean = |v: &[u8]| v.iter().map(|&x| f64::from(x)).sum::<f64>() / n;
+    let (ma, mb) = (mean(a), mean(b));
+    let (mut ab, mut aa, mut bb) = (0.0, 0.0, 0.0);
+    for (&x, &y) in a.iter().zip(b) {
+        let (dx, dy) = (f64::from(x) - ma, f64::from(y) - mb);
+        ab += dx * dy;
+        aa += dx * dx;
+        bb += dy * dy;
+    }
+    // Below about two brightness levels of spread, a picture is flat (a black frame).
+    let flat = 4.0 * n;
+    if aa < flat || bb < flat {
+        return ((ma - mb).abs() / 32.0).min(1.0);
+    }
+    1.0 - ab / (aa * bb).sqrt()
 }
 
 /// Mean absolute difference of two thumbnails, in brightness levels.
