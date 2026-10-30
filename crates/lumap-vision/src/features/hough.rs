@@ -210,7 +210,11 @@ fn measure(
             covered += 1;
         }
     }
-    Some((centre, r, covered as f64 / bins as f64))
+    // Angular coverage alone can mistake the four rounded corner neighbourhoods of a square
+    // for a circle. A real isolated circle also contributes most of the edge pixels in its
+    // search image, whereas that square fit uses only a small subset.
+    let support = inliers.len() as f64 / pts.len() as f64;
+    Some((centre, r, covered as f64 / bins as f64 * support))
 }
 
 /// Drops circles that repeat a stronger one (close centre and radius).

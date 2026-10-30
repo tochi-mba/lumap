@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 /// Closest spacing kept between stroke points, in pixels; nearer samples are dropped.
 const MIN_STEP: f64 = 1.5;
 /// A point lying closer than this to the line through its neighbours is merged away.
-const STRAIGHT: f64 = 0.35;
+const STRAIGHT: f64 = 0.03;
 /// Longest straight run merged into one segment, in pixels.
 const MAX_RUN: f64 = 24.0;
 /// Points one stroke holds before it carries on as a new stroke.
