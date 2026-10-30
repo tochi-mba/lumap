@@ -78,8 +78,18 @@ $pngs = @(Get-ChildItem $frames -Filter *.png)
 if ($pngs.Count -lt 1) { throw "lumap render produced no PNG." }
 Write-Host "Rendered $($pngs.Count) output(s) from the installed app."
 
-& (Join-Path $app "ffmpeg\ffmpeg.exe") -version 2>&1 | Select-Object -First 1 | ForEach-Object { Write-Host "Installed $_" }
-if ($LASTEXITCODE -ne 0) { throw "The installed ffmpeg does not run." }
+# A pipeline ending in Select-Object -First can leave LASTEXITCODE unset and terminate
+# the process early. Wait on the native process and inspect its exit code instead.
+$ffmpegVersionFile = Join-Path $env:TEMP "lumap-smoke-ffmpeg-version.txt"
+try {
+    $ffmpeg = Start-Process -FilePath (Join-Path $app "ffmpeg\ffmpeg.exe") -ArgumentList "-version" -Wait -PassThru -RedirectStandardOutput $ffmpegVersionFile
+    if ($ffmpeg.ExitCode -ne 0) { throw "The installed ffmpeg exited with $($ffmpeg.ExitCode)." }
+    $versionLine = Get-Content $ffmpegVersionFile -TotalCount 1
+    if (-not $versionLine -or $versionLine -notmatch '^ffmpeg version ') { throw "The installed ffmpeg did not return its version." }
+    Write-Host "Installed $versionLine"
+} finally {
+    Remove-Item $ffmpegVersionFile -ErrorAction SilentlyContinue
+}
 
 Write-Host "Uninstalling"
 $remove = Start-Process -FilePath (Join-Path $app "unins000.exe") -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
