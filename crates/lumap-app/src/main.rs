@@ -106,6 +106,7 @@ enum Command {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod launch_tests {
     use super::*;
 
