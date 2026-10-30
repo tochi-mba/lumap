@@ -6,8 +6,8 @@
 //! frames and publishes each to the stream's slot. The process is killed when the stream drops.
 
 use super::parse::{parse_avfoundation, parse_dshow, parse_v4l2, Banner};
-use super::{camera_error, lock, CameraBackend, CameraInfo, CameraStream, CaptureSettings, Slot};
 use super::PREFERRED_SIZE;
+use super::{camera_error, lock, CameraBackend, CameraInfo, CameraStream, CaptureSettings, Slot};
 use crate::video::Tools;
 use crate::{Frame, SourceError};
 use std::collections::VecDeque;
@@ -155,7 +155,11 @@ fn last_words(log: &Mutex<VecDeque<String>>) -> String {
         return "ffmpeg printed nothing".into();
     }
     let skip = log.len().saturating_sub(3);
-    log.iter().skip(skip).cloned().collect::<Vec<_>>().join(" / ")
+    log.iter()
+        .skip(skip)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 /// Cameras through ffmpeg: the default [`CameraBackend`].

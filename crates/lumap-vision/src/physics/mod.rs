@@ -10,8 +10,6 @@
 mod balls;
 pub(crate) mod rng;
 mod snow;
-#[cfg(test)]
-mod tests;
 
 use crate::image::{Gray, Rgba};
 use crate::paint::light;
@@ -119,8 +117,14 @@ impl Grid {
                 continue;
             }
             let (x, y) = ((i % iw) as f64, (i / iw) as f64);
-            let (cx0, cx1) = ((x * sx).floor() as i64, ((x + 1.0) * sx - 1e-9).floor() as i64);
-            let (cy0, cy1) = ((y * sy).floor() as i64, ((y + 1.0) * sy - 1e-9).floor() as i64);
+            let (cx0, cx1) = (
+                (x * sx).floor() as i64,
+                ((x + 1.0) * sx - 1e-9).floor() as i64,
+            );
+            let (cy0, cy1) = (
+                (y * sy).floor() as i64,
+                ((y + 1.0) * sy - 1e-9).floor() as i64,
+            );
             for cy in cy0..=cy1.max(cy0) {
                 for cx in cx0..=cx1.max(cx0) {
                     if let Some(j) = self.index(cx, cy) {

@@ -161,7 +161,16 @@ pub(crate) fn canny_from_gradient(
         stack.push(start);
         while let Some(i) = stack.pop() {
             // Candidates never sit on the outer ring, so their neighbours are in bounds.
-            for j in [i - w - 1, i - w, i - w + 1, i - 1, i + 1, i + w - 1, i + w, i + w + 1] {
+            for j in [
+                i - w - 1,
+                i - w,
+                i - w + 1,
+                i - 1,
+                i + 1,
+                i + w - 1,
+                i + w,
+                i + w + 1,
+            ] {
                 if state[j] != 0 && out.data[j] == 0 {
                     out.data[j] = 255;
                     stack.push(j);

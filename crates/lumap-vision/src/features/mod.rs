@@ -17,8 +17,8 @@ pub(crate) mod shapes;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use contours::{centres, label_regions, trace};
 pub use contours::contours;
+pub(crate) use contours::{centres, label_regions, trace};
 pub use corners::corners;
 pub use filters::{blur, canny, sobel};
 pub use hough::hough_circles;

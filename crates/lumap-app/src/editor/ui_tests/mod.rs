@@ -69,7 +69,12 @@ fn app(editor: Editor) -> LumapApp {
     app.panels.dialogs = Box::new(FakeDialogs::default());
     // A fake camera, so no test touches a real webcam or lists the machine's devices.
     app.camera = super::camera::CameraHub::new(std::sync::Arc::new(
-        lumap_sources::live_input::camera::FakeCamera::solid("Test camera", 64, 36, [30, 30, 30, 255]),
+        lumap_sources::live_input::camera::FakeCamera::solid(
+            "Test camera",
+            64,
+            36,
+            [30, 30, 30, 255],
+        ),
     ));
     app
 }

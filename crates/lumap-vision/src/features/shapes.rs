@@ -1,9 +1,7 @@
 //! Shapes fitted to outlines and refined onto the photo's edges: quads in corner-pin order,
 //! circles and straight sides.
 
-use super::polygon::{
-    boundary_distance, centroid, convex_hull, perimeter, polygon_area, simplify,
-};
+use super::polygon::{boundary_distance, centroid, convex_hull, perimeter, polygon_area, simplify};
 use super::prepared::{Prepared, CANNY_LOW};
 use lumap_core::geom::Vec2;
 use std::f64::consts::{FRAC_PI_2, TAU};
@@ -50,7 +48,12 @@ pub fn order_quad(quad: [Vec2; 4]) -> [Vec2; 4] {
     let best = (0..4)
         .min_by(|&a, &b| cost(a).total_cmp(&cost(b)))
         .unwrap_or(0);
-    [q[best], q[(best + 1) % 4], q[(best + 2) % 4], q[(best + 3) % 4]]
+    [
+        q[best],
+        q[(best + 1) % 4],
+        q[(best + 2) % 4],
+        q[(best + 3) % 4],
+    ]
 }
 
 /// Least-squares circle through `points` (the algebraic Kasa fit): centre and radius, or `None`
@@ -235,7 +238,9 @@ pub(crate) fn refine_polygon(prep: &Prepared, poly: &[Vec2], range: f64) -> Vec<
                     .filter(|p| p.distance(v) <= 2.5 * range)
                     .or_else(|| Some(a.project(v))),
                 (Some(a), None) | (None, Some(a)) => Some(a.project(v)),
-                (None, None) => push_vertex(prep, poly[(i + n - 1) % n], v, poly[(i + 1) % n], range),
+                (None, None) => {
+                    push_vertex(prep, poly[(i + n - 1) % n], v, poly[(i + 1) % n], range)
+                }
             };
             moved.unwrap_or(v)
         })

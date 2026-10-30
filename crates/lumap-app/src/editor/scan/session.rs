@@ -380,7 +380,7 @@ impl ScanSession {
 
     fn collect_workers(&mut self, editor: &mut Editor) {
         let mut pending = Vec::new();
-        for rx in self.workers.drain(..) {
+        for rx in std::mem::take(&mut self.workers) {
             match rx.try_recv() {
                 Ok(Ok(Finished::Scan(d))) => self.scans.push(*d),
                 Ok(Ok(Finished::Drift(r))) => self.drifts.push(r),

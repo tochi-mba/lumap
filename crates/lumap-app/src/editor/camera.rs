@@ -197,7 +197,12 @@ mod tests {
     use lumap_sources::live_input::camera::FakeCamera;
 
     fn hub() -> CameraHub {
-        CameraHub::new(Arc::new(FakeCamera::solid("Fake cam", 8, 4, [10, 20, 30, 255])))
+        CameraHub::new(Arc::new(FakeCamera::solid(
+            "Fake cam",
+            8,
+            4,
+            [10, 20, 30, 255],
+        )))
     }
 
     #[test]
@@ -230,7 +235,10 @@ mod tests {
         assert_eq!(&m.data[..4], &[12, 12, 12, 255]);
         assert!(median(&[]).is_none());
         let odd = median(&[f(1), Arc::new(Frame::solid(1, 1, [9, 9, 9, 255]))]).unwrap();
-        assert_eq!(odd.width, 2, "mismatched sizes fall back to the first frame");
+        assert_eq!(
+            odd.width, 2,
+            "mismatched sizes fall back to the first frame"
+        );
         let back = to_frame(to_rgba(&f(7)));
         assert_eq!(back.width, 2);
     }

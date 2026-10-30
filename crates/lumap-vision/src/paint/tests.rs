@@ -12,7 +12,10 @@ fn alpha_at(out: &Rgba, x: u32, y: u32) -> u8 {
 /// A horizontal stroke from (20, 45) to (120, 45) drawn in small steps.
 fn line(canvas: &mut Canvas, t0: f64) {
     for i in 0..=50 {
-        canvas.pen(Some(Vec2::new(20.0 + f64::from(i) * 2.0, 45.0)), t0 + f64::from(i) * 0.01);
+        canvas.pen(
+            Some(Vec2::new(20.0 + f64::from(i) * 2.0, 45.0)),
+            t0 + f64::from(i) * 0.01,
+        );
     }
     canvas.pen(None, t0 + 0.6);
 }
@@ -34,11 +37,23 @@ fn every_brush_lights_the_path_and_nothing_far_from_it() {
         let lit = (0..W).filter(|&x| alpha_at(&out, x, 45) > 0).count();
         assert!(lit > 40, "{brush:?} lit only {lit}");
         for x in 0..W {
-            assert_eq!(alpha_at(&out, x, 5), 0, "{brush:?} leaked to the top at {x}");
-            assert_eq!(alpha_at(&out, x, 85), 0, "{brush:?} leaked to the bottom at {x}");
+            assert_eq!(
+                alpha_at(&out, x, 5),
+                0,
+                "{brush:?} leaked to the top at {x}"
+            );
+            assert_eq!(
+                alpha_at(&out, x, 85),
+                0,
+                "{brush:?} leaked to the bottom at {x}"
+            );
         }
         for y in 0..H {
-            assert_eq!(alpha_at(&out, 150, y), 0, "{brush:?} leaked past the end at {y}");
+            assert_eq!(
+                alpha_at(&out, 150, y),
+                0,
+                "{brush:?} leaked past the end at {y}"
+            );
         }
     }
 }
@@ -73,7 +88,10 @@ fn points_are_thinned_and_straight_runs_merge() {
     let mut curve = Canvas::new(W, H);
     for i in 0..=90 {
         let a = f64::from(i) / 90.0 * std::f64::consts::PI;
-        curve.pen(Some(Vec2::new(80.0 + 30.0 * a.cos(), 45.0 + 30.0 * a.sin())), 0.0);
+        curve.pen(
+            Some(Vec2::new(80.0 + 30.0 * a.cos(), 45.0 + 30.0 * a.sin())),
+            0.0,
+        );
     }
     assert!(curve.strokes[0].points.len() > 10);
 }
@@ -142,7 +160,14 @@ fn sparkle_twinkles_with_time_and_rainbow_changes_hue_along_the_stroke() {
     let mid = r.get(60, 45);
     assert_ne!(&start[..3], &mid[..3]);
     let mut later = Rgba::default();
-    canvas.render(&mut later, Brush::Rainbow, [1.0, 1.0, 1.0, 1.0], 6.0, 0.0, 0.5);
+    canvas.render(
+        &mut later,
+        Brush::Rainbow,
+        [1.0, 1.0, 1.0, 1.0],
+        6.0,
+        0.0,
+        0.5,
+    );
     assert_ne!(r, later);
 }
 

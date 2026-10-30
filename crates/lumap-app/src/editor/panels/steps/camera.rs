@@ -53,11 +53,19 @@ pub fn card(
                     }
                 }
             });
-        if ui.small_button("Refresh").on_hover_text("Look for cameras again").clicked() {
+        if ui
+            .small_button("Refresh")
+            .on_hover_text("Look for cameras again")
+            .clicked()
+        {
             hub.refresh();
         }
     });
-    let device = if chosen.is_empty() { names[0].clone() } else { chosen };
+    let device = if chosen.is_empty() {
+        names[0].clone()
+    } else {
+        chosen
+    };
     ui.horizontal(|ui| {
         ui.toggle_value(&mut state.camera_preview, "Look through it")
             .on_hover_text("Shows the camera's picture here, to aim it at the wall");
@@ -101,14 +109,25 @@ pub fn card(
         {
             actions.scan = Some((Kind::Full, None));
         }
-        if scanned > 0 && ui.button("Check alignment").on_hover_text("A two-second check per projector").clicked() {
+        if scanned > 0
+            && ui
+                .button("Check alignment")
+                .on_hover_text("A two-second check per projector")
+                .clicked()
+        {
             actions.scan = Some((Kind::Drift, None));
         }
     });
 }
 
 /// The camera's picture, with each scanned projector's footprint outlined in its colour.
-fn preview(ui: &mut egui::Ui, editor: &Editor, hub: &mut CameraHub, state: &mut PanelState, device: &str) {
+fn preview(
+    ui: &mut egui::Ui,
+    editor: &Editor,
+    hub: &mut CameraHub,
+    state: &mut PanelState,
+    device: &str,
+) {
     let now = Instant::now();
     let Some(stream) = hub.ensure(device, now) else {
         ui.label(RichText::new("The camera did not start.").color(crate::theme::LIVE));
@@ -179,7 +198,12 @@ fn preview(ui: &mut egui::Ui, editor: &Editor, hub: &mut CameraHub, state: &mut 
 }
 
 /// The scan sheet: progress while a scan runs, then what it found.
-pub fn sheet(ctx: &egui::Context, editor: &Editor, session: Option<&ScanSession>, actions: &mut Actions) {
+pub fn sheet(
+    ctx: &egui::Context,
+    editor: &Editor,
+    session: Option<&ScanSession>,
+    actions: &mut Actions,
+) {
     let Some(session) = session else { return };
     let progress = session.progress();
     let modal = egui::Modal::new(egui::Id::unique("lumap-scan"))
@@ -210,12 +234,17 @@ pub fn sheet(ctx: &egui::Context, editor: &Editor, session: Option<&ScanSession>
                     ui.add(
                         egui::ProgressBar::new(f)
                             .fill(crate::theme::SIGNAL)
-                            .text(format!("{} of {} patterns", progress.frame, progress.frames)),
+                            .text(format!(
+                                "{} of {} patterns",
+                                progress.frame, progress.frames
+                            )),
                     );
                     ui.label(
-                        RichText::new("Keep the room dark and still. Nobody in front of the projectors.")
-                            .weak()
-                            .small(),
+                        RichText::new(
+                            "Keep the room dark and still. Nobody in front of the projectors.",
+                        )
+                        .weak()
+                        .small(),
                     );
                     if ui.button("Stop scanning").clicked() {
                         actions.scan_cancel = true;
@@ -256,7 +285,10 @@ fn done(ui: &mut egui::Ui, editor: &Editor, session: &ScanSession, actions: &mut
         let reports = session.drifts();
         for d in reports {
             let text = if d.camera_moved > super::super::super::scan::CAMERA_MOVED {
-                format!("{}: the camera moved since the scan. Scan again.", d.projector)
+                format!(
+                    "{}: the camera moved since the scan. Scan again.",
+                    d.projector
+                )
             } else if d.mean < 2.0 {
                 format!("{}: where it was scanned.", d.projector)
             } else {
@@ -265,7 +297,9 @@ fn done(ui: &mut egui::Ui, editor: &Editor, session: &ScanSession, actions: &mut
             ui.label(text);
         }
         ui.horizontal(|ui| {
-            if reports.iter().any(|d| d.mean >= 2.0) && crate::theme::primary_button(ui, "Re-align").clicked() {
+            if reports.iter().any(|d| d.mean >= 2.0)
+                && crate::theme::primary_button(ui, "Re-align").clicked()
+            {
                 actions.scan = Some((Kind::Realign, None));
             }
             if ui.button("Close").clicked() {
@@ -289,8 +323,11 @@ fn done(ui: &mut egui::Ui, editor: &Editor, session: &ScanSession, actions: &mut
                     ui.label(format!("{} surface(s) found", scan.found.len()));
                 } else {
                     ui.label(
-                        RichText::new(format!("cut off at the {:?}: aim the camera wider", cut[0]).to_lowercase())
-                            .color(crate::theme::LIVE),
+                        RichText::new(
+                            format!("cut off at the {:?}: aim the camera wider", cut[0])
+                                .to_lowercase(),
+                        )
+                        .color(crate::theme::LIVE),
                     );
                 }
                 ui.end_row();

@@ -311,6 +311,7 @@ fn settings_open_controllers_and_show_launch_takes_a_remote_port() {
         show: true,
         restart_on_stall: None,
         remote_port: Some(fresh),
+        lab: None,
     };
     let app = LumapApp::new(
         Editor::new(demo_project(), None),

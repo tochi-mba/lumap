@@ -13,10 +13,10 @@ mod shortcuts;
 mod stage;
 mod state;
 mod thumbs;
-mod vision;
-mod wall;
 #[cfg(test)]
 mod ui_tests;
+mod vision;
+mod wall;
 
 use crate::watchdog::{Heartbeat, Watchdog};
 use eframe::egui;

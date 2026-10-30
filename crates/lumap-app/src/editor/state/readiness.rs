@@ -169,7 +169,10 @@ impl Editor {
 
     /// The camera's line of the check, when any projector has a scan: not checked yet, where
     /// it was scanned, moved (re-align), or the camera itself moved (scan again).
-    pub fn preflight_camera(&self, drift: Option<&[super::super::scan::DriftReport]>) -> Option<Check> {
+    pub fn preflight_camera(
+        &self,
+        drift: Option<&[super::super::scan::DriftReport]>,
+    ) -> Option<Check> {
         let scanned = self
             .project
             .outputs
@@ -199,7 +202,10 @@ impl Editor {
         Some(if moved.is_empty() {
             Check::ok("Every projector is where it was scanned")
         } else {
-            Check::fix(format!("Moved since the scan: {}", names(&moved)), Fix::Realign)
+            Check::fix(
+                format!("Moved since the scan: {}", names(&moved)),
+                Fix::Realign,
+            )
         })
     }
 

@@ -188,10 +188,7 @@ fn simplify_keeps_only_the_shape() {
         .collect();
     assert_eq!(simplify(&zigzag, 0.5, false), vec![zigzag[0], zigzag[19]]);
     let bend = [v(0.0, 0.0), v(5.0, 0.1), v(10.0, 0.0), v(10.0, 10.0)];
-    assert_eq!(
-        simplify(&bend, 0.5, false),
-        vec![bend[0], bend[2], bend[3]]
-    );
+    assert_eq!(simplify(&bend, 0.5, false), vec![bend[0], bend[2], bend[3]]);
     // A ring with a point every pixel collapses to its corners, in order, wherever it starts.
     let mut ring = Vec::new();
     for i in 0..10 {
@@ -339,7 +336,12 @@ fn quads_fit_and_refine_onto_the_box_faces() {
         assert!(err < 0.75, "{face:?} refined to {refined:?} ({err})");
         assert!(edge_support(&prep, &face) > 0.9);
     }
-    let blank = [v(140.0, 20.0), v(190.0, 20.0), v(190.0, 35.0), v(140.0, 35.0)];
+    let blank = [
+        v(140.0, 20.0),
+        v(190.0, 20.0),
+        v(190.0, 35.0),
+        v(140.0, 35.0),
+    ];
     assert!(edge_support(&prep, &blank) < 0.05);
     assert_eq!(refine_polygon(&prep, &blank, 4.0), blank.to_vec());
     let fit = quad_from_outline(&s.right).unwrap();

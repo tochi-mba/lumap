@@ -21,7 +21,12 @@ const INDEX_MCP: usize = 5;
 const INDEX_TIP: usize = 8;
 const PINKY_MCP: usize = 17;
 /// Knuckle (MCP), PIP, DIP and tip of the index, middle, ring and little fingers.
-const FINGERS: [[usize; 4]; 4] = [[5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
+const FINGERS: [[usize; 4]; 4] = [
+    [5, 6, 7, 8],
+    [9, 10, 11, 12],
+    [13, 14, 15, 16],
+    [17, 18, 19, 20],
+];
 
 /// Thumb and index tips closer than this many palm sizes put the pen down...
 const PINCH_CLOSE: f64 = 0.25;
@@ -248,9 +253,8 @@ impl Shape {
             smoothstep(0.2, 0.5, reach)
         });
         // An extended thumb points away from the little finger; a tucked one crosses towards it.
-        let thumb_out = (lm[THUMB_TIP].distance(lm[PINKY_MCP])
-            - lm[THUMB_IP].distance(lm[PINKY_MCP]))
-            / palm;
+        let thumb_out =
+            (lm[THUMB_TIP].distance(lm[PINKY_MCP]) - lm[THUMB_IP].distance(lm[PINKY_MCP])) / palm;
         let thumb = lm[THUMB_TIP] - lm[THUMB_MCP];
         let thumb_up = -thumb.y / thumb.length().max(1e-9);
         let gap = lm[THUMB_TIP].distance(lm[INDEX_TIP]) / palm;
@@ -350,4 +354,3 @@ impl Trail {
         })
     }
 }
-
