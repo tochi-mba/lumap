@@ -175,7 +175,7 @@ pub fn show_output_windows(
         };
         let spec = window_spec(&output, monitors);
         let mut builder = egui::ViewportBuilder::default()
-            .with_title(format!("lumap output: {id}"))
+            .with_title(format!("lumap projector: {id}"))
             .with_inner_size(spec.size)
             .with_decorations(!spec.locked)
             .with_resizable(!spec.locked)

@@ -507,9 +507,9 @@ pub fn surface_panel(
                 ("Flip horizontal", AlignOp::FlipHorizontal),
                 ("Flip vertical", AlignOp::FlipVertical),
                 ("Rotate 90°", AlignOp::RotateQuarter),
-                ("Fit output", AlignOp::FitOutput),
+                ("Fit the projector", AlignOp::FitOutput),
                 ("Centre", AlignOp::Centre),
-                ("Match source aspect", AlignOp::MatchSourceAspect),
+                ("Match the content's shape", AlignOp::MatchSourceAspect),
             ] {
                 if ui.button(label).clicked() {
                     editor.align(id, op);

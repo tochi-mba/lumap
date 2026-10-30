@@ -258,7 +258,7 @@ impl Editor {
         let status = if errors.is_empty() {
             String::from("ready")
         } else {
-            format!("{} source(s) failed to open", errors.len())
+            format!("{} piece(s) of content failed to open", errors.len())
         };
         Self {
             project,
@@ -318,7 +318,7 @@ impl Editor {
         sources.poll();
         self.sources = sources;
         if !errors.is_empty() {
-            self.status = format!("{} source(s) failed to open", errors.len());
+            self.status = format!("{} piece(s) of content failed to open", errors.len());
         }
     }
 

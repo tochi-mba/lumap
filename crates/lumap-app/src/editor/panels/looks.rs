@@ -26,7 +26,7 @@ pub fn apply_look_everywhere(editor: &mut Editor, look: &Look) {
         .map(|s| s.id.clone())
         .collect();
     if surfaces.is_empty() {
-        editor.status = "Add an output and a surface first, then pick a look.".into();
+        editor.status = "Add a projector and a surface first, then pick a look.".into();
         return;
     }
     if editor.edit(|p| {

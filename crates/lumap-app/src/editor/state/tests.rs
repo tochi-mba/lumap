@@ -541,7 +541,7 @@ fn files_become_sources_and_pending_actions() {
     e.path = Some(dir.path().join("show.lumap.toml"));
     e.selection = Selection::Output("right".into());
     assert_eq!(e.add_files(&[img.clone(), dir.path().join("notes.txt")]), 1);
-    assert!(e.status.contains("unsupported") || e.status.contains("added"));
+    assert!(e.status.contains("unsupported") || e.status.contains("Added"));
     let src = e.project.source("photo").unwrap();
     assert_eq!(
         src.kind,
@@ -607,7 +607,7 @@ fn overlays_blend_suggestion_gamma_and_placement_moves() {
     assert_eq!(e.project.output("left").unwrap().overlay, None);
 
     assert_eq!(e.suggest_blends(), 0);
-    assert_eq!(e.status, "no overlapping placed outputs");
+    assert_eq!(e.status, "No placed projectors overlap");
     e.edit(|p| {
         p.outputs[0].placement = Some(Placement {
             monitor: "a".into(),

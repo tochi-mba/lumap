@@ -284,8 +284,8 @@ fn surface_inspector_buttons_edit_the_project() {
         "Flip vertical",
         "Rotate 90°",
         "Centre",
-        "Match source aspect",
-        "Fit output",
+        "Match the content's shape",
+        "Fit the projector",
     ] {
         menu(&mut h, "Align", item);
     }
@@ -735,6 +735,27 @@ fn render_doc_screenshots() {
             }
             super::panels::shell::Step::Show => Selection::None,
         };
+        if step == super::panels::shell::Step::Show {
+            // A look on every surface and a short running order, the first cue running.
+            let e = &mut h.state_mut().editor;
+            let look = lumap_core::looks::find("Northern lights").unwrap();
+            let ids: Vec<String> = e.project.surfaces.iter().map(|s| s.id.clone()).collect();
+            for id in &ids {
+                look.apply(&mut e.project, id);
+            }
+            e.reload_sources();
+            e.store_cue("Opening", 3.0);
+            e.set_param("/show/master", lumap_core::params::ParamValue::Number(0.6));
+            e.commit();
+            e.store_cue("Warm wash", 5.0);
+            e.set_param("/surface/logo/opacity", lumap_core::params::ParamValue::Number(0.0));
+            e.commit();
+            e.store_cue("Logo out", 1.5);
+            e.cue_go(0, 0.0);
+            if let Some(f) = e.cues.fade.as_mut() {
+                f.duration = 0.0;
+            }
+        }
         h.run_steps(4);
         let name = step.label().to_lowercase();
         h.render()
@@ -742,6 +763,13 @@ fn render_doc_screenshots() {
             .save(out.join("steps").join(format!("{name}.png")))
             .unwrap();
     }
+    h.state_mut().panels.golive = true;
+    h.run_steps(4);
+    h.render()
+        .unwrap()
+        .save(out.join("steps").join("golive.png"))
+        .unwrap();
+    h.state_mut().panels.golive = false;
     h.state_mut().panels.home = true;
     h.run_steps(4);
     h.render().unwrap().save(out.join("welcome.png")).unwrap();
