@@ -84,9 +84,10 @@ fn a_frame_counts_once_the_camera_shows_the_change_and_holds_still() {
     // The new pattern arrives 400 ms later: that is the lag; one more frame to see it hold.
     assert_eq!(s.ready(&half(120, false), PatternFrame::Black, at(400)), Ready::Wait);
     assert_eq!(s.lag(), Some(Duration::from_millis(400)));
-    // Auto-exposure still moving: wait; then steady: photograph.
+    // Auto-exposure still moving: wait; then still for two frames in a row: photograph.
     assert_eq!(s.ready(&half(150, false), PatternFrame::Black, at(433)), Ready::Wait);
-    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(466)), Ready::Collect);
+    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(466)), Ready::Wait);
+    assert_eq!(s.ready(&half(151, false), PatternFrame::Black, at(500)), Ready::Collect);
     // Once collecting, the next frames count too.
     s.collected.push(half(151, false));
     assert_eq!(s.ready(&half(170, false), PatternFrame::Black, at(500)), Ready::Collect);
