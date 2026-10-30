@@ -285,6 +285,21 @@ fn decode_saved_captures() {
         data: color.into_raw(),
     };
     let eye = lumap_vision::photo::projector_eye(&inverse, &color);
+    // How long each step after decoding takes on a real scan.
+    let t = std::time::Instant::now();
+    let grey = Gray::from_rgba(&eye);
+    let _ = lumap_vision::features::canny(&lumap_vision::features::blur(&grey, 1.2), 25.0, 70.0);
+    eprintln!("edges {:?}", t.elapsed());
+    let t = std::time::Instant::now();
+    let found = lumap_vision::find::find_surfaces(
+        &eye,
+        Some(&inverse.cam),
+        &lumap_vision::find::FindSettings::default(),
+    );
+    eprintln!("find {:?} ({} found)", t.elapsed(), found.len());
+    let t = std::time::Instant::now();
+    let _ = lumap_vision::snap::SnapIndex::build(&eye);
+    eprintln!("snap {:?}", t.elapsed());
     image::RgbaImage::from_raw(eye.width, eye.height, eye.data)
         .unwrap()
         .save(dir.join("photo.png"))

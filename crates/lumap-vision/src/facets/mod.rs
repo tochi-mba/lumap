@@ -47,15 +47,23 @@ pub fn segment(photo: &Rgba, corr: Option<&[[f32; 2]]>, s: &FacetSettings) -> Ve
         })
         .collect();
     let (labels, n) = label_regions(w, h, false, |i| keys[i]);
+    // One pass to size the regions, one to gather the big ones' pixels: a real photo breaks
+    // into many thousands of tiny regions, and a pass per region took over a minute.
+    let mut areas = vec![0usize; n as usize + 1];
+    for &l in &labels {
+        areas[l as usize] += 1;
+    }
+    let mut members: Vec<Vec<usize>> = vec![Vec::new(); n as usize + 1];
+    for (i, &l) in labels.iter().enumerate() {
+        if l > 0 && areas[l as usize] as f64 >= s.min_area {
+            members[l as usize].push(i);
+        }
+    }
     let mut out = Vec::new();
     for label in 1..=n {
-        let ids: Vec<usize> = labels
-            .iter()
-            .enumerate()
-            .filter_map(|(i, &l)| (l == label).then_some(i))
-            .collect();
+        let ids = std::mem::take(&mut members[label as usize]);
         let area = ids.len() as f64;
-        if area < s.min_area {
+        if ids.is_empty() || area < s.min_area {
             continue;
         }
         let outline = simplify(
