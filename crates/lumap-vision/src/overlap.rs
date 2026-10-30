@@ -1,13 +1,7 @@
 //! Estimate projector edge-blend widths from scan footprints.
-use crate::correspondence::{Edge, ProjectorMap};
+use crate::correspondence::{Edge,ProjectorMap};use lumap_core::geom::Vec2;
 /// One recommended edge blend.
-#[derive(Debug, Clone, Copy)]
-pub struct Overlap {
-    pub projector: usize,
-    pub edge: Edge,
-    pub width: f64,
-}
-/// Estimates overlap widths. Empty or disjoint maps need no blends.
-pub fn blend_widths(_maps: &[ProjectorMap], _cam_w: u32, _cam_h: u32) -> Vec<Overlap> {
-    Vec::new()
-}
+#[derive(Debug,Clone,Copy)] pub struct Overlap{pub projector:usize,pub edge:Edge,pub width:f64}
+fn inside(p:Vec2,poly:&[Vec2])->bool{let mut yes=false;for i in 0..poly.len(){let(a,b)=(poly[i],poly[(i+1)%poly.len()]);if(a.y>p.y)!=(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x{yes=!yes}}yes}
+/// Measures how deeply every other camera footprint enters each projector edge.
+pub fn blend_widths(maps:&[ProjectorMap],_cam_w:u32,_cam_h:u32)->Vec<Overlap>{let footprints:Vec<_>=maps.iter().map(ProjectorMap::footprint).collect();let mut out=Vec::new();for(i,map)in maps.iter().enumerate(){if map.proj_w==0||map.proj_h==0{continue}let(mut left,mut right,mut top,mut bottom)=(0.0f64,0.0f64,0.0f64,0.0f64);for y in 0..map.proj_h{for x in 0..map.proj_w{let Some(c)=map.get(x,y)else{continue};if footprints.iter().enumerate().any(|(j,p)|j!=i&&p.len()>=3&&inside(c,p)){let fx=(f64::from(x)+0.5)/f64::from(map.proj_w);let fy=(f64::from(y)+0.5)/f64::from(map.proj_h);if fx<=0.5{left=left.max(fx)}else{right=right.max(1.0-fx)}if fy<=0.5{top=top.max(fy)}else{bottom=bottom.max(1.0-fy)}}}}for(edge,width)in[(Edge::Left,left),(Edge::Right,right),(Edge::Top,top),(Edge::Bottom,bottom)]{if width>0.0{out.push(Overlap{projector:i,edge,width:width.clamp(0.0,0.5)})}}}out}
