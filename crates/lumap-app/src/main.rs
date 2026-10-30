@@ -115,9 +115,14 @@ fn main() -> ExitCode {
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH,
-        log_file.as_deref().map_or_else(|| "none".into(), |p| p.display().to_string())
+        log_file
+            .as_deref()
+            .map_or_else(|| "none".into(), |p| p.display().to_string())
     );
-    log::debug!("arguments: {:?}", std::env::args().skip(1).collect::<Vec<_>>());
+    log::debug!(
+        "arguments: {:?}",
+        std::env::args().skip(1).collect::<Vec<_>>()
+    );
     let result = match args.command {
         None => editor::run(&editor::Launch {
             project: args.project,

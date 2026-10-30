@@ -228,7 +228,9 @@ fn logs(query: &[(&str, &str)]) -> Result<LabRequest, Refusal> {
                     _ => {
                         return Err((
                             400,
-                            format!("level must be error, warn, info, debug or trace, not {value:?}"),
+                            format!(
+                                "level must be error, warn, info, debug or trace, not {value:?}"
+                            ),
                         ))
                     }
                 }
