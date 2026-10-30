@@ -40,6 +40,13 @@ impl Curl {
             "Accept: application/vnd.github+json",
             url,
         ]);
+        // curl is a console application; do not flash an extra terminal in the GUI.
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            c.creation_flags(CREATE_NO_WINDOW);
+        }
         c
     }
 }

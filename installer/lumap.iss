@@ -80,8 +80,11 @@ Source: "{#Source}\lumap\LICENSE-MIT"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\lumap\LICENSE-APACHE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"
+Name: "{autoprograms}\{#AppName} - New show"; Filename: "{app}\{#AppExe}"; Parameters: "--new-show"; IconFilename: "{app}\{#AppExe}"; Comment: "Create a blank projection mapping show"
+Name: "{autoprograms}\{#AppName} - Open show"; Filename: "{app}\{#AppExe}"; Parameters: "--open-show"; IconFilename: "{app}\{#AppExe}"; Comment: "Open an existing projection mapping show"
+Name: "{autoprograms}\{#AppName} - Check for updates"; Filename: "{app}\{#AppExe}"; Parameters: "--check-updates"; IconFilename: "{app}\{#AppExe}"; Comment: "Check for verified lumap releases"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 ; .lumap.toml projects open in lumap when asked for. Everything is per user and offered, never
 ; imposed: lumap joins Explorer's "Open with", and the type's existing default is left alone
