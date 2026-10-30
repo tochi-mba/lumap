@@ -16,7 +16,7 @@
     { "id": "osc", "capability": "OSC control and feedback", "windows": "supported", "macos": "supported", "linux": "supported", "test": "osc_patches_apply_live" },
     { "id": "midi", "capability": "MIDI learn and control", "windows": "supported", "macos": "supported", "linux": "supported", "test": "control_section_learns_midi_and_runs_feedback_and_remote" },
     { "id": "remote", "capability": "Phone remote over HTTP with a QR code", "windows": "supported", "macos": "supported", "linux": "supported", "test": "control_section_learns_midi_and_runs_feedback_and_remote" },
-    { "id": "cues", "capability": "Cues with crossfades", "windows": "supported", "macos": "supported", "linux": "supported", "test": "cue_panel_stores_fires_updates_and_reorders" },
+    { "id": "cues", "capability": "Cues with crossfades", "windows": "supported", "macos": "supported", "linux": "supported", "test": "cue_cards_store_go_update_rename_reorder_and_delete" },
     { "id": "show-mode", "capability": "Locked show mode, autosave, crash recovery", "windows": "supported", "macos": "supported", "linux": "supported", "test": "show_mode_locks_edits_and_double_escape_exits" },
     { "id": "watchdog", "capability": "Render-loop watchdog that relaunches the show", "windows": "supported", "macos": "supported", "linux": "supported", "test": "crates/lumap-app/src/watchdog.rs" },
     { "id": "headless", "capability": "Headless render, validate, migrate, new", "windows": "supported", "macos": "supported", "linux": "supported", "test": "render_uses_the_gpu_when_one_is_available" },
