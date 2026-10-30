@@ -216,6 +216,31 @@ fn autofocus_neither_impersonates_a_pattern_nor_contaminates_the_median() {
 }
 
 #[test]
+fn a_failed_visibility_proof_restarts_at_white_without_touching_saved_scans() {
+    let now = Instant::now();
+    let mut editor = editor_with("p");
+    let mut s = session(now);
+    s.code = Some(GrayCode::new(PW, PH));
+    s.decoder = Some(Decoder::new(s.code.as_ref().unwrap(), CW, CH));
+    s.frame = 1;
+    s.shown = true;
+    s.collected.push(frame(10));
+    s.reference = Some(thumbnail(&frame(10)));
+    s.changed_at = Some(now);
+    s.still = 2;
+    s.retry_visibility(&mut editor);
+    assert!(s.code.is_none());
+    assert!(s.decoder.is_none());
+    assert_eq!(s.frame, 0);
+    assert!(!s.shown);
+    assert!(s.collected.is_empty());
+    assert!(s.reference.is_none());
+    assert!(s.changed_at.is_none());
+    assert_eq!(s.still, 0);
+    assert!(editor.scan_pattern.is_none());
+}
+
+#[test]
 fn stripes_the_camera_cannot_see_count_after_the_lag_and_a_blind_camera_is_caught() {
     let t0 = Instant::now();
     let mut s = session(t0);

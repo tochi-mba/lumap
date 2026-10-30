@@ -390,12 +390,10 @@ fn handle_select_click(
     if let Some((id, ..)) = surfaces.iter().rev().find(|(_, w, ..)| contains(w, p)) {
         editor.select_surface(id, shift);
     } else if !shift {
-        if let Selection::Surface { .. } = editor.selection {
-            // Clicking empty space keeps the selection; a second click clears the mask.
-            if let Selection::Surface { id, mask: Some(_) } = editor.selection.clone() {
-                editor.selection = Selection::Surface { id, mask: None };
-            }
-        }
+        // Empty canvas means "work with the whole output", a familiar and discoverable way to
+        // leave object editing. A selected mask does not require a confusing extra empty click.
+        editor.selection = Selection::None;
+        editor.extra_selected.clear();
     }
 }
 

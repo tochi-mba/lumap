@@ -199,6 +199,11 @@ impl LumapApp {
     pub(crate) fn tick_vision(&mut self, now: Instant) {
         let (spot, hand_paint, shadows) = self.room.needs_camera();
         let setup = &self.editor.project.camera;
+        let vision_device = if hand_paint && !setup.draw_device.is_empty() {
+            setup.draw_device.clone()
+        } else {
+            setup.device.clone()
+        };
         let zones: Vec<(String, Vec<Vec2>, f64)> = setup
             .zones
             .iter()
@@ -222,7 +227,7 @@ impl LumapApp {
             self.editor.hand_cursor.clear();
             return;
         }
-        let Some(device) = self.camera_device() else {
+        let Some(device) = self.camera.resolve(&vision_device) else {
             self.vision = None;
             return;
         };

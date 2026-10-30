@@ -1,13 +1,21 @@
 //! The content panel's controls for camera content: a room effect (which one, tint, speed),
 //! paint (light or hand, brush, colour, width, fade, clear) and the live camera.
 
-use super::super::super::Editor;
+use super::super::super::{camera::CameraHub, Editor};
+use super::super::PanelState;
 use eframe::egui::{self, RichText};
 use lumap_core::project::{Brush, PaintInput, RoomEffect, SourceKind};
 
 /// Controls for a `Room`, `Paint` or `Camera` source; nothing for other kinds.
 #[allow(clippy::too_many_lines)]
-pub fn controls(ui: &mut egui::Ui, editor: &mut Editor, id: &str, kind: &SourceKind) {
+pub fn controls(
+    ui: &mut egui::Ui,
+    editor: &mut Editor,
+    id: &str,
+    kind: &SourceKind,
+    camera: &mut CameraHub,
+    state: &mut PanelState,
+) {
     match kind {
         SourceKind::Room {
             projector,
@@ -122,6 +130,9 @@ pub fn controls(ui: &mut egui::Ui, editor: &mut Editor, id: &str, kind: &SourceK
                 .weak()
                 .small(),
             );
+            if i == PaintInput::Hand {
+                drawing_camera(ui, editor, camera, state);
+            }
         }
         SourceKind::Camera { device } => {
             ui.separator();
@@ -132,6 +143,104 @@ pub fn controls(ui: &mut egui::Ui, editor: &mut Editor, id: &str, kind: &SourceK
             });
         }
         _ => {}
+    }
+}
+
+/// Desk drawing: choose a camera independently of the wall-scan camera and show a mirrored
+/// selfie preview with the tracked fingertips. Leaving this inspector releases it immediately.
+fn drawing_camera(
+    ui: &mut egui::Ui,
+    editor: &mut Editor,
+    camera: &mut CameraHub,
+    state: &mut PanelState,
+) {
+    ui.separator();
+    crate::theme::section_header(ui, "Draw at this computer");
+    let names: Vec<String> = camera.devices().iter().map(|d| d.name.clone()).collect();
+    if names.is_empty() {
+        ui.colored_label(crate::theme::LIVE, "No webcam found.");
+        return;
+    }
+    let wall = editor.project.camera.device.clone();
+    let chosen = editor.project.camera.draw_device.clone();
+    let device = if chosen.is_empty() {
+        if wall.is_empty() {
+            names[0].clone()
+        } else {
+            wall
+        }
+    } else {
+        chosen.clone()
+    };
+    egui::ComboBox::from_label("Drawing webcam")
+        .selected_text(&device)
+        .show_ui(ui, |ui| {
+            for name in &names {
+                if ui.selectable_label(*name == device, name).clicked() {
+                    let name = name.clone();
+                    editor.edit(move |p| p.camera.draw_device = name);
+                }
+            }
+        });
+    ui.label(
+        RichText::new(
+            "The scan stays calibrated to the wall camera. Pinch in this mirrored preview to draw; open your hand to lift the brush.",
+        )
+        .weak()
+        .small(),
+    );
+    let now = std::time::Instant::now();
+    let Some(stream) = camera.ensure(&device, now) else {
+        ui.colored_label(crate::theme::LIVE, "The drawing webcam did not start.");
+        return;
+    };
+    let t = ui.input(|input| input.time);
+    if state
+        .camera_tex
+        .as_ref()
+        .is_none_or(|(at, _)| t - *at >= 0.08)
+    {
+        if let Some(frame) = stream.latest() {
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [frame.width as usize, frame.height as usize],
+                &frame.rgba,
+            );
+            let texture = ui.ctx().load_texture(
+                "drawing-camera-preview",
+                image,
+                egui::TextureOptions::LINEAR,
+            );
+            state.camera_tex = Some((t, texture));
+        }
+    }
+    ui.ctx()
+        .request_repaint_after(std::time::Duration::from_millis(80));
+    let Some((_, texture)) = &state.camera_tex else {
+        ui.label(RichText::new("Starting the drawing webcam…").weak());
+        return;
+    };
+    let size = texture.size_vec2();
+    let width = ui.available_width().min(300.0);
+    let height = width * size.y / size.x.max(1.0);
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
+    ui.painter().image(
+        texture.id(),
+        rect,
+        egui::Rect::from_min_max(egui::pos2(1.0, 0.0), egui::pos2(0.0, 1.0)),
+        egui::Color32::WHITE,
+    );
+    if let Some(seen) = &state.seen {
+        let (cw, ch) = (f64::from(seen.size.0.max(1)), f64::from(seen.size.1.max(1)));
+        for hand in &seen.hands {
+            let p = lumap_vision::gestures::pinch_point(hand);
+            let at = egui::pos2(
+                rect.right() - (p.x / cw) as f32 * rect.width(),
+                rect.top() + (p.y / ch) as f32 * rect.height(),
+            );
+            ui.painter().circle_filled(at, 7.0, crate::theme::SIGNAL);
+            ui.painter()
+                .circle_stroke(at, 10.0, egui::Stroke::new(2.0, egui::Color32::WHITE));
+        }
     }
 }
 

@@ -169,6 +169,8 @@ pub struct ScanSession {
     lags: Vec<Duration>,
     /// Frames in a row the picture has held still.
     still: u32,
+    /// Fresh white→black visibility proofs attempted for the current projector.
+    visibility_retries: u8,
     /// When the camera was first seen sending pictures in this scan.
     live_since: Option<Instant>,
     /// The camera's photos of the projector white and black.
@@ -238,6 +240,7 @@ impl ScanSession {
             lag: None,
             lags: Vec::new(),
             still: 0,
+            visibility_retries: 0,
             live_since: None,
             white_gray: None,
             black_gray: None,
@@ -444,11 +447,21 @@ impl ScanSession {
             Ready::Wait => return,
             Ready::Collect => {}
             Ready::Blind => {
-                self.problems.push(format!(
-                    "The camera cannot see {id}'s light: aim it at the wall where {id} shines, \
-                     and check that {id} is on."
-                ));
-                self.next_projector(editor);
+                if self.visibility_retries < 2 {
+                    // A phone can hand us a frame from after black was already presented (or
+                    // briefly refocus/reconnect), making white→black look unchanged. Rebuild the
+                    // decoder and establish a new white baseline before declaring it invisible.
+                    self.visibility_retries += 1;
+                    self.retry_visibility(editor);
+                } else {
+                    self.problems.push(format!(
+                        "Could not prove that {id}'s light reaches the selected camera after 3 \
+                         fresh white/black checks. The previous calibration is unchanged. Check \
+                         that {id}'s output window is open, the camera still shows its wall, and \
+                         no camera app has switched devices."
+                    ));
+                    self.next_projector(editor);
+                }
                 return;
             }
         }
@@ -614,6 +627,7 @@ impl ScanSession {
     /// Gives up on the projector being photographed and moves to the next one.
     fn next_projector(&mut self, editor: &mut Editor) {
         self.current += 1;
+        self.visibility_retries = 0;
         self.code = None;
         self.decoder = None;
         self.shown = false;
@@ -621,6 +635,23 @@ impl ScanSession {
             self.phase = Phase::Decoding;
             editor.scan_pattern = None;
         }
+    }
+
+    /// Restarts this projector at white without discarding any previously saved calibration.
+    fn retry_visibility(&mut self, editor: &mut Editor) {
+        self.code = None;
+        self.decoder = None;
+        self.frame = 0;
+        self.shown = false;
+        self.collected.clear();
+        self.reference = None;
+        self.previous = None;
+        self.changed_at = None;
+        self.still = 0;
+        self.white_color = None;
+        self.white_gray = None;
+        self.black_gray = None;
+        editor.scan_pattern = None;
     }
 
     /// Sends the finished projector's photos to a worker.
@@ -689,7 +720,11 @@ impl ScanSession {
         self.workers = pending;
         if self.workers.is_empty() {
             // One projector the camera cannot see does not cost the others their scans.
-            if self.scans.is_empty() && self.drifts.is_empty() && !self.problems.is_empty() {
+            if self.kind == Kind::Full
+                && self.scans.is_empty()
+                && self.drifts.is_empty()
+                && !self.problems.is_empty()
+            {
                 let why = self.problems.join(" ");
                 self.fail(editor, &why);
             } else {
