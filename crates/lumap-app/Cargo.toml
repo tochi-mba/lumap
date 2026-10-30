@@ -38,7 +38,6 @@ rfd.workspace = true
 dirs.workspace = true
 anyhow.workspace = true
 log.workspace = true
-env_logger.workspace = true
 image.workspace = true
 
 [dev-dependencies]

@@ -323,6 +323,28 @@ pub fn show_output_windows(
             }
             if let Some((true, frame)) = &scan {
                 paint_pattern(ui, rect, &id, frame, &mut state.pattern);
+                // Tell the scan this pattern is on the wall, once the window fills its display
+                // (a window still opening or going full screen shows it somewhere else).
+                let filled = !spec.fullscreen
+                    || ui.ctx().input(|i| i.viewport().fullscreen) == Some(true);
+                if filled {
+                    let generation = editor.scan_generation;
+                    match &mut editor.scan_shown {
+                        Some(s) if s.projector == id && s.generation == generation => {
+                            s.frames = s.frames.saturating_add(1);
+                        }
+                        shown => {
+                            log::trace!("projector {id} drew scan pattern {generation}");
+                            *shown = Some(crate::editor::state::ScanShown {
+                                projector: id.clone(),
+                                generation,
+                                frames: 1,
+                            });
+                        }
+                    }
+                    // Keep drawing so the count moves even when nothing else changes.
+                    ui.ctx().request_repaint();
+                }
             }
             if let Some(p) = hand {
                 draw_hand_cursor(ui.painter(), rect, p);

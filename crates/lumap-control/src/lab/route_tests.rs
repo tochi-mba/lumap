@@ -2,7 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
 
 use super::routes::{dispatch, Dispatch};
-use super::{route, Action, LabRequest, Pattern, ScanImage, UiEvent};
+use super::{route, Action, LabRequest, LogLevel, Pattern, ScanImage, UiEvent};
 use serde_json::json;
 
 fn ok(method: &str, path: &str, body: &str) -> LabRequest {
@@ -478,4 +478,47 @@ fn requests_serialise_for_logs_and_read_back() {
     assert_eq!(wire[3]["scan_image"]["which"], json!("footprint"));
     let again: Vec<LabRequest> = serde_json::from_value(wire).unwrap();
     assert_eq!(again, requests);
+}
+
+#[test]
+fn logs_take_lines_level_and_grep() {
+    assert_eq!(
+        ok("GET", "/lab/logs", ""),
+        LabRequest::Logs {
+            lines: 300,
+            level: LogLevel::Debug,
+            grep: None,
+        }
+    );
+    assert_eq!(
+        ok("GET", "/lab/logs?lines=50&level=WARN&grep=scan+start%3A", ""),
+        LabRequest::Logs {
+            lines: 50,
+            level: LogLevel::Warn,
+            grep: Some("scan start:".into()),
+        }
+    );
+    assert_eq!(
+        ok("GET", "/lab/logs?grep=100%&level=trace", ""),
+        LabRequest::Logs {
+            lines: 300,
+            level: LogLevel::Trace,
+            grep: Some("100%".into()),
+        }
+    );
+    assert_eq!(status("GET", "/lab/logs?lines=0", ""), 400);
+    assert_eq!(status("GET", "/lab/logs?lines=5001", ""), 400);
+    assert_eq!(status("GET", "/lab/logs?level=loud", ""), 400);
+    assert_eq!(status("GET", "/lab/logs?tail=1", ""), 400);
+    assert_eq!(status("POST", "/lab/logs", ""), 405);
+    assert_eq!(status("GET", "/lab/state?lines=1", ""), 400);
+    for (level, want) in [
+        (LogLevel::Error, log::Level::Error),
+        (LogLevel::Warn, log::Level::Warn),
+        (LogLevel::Info, log::Level::Info),
+        (LogLevel::Debug, log::Level::Debug),
+        (LogLevel::Trace, log::Level::Trace),
+    ] {
+        assert_eq!(level.to_log(), want);
+    }
 }

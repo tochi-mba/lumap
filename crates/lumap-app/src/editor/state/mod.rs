@@ -220,6 +220,11 @@ pub struct Editor {
     /// While a scan runs: the projector showing a pattern, and the pattern. Every other open
     /// projector shows black.
     pub scan_pattern: Option<(String, std::sync::Arc<lumap_sources::Frame>)>,
+    /// Counts the patterns a scan has put up, so a projector window can say which one it drew.
+    pub scan_generation: u64,
+    /// What the scanned projector's window has drawn on its display: the pattern's generation
+    /// and how many frames it has drawn it for, once the window fills its display.
+    pub scan_shown: Option<ScanShown>,
     /// Where a tracked hand points on each projector (normalised) and whether it pinches.
     pub hand_cursor: std::collections::HashMap<String, (lumap_core::geom::Vec2, bool)>,
     /// A camera zone or gesture waiting to be learned: the address and the mode.
@@ -303,6 +308,8 @@ impl Editor {
             remote: None,
             scans: super::scan::ScanStore::default(),
             scan_pattern: None,
+            scan_generation: 0,
+            scan_shown: None,
             hand_cursor: std::collections::HashMap::new(),
             cam_learn: None,
             sources_epoch: 0,
@@ -578,3 +585,14 @@ mod control_tests;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::float_cmp)]
 mod tests;
+
+/// A scan pattern a projector window has put on its display.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScanShown {
+    /// The projector.
+    pub projector: String,
+    /// The pattern's [`Editor::scan_generation`].
+    pub generation: u64,
+    /// Frames the window has drawn it for, filling its display.
+    pub frames: u32,
+}
