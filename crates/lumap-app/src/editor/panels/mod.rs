@@ -188,6 +188,8 @@ pub struct PanelState {
     pub update_mode: crate::update::flow::Mode,
     /// The look chosen in the surface inspector (index into `LOOKS`).
     pub look: usize,
+    /// The Content step's library.
+    pub library: steps::content::LibraryState,
 }
 
 impl Default for PanelState {
@@ -221,6 +223,7 @@ impl Default for PanelState {
             remote_port: 8080,
             update_mode: crate::update::flow::Mode::default(),
             look: 0,
+            library: steps::content::LibraryState::default(),
         }
     }
 }

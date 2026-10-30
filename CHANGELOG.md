@@ -33,6 +33,14 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   Shape (*Make it curved*, *Flatten the curve*, *Back to four corners*, *Reset shape*),
   Arrange, Crop, Cut-outs and Precise (corners in pixels, order, curve patches, MIDI learn).
   The canvas readout says "Point 2 · 1024.0, 512.5 px".
+- **Content step**: a library replaces the list of sources. Tiles for every look, with a small
+  moving preview; *In this show* for everything already in the project (right-click a tile for
+  its settings, or to remove it when no surface shows it); a live input field for Spout; test
+  patterns and plain white. Chips filter by look category, your media or patterns. Click a tile
+  to put it on the selected surface, or on every surface of the projector when none is
+  selected; or drag it onto a surface on the canvas, which lights up as you hover. *+ media*
+  and *+ generator* sit in the library's header. Previews are drawn only for tiles on screen,
+  at most three per frame.
 - Information toasts let clicks through to whatever is under them; a problem shows at the
   top until dismissed.
 - Plain words: Projector, Surface and Content in the interface. Project files and OSC

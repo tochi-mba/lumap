@@ -241,13 +241,15 @@ fn save_load_autosave_round_trip() {
     assert_eq!(reopened.project.master, 0.5);
     assert!(Editor::open(&dir.path().join("nope.toml")).is_err());
 
-    // Autosave only when dirty and due.
+    // Autosave only when dirty and due. An hour-long interval keeps "not due" true however
+    // slowly a busy machine runs the lines in between.
+    e.autosave = Autosave::new(Duration::from_hours(1));
     let now = Instant::now();
-    assert!(!e.maybe_autosave(now + Duration::from_mins(1)), "clean");
+    assert!(!e.maybe_autosave(now + Duration::from_hours(2)), "clean");
     e.set_param("/show/master", ParamValue::Number(0.25));
     assert!(e.title().starts_with('*'));
     assert!(!e.maybe_autosave(now), "not due");
-    assert!(e.maybe_autosave(now + Duration::from_mins(1)));
+    assert!(e.maybe_autosave(now + Duration::from_hours(2)));
     let auto = autosave::autosave_path(&path);
     assert!(auto.exists());
     assert_eq!(Project::load(&auto).unwrap().master, 0.25);

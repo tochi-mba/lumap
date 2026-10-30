@@ -138,6 +138,7 @@ fn drag(h: &mut Harness<'static, LumapApp>, from: egui::Pos2, to: egui::Pos2) {
 #[test]
 fn panels_render_and_selection_drives_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     assert!(h.query_by_label("Projectors").is_some());
     assert!(h.query_by_label("+ content").is_some());
     assert!(
@@ -300,6 +301,7 @@ fn surface_inspector_buttons_edit_the_project() {
 #[test]
 fn inline_rename_through_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     click(&mut h, "logo");
     let field = h.get_by_role_and_label(Role::TextInput, "Name");
     field.focus();
@@ -432,6 +434,7 @@ fn output_inspector_places_and_opens_windows() {
 #[test]
 fn tree_adds_removes_and_offers_context_menus() {
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "4 Show");
     h.get_all_by_label("+ surface").next().unwrap().click();
     settle(&mut h);
     assert_eq!(h.state().editor.project.surfaces.len(), 4);
@@ -551,6 +554,7 @@ fn show_inspector_and_media_dialog() {
 fn canvas_drag_moves_a_corner_and_keys_nudge_it() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "2 Map");
     click(&mut h, "wall-left");
     h.state_mut().canvas.handles.snap = false;
     let rect = h.state().canvas.last_rect.unwrap();
@@ -674,6 +678,8 @@ fn canvas_drag_moves_a_corner_and_keys_nudge_it() {
 fn snapping_locking_and_click_to_select_on_the_canvas() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
+    step(&mut h, "2 Map");
+    click(&mut h, "right");
     click(&mut h, "wall-right");
     let rect = h.state().canvas.last_rect.unwrap();
     let map = Mapping { rect };
@@ -743,6 +749,7 @@ fn snapping_locking_and_click_to_select_on_the_canvas() {
     assert!(!h.state().canvas.handles.snap);
 }
 
+mod content_tests;
 mod control_tests;
 mod looks_tests;
 mod map_tests;
@@ -775,11 +782,13 @@ fn render_doc_screenshots() {
         // Setup shows a projector being set up; the other steps show the surfaces.
         h.state_mut().editor.selection = match step {
             super::panels::shell::Step::Setup => Selection::Output("left".into()),
-            super::panels::shell::Step::Map => Selection::Surface {
-                id: "wall-left".into(),
-                mask: None,
-            },
-            _ => Selection::None,
+            super::panels::shell::Step::Map | super::panels::shell::Step::Content => {
+                Selection::Surface {
+                    id: "wall-left".into(),
+                    mask: None,
+                }
+            }
+            super::panels::shell::Step::Show => Selection::None,
         };
         h.run_steps(4);
         let name = step.label().to_lowercase();
