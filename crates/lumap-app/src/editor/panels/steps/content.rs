@@ -283,7 +283,33 @@ pub fn library(
                     });
                 }
                 if matches!(filter, Filter::All) {
-                    crate::theme::section_header(ui, "Room (needs a scan)");
+                    let scans = editor.scans.ready().len();
+                    crate::theme::section_header(
+                        ui,
+                        if scans == 0 {
+                            "Room-aware effects · scan needed"
+                        } else {
+                            "Room-aware effects"
+                        },
+                    );
+                    if scans > 0 {
+                        ui.label(
+                            RichText::new(format!(
+                                "{scans} projector scan{} ready · effects follow the scanned wall",
+                                if scans == 1 { "" } else { "s" }
+                            ))
+                            .weak()
+                            .small(),
+                        );
+                    } else {
+                        ui.label(
+                            RichText::new(
+                                "Scan in Setup once, then these effects follow the real wall.",
+                            )
+                            .weak()
+                            .small(),
+                        );
+                    }
                     grid(ui, |ui| {
                         for e in lumap_core::project::RoomEffect::ALL {
                             let r = tile_response(ui, &Tile::Room(e), e.label(), e.blurb(), |_| None);

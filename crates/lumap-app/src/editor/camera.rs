@@ -2,17 +2,15 @@
 //! scanner, the trackers, the lab and any Camera content), and the cameras the system has.
 //!
 //! The camera only runs while something uses it: every user calls [`CameraHub::ensure`] each
-//! frame it needs pictures, and [`CameraHub::tick`] closes the stream after a few idle seconds.
+//! frame it needs pictures, and [`CameraHub::tick`] closes the stream as soon as no feature used
+//! it during the current frame.
 
 use lumap_sources::live_input::camera::{
     self, CameraBackend, CameraInfo, CameraStream, CaptureSettings,
 };
 use lumap_sources::Frame;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
-
-/// How long the stream stays open after its last user.
-const IDLE_CLOSE: Duration = Duration::from_secs(4);
+use std::time::Instant;
 
 /// What the camera is doing, for pills and the lab.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +34,7 @@ pub struct CameraHub {
     devices: Option<Vec<CameraInfo>>,
     stream: Option<(String, Arc<dyn CameraStream>)>,
     last_used: Option<Instant>,
+    used_since_tick: bool,
     error: Option<String>,
 }
 
@@ -47,6 +46,7 @@ impl CameraHub {
             devices: None,
             stream: None,
             last_used: None,
+            used_since_tick: false,
             error: None,
         }
     }
@@ -80,6 +80,7 @@ impl CameraHub {
     /// The live stream of `device`, opened if needed. Call it every frame the camera is wanted.
     pub fn ensure(&mut self, device: &str, now: Instant) -> Option<Arc<dyn CameraStream>> {
         self.last_used = Some(now);
+        self.used_since_tick = true;
         if let Some((name, s)) = &self.stream {
             if name == device {
                 return Some(Arc::clone(s));
@@ -109,12 +110,13 @@ impl CameraHub {
         self.ensure(device, now).and_then(|s| s.latest())
     }
 
-    /// Closes the stream when nothing has used it for a while.
-    pub fn tick(&mut self, now: Instant) {
-        if self
-            .last_used
-            .is_some_and(|t| now.duration_since(t) > IDLE_CLOSE)
-        {
+    /// Closes the stream immediately when nothing used it during this app frame. UI camera
+    /// consumers request it every frame, so leaving Camera turns off the OS privacy indicator
+    /// on the next frame instead of keeping the phone/webcam active speculatively.
+    pub fn tick(&mut self) {
+        if self.used_since_tick {
+            self.used_since_tick = false;
+        } else {
             self.stream = None;
             self.last_used = None;
         }
@@ -124,6 +126,7 @@ impl CameraHub {
     pub fn close(&mut self) {
         self.stream = None;
         self.last_used = None;
+        self.used_since_tick = false;
     }
 
     /// What the camera is doing.
@@ -206,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn the_hub_lists_resolves_opens_and_closes_when_idle() {
+    fn the_hub_lists_resolves_opens_and_closes_when_the_frame_stops_using_it() {
         let mut h = hub();
         assert_eq!(h.devices().len(), 1);
         assert_eq!(h.resolve("").as_deref(), Some("Fake cam"));
@@ -217,10 +220,10 @@ mod tests {
         assert_eq!(s.size(), (8, 4));
         assert!(matches!(h.status(), CameraStatus::On { .. }));
         assert!(h.current().is_some());
-        h.tick(now + Duration::from_secs(1));
-        assert!(h.current().is_some(), "still in use");
-        h.tick(now + Duration::from_secs(10));
-        assert!(h.current().is_none(), "closed when idle");
+        h.tick();
+        assert!(h.current().is_some(), "used in this frame");
+        h.tick();
+        assert!(h.current().is_none(), "closed on the first unused frame");
         h.refresh();
         assert_eq!(h.devices().len(), 1);
         h.ensure("Fake cam", now);

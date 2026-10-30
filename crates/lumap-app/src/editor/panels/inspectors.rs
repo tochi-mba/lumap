@@ -1,6 +1,6 @@
 //! The inspector: outputs, surfaces, sources, the show.
 
-use super::super::{Editor, MonitorInfo, Selection};
+use super::super::{camera::CameraHub, Editor, MonitorInfo, Selection};
 use super::shell::Step;
 use super::{describe, rename_box, Actions, PanelState};
 use eframe::egui::{self, Color32, RichText};
@@ -11,6 +11,7 @@ pub fn inspector(
     ui: &mut egui::Ui,
     editor: &mut Editor,
     monitors: &[MonitorInfo],
+    camera: &mut CameraHub,
     state: &mut PanelState,
     actions: &mut Actions,
 ) {
@@ -25,7 +26,7 @@ pub fn inspector(
                 Selection::Surface { id, mask } => {
                     super::steps::map::surface_panel(ui, editor, &id, mask, state);
                 }
-                Selection::Source(id) => source_inspector(ui, editor, &id, state),
+                Selection::Source(id) => source_inspector(ui, editor, &id, camera, state),
             });
         });
 }
@@ -88,7 +89,13 @@ fn step_inspector(
 
 /// Inspector for a source: preview, transport, generator and file settings.
 #[allow(clippy::too_many_lines)]
-fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mut PanelState) {
+fn source_inspector(
+    ui: &mut egui::Ui,
+    editor: &mut Editor,
+    id: &str,
+    camera: &mut CameraHub,
+    state: &mut PanelState,
+) {
     ui.heading(format!("Content {id}"));
     if rename_box(ui, editor, state, id) {
         return;
@@ -246,7 +253,7 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
         }
         SourceKind::Camera { .. } | SourceKind::Room { .. } | SourceKind::Paint { .. } => {
             let kind = source.kind.clone();
-            super::steps::room::controls(ui, editor, id, &kind);
+            super::steps::room::controls(ui, editor, id, &kind, camera, state);
         }
         SourceKind::TestPattern { .. } | SourceKind::Spout { .. } => {}
     }

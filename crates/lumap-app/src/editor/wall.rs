@@ -74,14 +74,16 @@ pub fn tools(
                     Color32::from_rgba_unmultiplied(215, 255, 63, 150)
                 },
             );
-            if let Some(first) = pts.first() {
-                painter.text(
-                    *first + egui::vec2(4.0, 4.0),
-                    egui::Align2::LEFT_TOP,
-                    &s.label,
-                    egui::FontId::proportional(11.0),
-                    crate::theme::SIGNAL,
-                );
+            if chosen {
+                if let Some(first) = pts.first() {
+                    painter.text(
+                        *first + egui::vec2(4.0, 4.0),
+                        egui::Align2::LEFT_TOP,
+                        &s.label,
+                        egui::FontId::proportional(11.0),
+                        crate::theme::SIGNAL,
+                    );
+                }
             }
         }
     }
@@ -105,9 +107,44 @@ pub fn tools(
                 if hit.is_some() {
                     state.found_pick = hit;
                     consumed = true;
+                } else {
+                    state.found_pick = None;
                 }
             }
         }
+    }
+    if state.show_found && !scan.found.is_empty() {
+        egui::Area::new(egui::Id::unique("lumap-found-actions"))
+            .fixed_pos(map.rect.left_top() + egui::vec2(12.0, 12.0))
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                crate::theme::toast_frame(false).show(ui, |ui| {
+                    ui.label(format!("{} areas found", scan.found.len()));
+                    ui.horizontal(|ui| {
+                        if crate::theme::primary_button(ui, "Combine into one surface").clicked() {
+                            add_all_as_one(editor, output, &scan.found, size);
+                            state.show_found = false;
+                            state.found_pick = None;
+                        }
+                        if ui.button("Add as separate surfaces").clicked() {
+                            for suggestion in &scan.found {
+                                add_suggestion(editor, output, suggestion, size);
+                            }
+                            state.show_found = false;
+                            state.found_pick = None;
+                        }
+                        if ui.button("Hide").clicked() {
+                            state.show_found = false;
+                            state.found_pick = None;
+                        }
+                    });
+                    ui.label(
+                        egui::RichText::new("Click empty space any time to deselect objects.")
+                            .small()
+                            .weak(),
+                    );
+                });
+            });
     }
     popups(ui, editor, state, map, output, scan, size);
     consumed
@@ -137,17 +174,25 @@ fn popups(
             .show(ui.ctx(), |ui| {
                 crate::theme::toast_frame(false).show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if crate::theme::primary_button(ui, "Use this surface").clicked() {
+                        if crate::theme::primary_button(ui, "Combine all into one").clicked() {
+                            add_all_as_one(editor, output, &scan.found, size);
+                            state.show_found = false;
+                            close = true;
+                        }
+                        if ui.button("Use only this").clicked() {
                             add_suggestion(editor, output, &s, size);
                             close = true;
                         }
-                        if ui.button(format!("Use all {}", scan.found.len())).clicked() {
-                            for s in &scan.found {
-                                add_suggestion(editor, output, s, size);
+                        if ui
+                            .button(format!("Keep all {} separate", scan.found.len()))
+                            .clicked()
+                        {
+                            for suggestion in &scan.found {
+                                add_suggestion(editor, output, suggestion, size);
                             }
                             close = true;
                         }
-                        if ui.button("Not this").clicked() {
+                        if ui.button("Cancel").clicked() {
                             close = true;
                         }
                     });
@@ -212,8 +257,20 @@ pub fn add_suggestion(editor: &mut Editor, output: &str, s: &Suggestion, size: (
             };
             editor.add_surface_shaped(output, &name, WarpKind::Quad(q), Vec::new());
         }
-        _ => add_bounded(editor, output, &name, &pts),
+        _ => add_bounded(editor, output, &name, &pts, true),
     }
+}
+
+/// Turns every detected area into one connected surface. Detection often fragments a wall at
+/// furniture, shadows and seams; the bounding surface is the useful default when one piece of
+/// content should flow continuously across the whole scanned projection.
+fn add_all_as_one(editor: &mut Editor, output: &str, suggestions: &[Suggestion], size: (f64, f64)) {
+    let points: Vec<Vec2> = suggestions
+        .iter()
+        .flat_map(|s| &s.points)
+        .map(|p| Vec2::new(p.x / size.0, p.y / size.1))
+        .collect();
+    add_bounded(editor, output, "scanned-wall", &points, false);
 }
 
 /// Adds a surface for a picked outline (a quad when it has four clear corners).
@@ -228,14 +285,14 @@ pub fn add_outline(editor: &mut Editor, output: &str, o: &Outline, size: (f64, f
         }
         None => {
             let pts: Vec<Vec2> = o.points.iter().map(n).collect();
-            add_bounded(editor, output, "object", &pts);
+            add_bounded(editor, output, "object", &pts, true);
         }
     }
 }
 
 /// A surface covering the outline's bounding box, with a window cut-out of the outline (in the
 /// surface's own 0..1 space, which over an axis-aligned box is the box-relative position).
-fn add_bounded(editor: &mut Editor, output: &str, name: &str, pts: &[Vec2]) {
+fn add_bounded(editor: &mut Editor, output: &str, name: &str, pts: &[Vec2], mask: bool) {
     if pts.len() < 3 {
         return;
     }
@@ -252,12 +309,12 @@ fn add_bounded(editor: &mut Editor, output: &str, name: &str, pts: &[Vec2]) {
         .iter()
         .map(|p| Vec2::new((p.x - lo.x) / w, (p.y - lo.y) / h))
         .collect();
-    editor.add_surface_shaped(
-        output,
-        name,
-        WarpKind::Quad(quad),
-        vec![Mask::window(local)],
-    );
+    let masks = if mask {
+        vec![Mask::window(local)]
+    } else {
+        Vec::new()
+    };
+    editor.add_surface_shaped(output, name, WarpKind::Quad(quad), masks);
 }
 
 /// Cuts an outline out of a surface (a hole where the object is).

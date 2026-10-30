@@ -679,6 +679,7 @@ impl LumapApp {
             ui,
             &mut self.editor,
             &self.monitors,
+            &mut self.camera,
             &mut self.panels,
             &mut actions,
         );
@@ -839,7 +840,7 @@ impl LumapApp {
                 .camera_device()
                 .and_then(|d| self.camera.latest(&d, now));
         }
-        self.camera.tick(now);
+        self.camera.tick();
     }
 
     /// The camera actions the panels asked for.

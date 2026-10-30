@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 pub struct CameraSetup {
     /// The device as the camera list names it; empty means none chosen yet.
     pub device: String,
+    /// Optional desk-facing camera used for hand painting; empty reuses `device`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub draw_device: String,
     /// Regions of the camera view that report motion or presence.
     pub zones: Vec<Zone>,
     /// What zones and gestures drive.
@@ -21,7 +24,10 @@ pub struct CameraSetup {
 impl CameraSetup {
     /// Nothing chosen or drawn: left out of saved project files.
     pub fn is_empty(&self) -> bool {
-        self.device.is_empty() && self.zones.is_empty() && self.map.mappings.is_empty()
+        self.device.is_empty()
+            && self.draw_device.is_empty()
+            && self.zones.is_empty()
+            && self.map.mappings.is_empty()
     }
 }
 
@@ -150,7 +156,7 @@ impl PaintInput {
     pub fn label(self) -> &'static str {
         match self {
             Self::Light => "Torch or laser",
-            Self::Hand => "Hand (pinch to draw)",
+            Self::Hand => "Webcam hand (pinch to draw)",
         }
     }
 }
@@ -206,6 +212,9 @@ mod tests {
         assert!(!numb.is_valid());
         let mut setup = CameraSetup::default();
         assert!(setup.is_empty());
+        setup.draw_device = "Desk webcam".into();
+        assert!(!setup.is_empty());
+        setup.draw_device.clear();
         setup.zones.push(z);
         assert!(!setup.is_empty());
     }
@@ -229,6 +238,7 @@ mod tests {
     fn a_setup_round_trips_through_toml() {
         let mut setup = CameraSetup {
             device: "Integrated Camera".into(),
+            draw_device: "Desk webcam".into(),
             ..CameraSetup::default()
         };
         setup
