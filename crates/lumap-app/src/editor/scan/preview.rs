@@ -9,7 +9,7 @@ use lumap_vision::{Gray, Rgba};
 /// Preview cells are this many camera pixels on a side.
 /// Cells whose white-to-black contrast is under this percentage of the projection's strong
 /// contrast (its 90th percentile) are bounced light, left out of the picture.
-const BOUNCE: u32 = 35;
+const BOUNCE: u32 = 50;
 const CELL: u32 = 4;
 
 /// What one cell knows so far.
