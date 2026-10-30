@@ -22,6 +22,42 @@ foreach ($needed in @("lumap.exe", "ffmpeg\ffmpeg.exe", "ffmpeg\ffprobe.exe", "f
     if (-not (Test-Path (Join-Path $app $needed))) { throw "$needed was not installed." }
 }
 
+# Verify Windows recognises the EXE's embedded icon (not the generic application icon).
+$exe = Join-Path $app "lumap.exe"
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class LumapIconResource {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern uint ExtractIconEx(string file, int index, IntPtr large, IntPtr small, uint count);
+}
+"@
+if ([LumapIconResource]::ExtractIconEx($exe, -1, [IntPtr]::Zero, [IntPtr]::Zero, 0) -lt 1) {
+    throw "lumap.exe has no embedded Windows icon resource."
+}
+
+# Start-menu actions must point at the installed executable with the correct launch flags.
+$programs = [Environment]::GetFolderPath("Programs")
+$shell = New-Object -ComObject WScript.Shell
+$links = @(
+    @{ File = "lumap.lnk"; Args = "" },
+    @{ File = "lumap - New show.lnk"; Args = "--new-show" },
+    @{ File = "lumap - Open show.lnk"; Args = "--open-show" },
+    @{ File = "lumap - Check for updates.lnk"; Args = "--check-updates" }
+)
+foreach ($item in $links) {
+    $link = Join-Path $programs $item.File
+    if (-not (Test-Path $link)) { throw "Missing Start menu shortcut: $link" }
+    $shortcut = $shell.CreateShortcut($link)
+    if ($shortcut.Arguments -ne $item.Args) {
+        throw "Shortcut $link arguments were '$($shortcut.Arguments)' instead of '$($item.Args)'."
+    }
+    if ($shortcut.TargetPath -ne $exe) {
+        throw "Shortcut $link does not launch the installed app."
+    }
+}
+Write-Host "Embedded app icon and Start menu shortcuts passed."
+
 # The lumap command on the user's PATH (the registry value, since this shell predates it).
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$app*") { throw "The install folder was not added to the user PATH: $userPath" }
