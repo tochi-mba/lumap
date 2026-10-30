@@ -8,7 +8,10 @@ pub mod correspondence;
 pub mod facets;
 pub mod features;
 pub mod find;
+pub mod gestures;
 pub mod graycode;
+#[cfg(feature = "hands")]
+pub mod hands;
 pub mod homography;
 pub mod image;
 pub mod letters;

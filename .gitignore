@@ -5,6 +5,8 @@ tests/golden/*.diff.png
 tests/golden/*.actual.png
 **/proptest-regressions/
 lcov.info
+# Hand-tracking models: installer/fetch-models.ps1 downloads them; only models/NOTICE.txt is tracked.
+models/*.onnx
 
 # IDE
 .idea/
