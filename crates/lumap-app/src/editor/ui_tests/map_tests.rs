@@ -128,3 +128,52 @@ fn the_action_bar_locks_duplicates_flips_rotates_fits_curves_and_deletes() {
     click(&mut h, "Delete");
     assert!(h.state().editor.project.surface("wall-left-copy").is_none());
 }
+
+#[test]
+fn a_layers_right_click_menu_duplicates_locks_orders_resets_and_deletes() {
+    let mut h = on_map();
+    click(&mut h, "right");
+    // The open menu is drawn last, over the action bar's own buttons.
+    let menu = |h: &mut Harness<'static, LumapApp>, item: &str| {
+        h.get_by_label("logo").click_secondary();
+        settle(h);
+        h.get_all_by_label(item).last().unwrap().click();
+        settle(h);
+    };
+    menu(&mut h, "Duplicate  (Ctrl+D)");
+    assert!(h.state().editor.project.surface("logo-copy").is_some());
+    menu(&mut h, "Lock  (L)");
+    assert!(h.state().editor.is_locked("logo"));
+    menu(&mut h, "Unlock  (L)");
+    assert!(!h.state().editor.is_locked("logo"));
+    menu(&mut h, "Send to back");
+    assert_eq!(
+        h.state().editor.project.surfaces_for_output("right")[0].id,
+        "logo"
+    );
+    menu(&mut h, "Bring to front");
+    assert_eq!(
+        h.state()
+            .editor
+            .project
+            .surfaces_for_output("right")
+            .last()
+            .unwrap()
+            .id,
+        "logo"
+    );
+    menu(&mut h, "Reset warp to full frame");
+    assert_eq!(
+        h.state().editor.project.surface("logo").unwrap().warp,
+        WarpKind::default()
+    );
+    menu(&mut h, "Delete this surface");
+    assert!(h.state().editor.project.surface("logo").is_none());
+    // A new projector from Setup gets its own tab here.
+    step(&mut h, "1 Setup");
+    click(&mut h, "+ projector");
+    assert_eq!(h.state().editor.project.outputs.len(), 3);
+    let new = h.state().editor.project.outputs[2].id.clone();
+    step(&mut h, "2 Map");
+    assert!(h.query_by_label(&new).is_some());
+}

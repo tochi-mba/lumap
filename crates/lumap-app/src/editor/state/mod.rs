@@ -551,7 +551,7 @@ mod objects;
 mod readiness;
 mod session;
 
-pub use readiness::Readiness;
+pub use readiness::{Fix, Readiness};
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::float_cmp)]

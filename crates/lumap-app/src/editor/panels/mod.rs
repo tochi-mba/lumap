@@ -1,14 +1,13 @@
 //! The editor's panels: the shell (top bar, steps, coach line, toasts), the start page, the
-//! settings window, the status bar, the projector/surface/content tree, the inspector, the
-//! dialogs and the show-mode screen.
+//! settings window, the status bar, each step's panels, the inspector, the check before going
+//! live, the dialogs and the show-mode screen.
 
 use super::canvas::CanvasState;
 use super::thumbs::Thumbnails;
-use super::{Editor, Selection};
+use super::Editor;
 use eframe::egui::{self, Color32, RichText};
 use lumap_core::params::ParamValue;
-use lumap_core::project::{SourceKind, TestPattern};
-use lumap_core::warp::WarpKind;
+use lumap_core::project::SourceKind;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -123,6 +122,8 @@ pub struct Actions {
     pub feedback: Option<String>,
     /// Phone remote port (0 stops it).
     pub remote_port: Option<u16>,
+    /// OSC listening port (0 stops it).
+    pub osc_port: Option<u16>,
     /// A click on the update banner or the Check now button.
     pub update: Option<crate::update::Request>,
     /// A new update mode from the show inspector.
@@ -162,6 +163,12 @@ pub struct PanelState {
     pub error: Option<String>,
     /// Id being edited in the rename box.
     pub rename: Option<(String, String)>,
+    /// Text being typed into a [`draft_field`]: whose it is, and the text.
+    pub draft: Option<(String, String)>,
+    /// The check before going live is open.
+    pub golive: bool,
+    /// OSC port field.
+    pub osc_port: u16,
     /// Thumbnail textures.
     pub thumbs: Thumbnails,
     /// Whether ffmpeg was found at startup.
@@ -210,6 +217,9 @@ impl Default for PanelState {
             mesh_rows: 2,
             error: None,
             rename: None,
+            draft: None,
+            golive: false,
+            osc_port: 9000,
             thumbs: Thumbnails::default(),
             ffmpeg_ok: ffmpeg_tools.available(),
             ffmpeg_origin,
@@ -368,174 +378,6 @@ fn update_banner(ui: &mut egui::Ui, banner: &crate::update::flow::Banner, action
     ui.separator();
 }
 
-/// Outputs, surfaces and sources tree.
-#[allow(clippy::too_many_lines)]
-pub fn left_panel(
-    ui: &mut egui::Ui,
-    editor: &mut Editor,
-    state: &mut PanelState,
-    actions: &mut Actions,
-) {
-    egui::Panel::left("lumap-left").default_size(240.0).show(ui, |ui| {
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Projectors");
-                if ui.small_button("+ projector").on_hover_text("Add a projector").clicked() {
-                    editor.add_output();
-                }
-            });
-            let outputs: Vec<_> = editor.project.outputs.iter().map(|o| o.id.clone()).collect();
-            for (index, id) in outputs.iter().enumerate() {
-                let selected = editor.selection == Selection::Output(id.clone());
-                ui.horizontal(|ui| {
-                    let open = editor.open_outputs.contains(id);
-                    if ui.selectable_label(open, "win").on_hover_text("Toggle the output window").clicked() {
-                        editor.toggle_output_window(id);
-                    }
-                    let color = super::handles::output_color(index);
-                    let r = ui.selectable_label(selected, RichText::new(id).color(color));
-                    if r.clicked() {
-                        editor.selection = Selection::Output(id.clone());
-                        editor.extra_selected.clear();
-                    }
-                    r.context_menu(|ui| {
-                        if ui.button("Add surface").clicked() {
-                            editor.add_surface(id);
-                            ui.close();
-                        }
-                        if ui.button(if open { "Close window" } else { "Open window" }).clicked() {
-                            editor.toggle_output_window(id);
-                            ui.close();
-                        }
-                        if ui.button("Identify projectors").clicked() {
-                            editor.identify(Instant::now());
-                            ui.close();
-                        }
-                        if ui.button("Delete projector").clicked() {
-                            editor.selection = Selection::Output(id.clone());
-                            editor.delete_selection();
-                            ui.close();
-                        }
-                    });
-                    if ui.small_button("+ surface").clicked() {
-                        editor.add_surface(id);
-                    }
-                });
-                let surfaces: Vec<_> = editor.project.surfaces_for_output(id).iter().map(|s| (s.id.clone(), s.visible, s.locked)).collect();
-                ui.indent(id, |ui| {
-                    for (sid, visible, locked) in surfaces {
-                        let selected = matches!(&editor.selection, Selection::Surface { id, .. } if *id == sid) || editor.extra_selected.contains(&sid);
-                        ui.horizontal(|ui| {
-                            let mut v = visible;
-                            if ui.checkbox(&mut v, "").on_hover_text("Show or hide").changed() {
-                                editor.set_param(&format!("/surface/{sid}/visible"), ParamValue::Bool(v));
-                                editor.commit();
-                            }
-                            let text = if locked { format!("{sid} [locked]") } else { sid.clone() };
-                            let r = ui.selectable_label(selected, text);
-                            if r.clicked() {
-                                let shift = ui.input(|i| i.modifiers.shift);
-                                editor.select_surface(&sid, shift);
-                            }
-                            r.context_menu(|ui| surface_context_menu(ui, editor, &sid, locked));
-                        });
-                    }
-                });
-            }
-            ui.separator();
-            ui.horizontal(|ui| {
-                ui.heading("Content");
-                ui.menu_button("+ content", |ui| {
-                    if ui.button("Media file…").clicked() {
-                        actions.add_media = true;
-                        ui.close();
-                    }
-                    if ui.button("Image sequence folder…").clicked() {
-                        actions.add_folder = true;
-                        ui.close();
-                    }
-                    ui.separator();
-                    looks::generator_menu(ui, editor);
-                    ui.separator();
-                    for (label, pattern) in [("Grid", TestPattern::Grid), ("Bars", TestPattern::Bars), ("Checker", TestPattern::Checker), ("Ramp", TestPattern::Ramp)] {
-                        if ui.button(format!("Pattern: {label}")).clicked() {
-                            editor.add_source(SourceKind::TestPattern { pattern });
-                            ui.close();
-                        }
-                    }
-                    if ui.button("Solid white").clicked() {
-                        editor.add_source(SourceKind::Solid { color: [1.0, 1.0, 1.0, 1.0] });
-                        ui.close();
-                    }
-                });
-            });
-            let sources: Vec<_> = editor.project.sources.iter().map(|s| (s.id.clone(), describe(&s.kind))).collect();
-            if sources.is_empty() {
-                crate::theme::empty_state(ui, "No content yet", "Add media, a look or a test pattern.");
-            }
-            for (id, desc) in sources {
-                let selected = editor.selection == Selection::Source(id.clone());
-                ui.horizontal(|ui| {
-                    if let Some(frame) = editor.sources.frame(&id).cloned() {
-                        let (tex, size) = state.thumbs.get(ui.ctx(), &id, &frame);
-                        let h = 28.0;
-                        let w = (h * size.0 as f32 / size.1.max(1) as f32).clamp(8.0, 64.0);
-                        ui.add(egui::Image::new((tex, egui::Vec2::new(w, h))));
-                    }
-                    if ui.selectable_label(selected, &id).clicked() {
-                        editor.selection = Selection::Source(id.clone());
-                        editor.extra_selected.clear();
-                    }
-                    ui.label(RichText::new(desc).weak().small());
-                    let used = editor.project.surfaces.iter().any(|s| s.source == id);
-                    if ui.add_enabled(!used, egui::Button::new("×").small()).on_hover_text("Remove (unused sources only)").clicked() {
-                        editor.edit(|p| p.sources.retain(|s| s.id != id));
-                        editor.reload_sources();
-                    }
-                });
-            }
-            ui.add_space(8.0);
-            ui.label(RichText::new("Drop images, videos, GIFs or frame folders anywhere to add them.").weak().small());
-        });
-    });
-}
-
-fn surface_context_menu(ui: &mut egui::Ui, editor: &mut Editor, sid: &str, locked: bool) {
-    if ui.button("Duplicate  (Ctrl+D)").clicked() {
-        editor.duplicate_surface(sid);
-        ui.close();
-    }
-    if ui
-        .button(if locked { "Unlock  (L)" } else { "Lock  (L)" })
-        .clicked()
-    {
-        editor.set_locked(sid, !locked);
-        ui.close();
-    }
-    if ui.button("Bring to front").clicked() {
-        editor.send_surface(sid, true);
-        ui.close();
-    }
-    if ui.button("Send to back").clicked() {
-        editor.send_surface(sid, false);
-        ui.close();
-    }
-    if ui.button("Reset warp to full frame").clicked() {
-        editor.set_warp(sid, WarpKind::default());
-        editor.commit();
-        ui.close();
-    }
-    if ui.button("Delete").clicked() {
-        editor.selection = Selection::Surface {
-            id: sid.to_string(),
-            mask: None,
-        };
-        editor.extra_selected.clear();
-        editor.delete_selection();
-        ui.close();
-    }
-}
-
 fn describe(kind: &SourceKind) -> String {
     match kind {
         SourceKind::TestPattern { pattern } => format!("{pattern:?}").to_lowercase(),
@@ -558,6 +400,41 @@ fn describe(kind: &SourceKind) -> String {
         SourceKind::Sequence { path, .. } => format!("sequence {path}"),
         SourceKind::Generator { pattern, .. } => format!("generator {pattern:?}").to_lowercase(),
     }
+}
+
+/// A one-line field that edits a copy of `current` and hands back the new text once, when the
+/// field loses focus (Enter, Tab or a click elsewhere) with something changed. Until something
+/// is typed the field shows `current`, so undo and changes made elsewhere show up. `key` says
+/// whose copy `draft` holds; one field is typed in at a time, so the panels share one draft.
+fn draft_field(
+    ui: &mut egui::Ui,
+    draft: &mut Option<(String, String)>,
+    key: &str,
+    current: &str,
+    width: f32,
+    hint: &str,
+) -> (egui::Response, Option<String>) {
+    let mine = draft.as_ref().is_some_and(|(k, _)| k == key);
+    let mut text = match draft {
+        Some((_, t)) if mine => t.clone(),
+        _ => current.to_string(),
+    };
+    let r = ui.add(
+        egui::TextEdit::singleline(&mut text)
+            .desired_width(width)
+            .hint_text(hint),
+    );
+    if r.changed() {
+        *draft = Some((key.to_string(), text.clone()));
+    }
+    let mut done = None;
+    if r.lost_focus() && mine {
+        if text != current {
+            done = Some(text);
+        }
+        *draft = None;
+    }
+    (r, done)
 }
 
 /// Inline id editor shared by the inspectors. Returns true when a rename happened.
@@ -619,7 +496,7 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
         "Blend gamma of the shown projector down / up (gamma match)",
     ),
     ("Space", "GO: fade to the next cue"),
-    ("F10", "Go live; Escape twice leaves"),
+    ("F10", "Go live without the check; Escape twice leaves"),
     ("?", "This list"),
 ];
 
@@ -693,8 +570,8 @@ pub fn show_mode_screen(ui: &mut egui::Ui, editor: &Editor, fps: f32) {
         });
 }
 
-mod control;
 mod dialogs;
+pub mod golive;
 mod inspectors;
 pub mod looks;
 mod settings;
@@ -702,7 +579,6 @@ pub mod shell;
 mod start;
 pub mod steps;
 
-pub use control::cue_panel;
 pub use dialogs::dialogs;
 pub use inspectors::inspector;
 pub use settings::settings_window;

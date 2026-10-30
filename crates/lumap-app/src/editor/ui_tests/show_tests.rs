@@ -12,11 +12,25 @@ use lumap_core::project::demo_project;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+/// Opens a library tile's settings from its right-click menu (a left click puts it on surfaces).
+fn settings_of(h: &mut Harness<'static, LumapApp>, id: &str) {
+    h.get_by_label(id).scroll_to_me();
+    settle(h);
+    h.get_by_label(id).click_secondary();
+    settle(h);
+    click(h, "Settings");
+}
+
 #[test]
 fn show_mode_screen_and_shortcuts() {
     let mut h = harness(Editor::new(demo_project(), None));
+    // Go live checks first; the demo is not ready, and can go live anyway.
     click(&mut h, "Go live");
+    assert!(!h.state().editor.show_mode);
+    assert!(h.query_by_label("Before you go live").is_some());
+    click(&mut h, "Go live anyway");
     assert!(h.state().editor.show_mode);
+    assert!(!h.state().panels.golive);
     assert!(h.query_by_label("SHOW MODE").is_some());
     assert_eq!(h.state().editor.open_outputs.len(), 2);
     h.key_press(Key::Escape);
@@ -36,7 +50,8 @@ fn show_mode_screen_and_shortcuts() {
     h.state_mut().editor.open_outputs.clear();
     settle(&mut h);
 
-    step(&mut h, "4 Show");
+    step(&mut h, "2 Map");
+    click(&mut h, "right");
     click(&mut h, "logo");
     h.state_mut().editor.set_param(
         "/surface/logo/opacity",
@@ -267,7 +282,7 @@ fn dropped_files_become_sources_and_hover_shows_an_overlay() {
 fn view_menu_toggles_and_output_windows_carry_handles() {
     let _settings = settings_guard();
     let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
+    step(&mut h, "2 Map");
     click(&mut h, "Grid");
     assert!(h.state().canvas.show_grid);
     click(&mut h, "Edit on the wall");
@@ -355,17 +370,16 @@ fn source_inspector_transport_and_generator_controls() {
             .unwrap();
     }
     let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
+    step(&mut h, "3 Content");
     // Folder dialog adds a sequence source and a surface on the first output.
     fake(&mut h, |d| d.folder = Some(seq.clone()));
-    click(&mut h, "+ content");
-    click(&mut h, "Image sequence folder…");
+    click(&mut h, "Add frame folder…");
     assert!(h.state().editor.project.source("frames").is_some());
     assert!(
         !h.state().panels.thumbs.is_empty(),
         "thumbnails are built for sources with frames"
     );
-    click(&mut h, "frames");
+    settings_of(&mut h, "frames");
     assert_eq!(
         h.state().editor.selection,
         Selection::Source("frames".into())
@@ -423,14 +437,18 @@ fn source_inspector_transport_and_generator_controls() {
     assert!(h.query_by_label("Delete source").is_some());
 
     // Generators from the menu, with the pattern combo.
-    click(&mut h, "+ content");
-    click(&mut h, "Classic");
+    h.state_mut().editor.selection = Selection::None;
+    settle(&mut h);
+    click(&mut h, "+ generator");
+    h.get_all_by_label("Classic").next().unwrap().click();
+    settle(&mut h);
     click(&mut h, "Generator: Plasma");
     assert!(h.state().editor.project.source("generator").is_some());
-    click(&mut h, "generator");
+    settings_of(&mut h, "generator");
     h.get_by_value("Plasma").click();
     settle(&mut h);
-    click(&mut h, "Radar");
+    h.get_all_by_label("Radar").last().unwrap().click();
+    settle(&mut h);
     assert!(matches!(
         h.state().editor.project.source("generator").unwrap().kind,
         lumap_core::project::SourceKind::Generator {
@@ -458,7 +476,8 @@ fn source_inspector_transport_and_generator_controls() {
 #[test]
 fn crop_preview_drags_and_resets() {
     let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
+    step(&mut h, "2 Map");
+    click(&mut h, "right");
     click(&mut h, "wall-right");
     click(&mut h, "Crop");
     // wall-right uses the right part of its content; drag the crop box's bottom-right
@@ -552,7 +571,8 @@ fn media_dialog_accepts_video_when_ffmpeg_exists() {
         h.state().editor.sources.frame("clip").is_some(),
         "the video produced a frame"
     );
-    click(&mut h, "clip");
+    step(&mut h, "3 Content");
+    settings_of(&mut h, "clip");
     assert!(h.query_by_label("Pause").is_some());
     assert!(
         h.query_by_label_contains("ffmpeg found").is_none(),

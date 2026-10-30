@@ -11,18 +11,17 @@ use lumap_core::params::ParamValue;
 use lumap_core::project::demo_project;
 
 #[test]
-fn cue_panel_stores_fires_updates_and_reorders() {
+fn cue_cards_store_go_update_rename_reorder_and_delete() {
     let mut h = harness(Editor::new(demo_project(), None));
     step(&mut h, "4 Show");
-    assert!(h
-        .query_by_label("No cues yet. Set up a look, then Store cue. Space fades to the next one.")
-        .is_some());
+    assert!(h.query_by_label("No cues yet").is_some());
+    assert!(h.query_by_label("Store a cue first").is_some());
 
     let field = h.get_by_role_and_label(Role::TextInput, "Cue name");
     field.focus();
     field.type_text("opening");
     settle(&mut h);
-    click(&mut h, "Store cue");
+    click(&mut h, "Store this look");
     assert_eq!(h.state().editor.project.cues.len(), 1);
     assert_eq!(h.state().editor.project.cues[0].name, "opening");
     assert_eq!(h.state().editor.project.cues[0].fade_seconds, 2.0);
@@ -33,7 +32,7 @@ fn cue_panel_stores_fires_updates_and_reorders() {
         .editor
         .set_param("/show/blackout", ParamValue::Bool(true));
     h.state_mut().editor.commit();
-    click(&mut h, "Store cue");
+    click(&mut h, "Store this look");
     assert_eq!(h.state().editor.project.cues.len(), 2);
     let second = h.state().editor.project.cues[1].id.clone();
     assert_eq!(second, "cue");
@@ -41,18 +40,20 @@ fn cue_panel_stores_fires_updates_and_reorders() {
         h.state().editor.project.cues[1].values["/show/blackout"],
         ParamValue::Bool(true)
     );
+    assert!(h.query_by_label("Next: 1 · opening").is_some());
 
-    // GO the first cue by its button: blackout fades back off (fade 2 s, bools switch half way).
-    h.state_mut().panels.cue_fade = 0.0;
+    // GO the first cue by its own button: blackout fades back off.
     click(&mut h, "GO opening");
     assert_eq!(h.state().editor.cues.current, Some(0));
     assert!(h.query_by_label("fading").is_some());
+    assert!(
+        h.query_by_label("live").is_some(),
+        "the running cue says so"
+    );
     h.state_mut().editor.cues.fade.as_mut().unwrap().duration = 0.0;
     settle(&mut h);
     assert!(!h.state().editor.project.blackout);
-    assert!(h
-        .query_by_label("(current) 1 opening (opening) 2.0s")
-        .is_some());
+    assert!(h.query_by_label("Next: 2 · cue").is_some());
 
     // Space GOs the next cue.
     h.key_press(Key::Space);
@@ -61,7 +62,7 @@ fn cue_panel_stores_fires_updates_and_reorders() {
     click(&mut h, "Stop fade");
     assert!(h.state().editor.cues.fade.is_none());
 
-    // Update the selected cue with the live look, move it, delete it.
+    // The selected (just fired) cue: update it with the live look, rename it, change its fade.
     h.state_mut()
         .editor
         .set_param("/show/master", ParamValue::Number(0.25));
@@ -71,16 +72,44 @@ fn cue_panel_stores_fires_updates_and_reorders() {
         h.state().editor.project.cues[1].values["/show/master"],
         ParamValue::Number(0.25)
     );
-    click(&mut h, "Cue up");
+    let field = h.get_by_role_and_label(Role::TextInput, "Rename");
+    field.focus();
+    field.type_text("finale");
+    settle(&mut h);
+    h.key_press(Key::Enter);
+    settle(&mut h);
+    assert_eq!(h.state().editor.project.cues[1].name, "finale");
+    assert_eq!(
+        h.state().editor.project.cues[1].id,
+        second,
+        "OSC keeps its id"
+    );
+    assert!(h.query_by_label("GO finale").is_some());
+
+    // Drag the second card by its dots onto the first: it moves up, and stays the running cue.
+    let finale = h.get_by_label("finale").rect();
+    let opening = h.get_by_label("opening").rect();
+    let grip = egui::pos2(finale.left() - 30.0, finale.center().y);
+    drag(&mut h, grip, opening.center());
     assert_eq!(h.state().editor.project.cues[0].id, second);
+    assert_eq!(
+        h.state().editor.cues.current,
+        Some(0),
+        "the running cue moved with it"
+    );
     assert_eq!(h.state().editor.selected_cue, Some(0));
-    click(&mut h, "Cue down");
+
+    // Right-click: move it back down.
+    h.get_by_label("finale").click_secondary();
+    settle(&mut h);
+    click(&mut h, "Move down");
     assert_eq!(h.state().editor.project.cues[1].id, second);
+    assert_eq!(h.state().editor.cues.current, Some(1));
     click(&mut h, "Delete cue");
     assert_eq!(h.state().editor.project.cues.len(), 1);
     assert_eq!(h.state().editor.project.cues[0].id, "opening");
 
-    // The GO button in the header fires the next cue; Space while typing does not.
+    // The big GO fires the next cue; Space while typing does not.
     click(&mut h, "GO");
     assert_eq!(h.state().editor.cues.current, Some(0));
     let field = h.get_by_role_and_label(Role::TextInput, "Cue name");
@@ -94,10 +123,10 @@ fn cue_panel_stores_fires_updates_and_reorders() {
         Some(0),
         "typing a space is not GO"
     );
-    // Selecting a cue in the list.
+    // Clicking a card selects it.
     h.state_mut().editor.selected_cue = None;
     settle(&mut h);
-    click(&mut h, "(current) 1 opening (opening) 2.0s");
+    click(&mut h, "opening");
     assert_eq!(h.state().editor.selected_cue, Some(0));
 }
 
@@ -107,7 +136,12 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
     let mut h = harness(Editor::new(demo_project(), None));
     step(&mut h, "4 Show");
     assert!(h.query_by_label("Control").is_some());
-    assert!(h.query_by_label("MIDI off").is_some());
+    assert!(h.query_by_label("Always on").is_some(), "the keyboard card");
+    assert_eq!(
+        h.get_all_by_label("Off").count(),
+        3,
+        "phone, OSC and MIDI are off"
+    );
     click(&mut h, "Refresh MIDI ports");
     // Opening no port is fine; opening a nonexistent one reports an error.
     click(&mut h, "Open MIDI port");
@@ -144,13 +178,20 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
     settle(&mut h);
     assert_eq!(h.state().editor.project.midi.mappings.len(), 1);
     assert!(h
-        .query_by_label("last: Cc { channel: 0, controller: 7 } = 127")
+        .query_by_label("Last message: CC 7 · channel 1 = 127")
+        .is_some());
+    assert!(h
+        .query_by_label("CC 7 · channel 1 → /show/master (button)")
         .is_some());
     click(&mut h, "Forget /show/master");
     assert!(h.state().editor.project.midi.mappings.is_empty());
 
     // The surface inspector has a one-click learn for opacity.
-    click(&mut h, "logo");
+    h.state_mut().editor.selection = Selection::Surface {
+        id: "logo".into(),
+        mask: None,
+    };
+    settle(&mut h);
     click(&mut h, "Precise");
     click(&mut h, "MIDI learn opacity");
     assert_eq!(
@@ -178,13 +219,15 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
     click(&mut h, "Apply feedback");
     assert!(h.state().editor.feedback.is_some());
     assert_eq!(h.state().settings.osc_feedback, "127.0.0.1:1");
-    assert!(h.query_by_label("sending to 127.0.0.1:1").is_some());
+    assert!(h.query_by_label("Sending changes to 127.0.0.1:1").is_some());
     h.state_mut().panels.feedback_target.clear();
     click(&mut h, "Apply feedback");
     assert!(h.state().editor.feedback.is_none());
 
     // Phone remote on an ephemeral port: the URL and a QR code appear, Stop removes them.
-    assert!(h.query_by_label("remote off").is_some());
+    assert!(h
+        .query_by_label("GO, blackout and the master fader from any phone on the same Wi-Fi.")
+        .is_some());
     h.state_mut().panels.remote_port = 0;
     click(&mut h, "Start remote");
     assert!(h.state().editor.remote.is_none(), "port 0 means off");
@@ -205,13 +248,30 @@ fn control_section_learns_midi_and_runs_feedback_and_remote() {
     assert!(h
         .query_by_label("Scan with a phone on the same Wi-Fi:")
         .is_some());
+    assert!(h.query_by_label("On").is_some());
+    click(&mut h, "Stop remote");
+    assert!(h.state().editor.remote.is_none());
     h.state_mut().panels.remote_port = blocker.addr().port();
     click(&mut h, "Start remote");
     assert!(h.state().panels.error.is_some(), "a taken port is reported");
-    click(&mut h, "Stop remote");
     assert!(h.state().editor.remote.is_none());
-    assert!(h.query_by_label("remote off").is_some());
     drop(blocker);
+
+    // OSC: listen on a free port, then stop; the port is remembered.
+    let free = {
+        let l = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        l.local_addr().unwrap().port()
+    };
+    h.state_mut().panels.osc_port = free;
+    click(&mut h, "Listen");
+    assert!(h.state().editor.osc.is_some());
+    assert_eq!(h.state().settings.osc_port, free);
+    assert!(h.query_by_label(&format!("Port {free}")).is_some());
+    click(&mut h, "OSC addresses");
+    assert!(h.query_by_label("/cue/<id>/go").is_some());
+    click(&mut h, "Stop OSC");
+    assert!(h.state().editor.osc.is_none());
+    assert_eq!(h.state().settings.osc_port, 0);
 }
 
 #[test]

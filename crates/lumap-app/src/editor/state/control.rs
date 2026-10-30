@@ -101,15 +101,48 @@ impl Editor {
 
     /// Moves a cue up (`-1`) or down (`+1`) in the list.
     pub fn move_cue(&mut self, index: usize, delta: i32) -> bool {
-        let len = self.project.cues.len() as i32;
         let to = index as i32 + delta;
-        if index as i32 >= len || to < 0 || to >= len {
+        to >= 0 && self.move_cue_to(index, to as usize)
+    }
+
+    /// Moves the cue at `from` to `to`. The running cue stays the running cue, wherever it
+    /// ends up, so GO still goes to the one after it; the moved cue is selected.
+    pub fn move_cue_to(&mut self, from: usize, to: usize) -> bool {
+        let len = self.project.cues.len();
+        if from >= len || to >= len || from == to {
             return false;
         }
-        let to = to as usize;
-        self.edit(move |p| p.cues.swap(index, to));
+        self.edit(move |p| {
+            let cue = p.cues.remove(from);
+            p.cues.insert(to, cue);
+        });
+        let follow = |i: usize| {
+            if i == from {
+                to
+            } else if from < i && i <= to {
+                i - 1
+            } else if to <= i && i < from {
+                i + 1
+            } else {
+                i
+            }
+        };
+        self.cues.current = self.cues.current.map(follow);
         self.selected_cue = Some(to);
         true
+    }
+
+    /// Renames a cue (its id, used by OSC, stays).
+    pub fn rename_cue(&mut self, index: usize, name: &str) -> bool {
+        let name = name.trim().to_string();
+        if self.project.cues.get(index).is_none_or(|c| c.name == name) {
+            return false;
+        }
+        self.edit(move |p| {
+            if let Some(c) = p.cues.get_mut(index) {
+                c.name = name;
+            }
+        })
     }
 
     /// GO a cue by index.

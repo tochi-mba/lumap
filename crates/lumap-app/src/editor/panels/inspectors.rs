@@ -78,26 +78,11 @@ fn step_inspector(
             crate::theme::empty_state(
                 ui,
                 "Select a surface",
-                "Its content, look, opacity and blend appear here. The library on the left has                  everything you can put on it.",
+                "Its content, look, opacity and blend appear here. The library on the left has \
+                 everything you can put on it.",
             );
         }
-        Step::Show => {
-            ui.heading("Control");
-            ui.label(match &editor.osc {
-                Some(s) => format!("OSC listening on {}", s.local_addr()),
-                None => "OSC off (start with --osc-port)".into(),
-            });
-            ui.collapsing("OSC addresses", |ui| {
-                ui.label(
-                    RichText::new(
-                        "/show/blackout, /show/master, /cue/go, /cue/<id>/go, /cue/stop,                          /surface/<id>/opacity|visible|z|corner/<n>/x|y,                          /output/<id>/enabled|brightness|contrast|gamma|blend/<edge>/width,                          /source/<id>/play|loop|speed|restart",
-                    )
-                    .weak()
-                    .small(),
-                );
-            });
-            super::control::control_section(ui, editor, state, actions);
-        }
+        Step::Show => super::steps::controllers::controllers(ui, editor, state, actions),
     }
 }
 

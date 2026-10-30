@@ -41,6 +41,20 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   selected; or drag it onto a surface on the canvas, which lights up as you hover. *+ media*
   and *+ generator* sit in the library's header. Previews are drawn only for tiles on screen,
   at most three per frame.
+- **Show step**: the cue list moves from the bottom strip to the left as cards: a big *GO*
+  with the cue it will fade to under it, *Store this look* with a name and fade, and one card
+  per cue (number, name, fade, its own GO, a "live" pill on the running cue). Drag a card by
+  its dots to reorder; the selected card renames the cue (its OSC id stays), sets its fade,
+  updates it with the live look or deletes it; right-click for the rest. The right panel holds
+  a card per controller with an On/Off pill: Keyboard, Phone remote (with its QR code), OSC
+  (start and stop listening from here, feedback, and every address in a list) and MIDI (port,
+  learn, learned controls named like "CC 7 · channel 1").
+- **Go live** checks the show first: projectors on their displays, content on every surface,
+  ffmpeg when there is video, the show saved, and cues to fade between. Each line ticks, or
+  offers one click that puts it right (*Place on free displays*, *Choose content*, *Save the
+  show*, *Store the first cue* and so on); *Go live anyway* is always there. F10 still goes
+  live at once.
+- Projector tabs above the canvas on Map, Content and Show.
 - Information toasts let clicks through to whatever is under them; a problem shows at the
   top until dismissed.
 - Plain words: Projector, Surface and Content in the interface. Project files and OSC
@@ -48,6 +62,10 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
 
 ### Fixed
 
+- Typing in the show's name in the top bar keeps every key: the field used to be rebuilt from
+  the project every frame, so what was typed was thrown away.
+- Moving a cue keeps GO in order: the running cue used to be remembered by position, so after a
+  move GO could skip or repeat a cue.
 - The crop preview keeps its corner handles clear of the panel's scrollbar, which used to
   take the drag when the panel was narrow.
 - A projector's width and height can be dragged or typed again: the fields used to re-read

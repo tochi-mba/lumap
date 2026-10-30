@@ -299,6 +299,9 @@ impl LumapApp {
                 log::warn!("osc feedback: {e}");
             }
         }
+        if settings.osc_port != 0 {
+            self.panels.osc_port = settings.osc_port;
+        }
         if settings.remote_port != 0 {
             self.panels.remote_port = settings.remote_port;
             if self.editor.remote.is_none() {
@@ -547,9 +550,6 @@ impl LumapApp {
             &banner,
             &mut actions,
         );
-        if step == panels::shell::Step::Show {
-            panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
-        }
         match step {
             panels::shell::Step::Setup => {
                 panels::steps::setup::projector_list(
@@ -572,7 +572,7 @@ impl LumapApp {
                 );
             }
             panels::shell::Step::Show => {
-                panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+                panels::steps::show::cue_list(ui, &mut self.editor, &mut self.panels, clock);
             }
         }
         panels::inspector(
@@ -607,6 +607,13 @@ impl LumapApp {
         ) {
             panels::steps::content::canvas_drop(ctx, &mut self.editor, &self.canvas);
         }
+        panels::golive::sheet(
+            ctx,
+            &mut self.editor,
+            &mut self.panels,
+            &self.monitors,
+            &mut actions,
+        );
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
@@ -749,6 +756,13 @@ impl LumapApp {
                     self.settings.save();
                 }
                 Err(e) => self.panels.error = Some(e),
+            }
+        }
+        if let Some(port) = actions.osc_port {
+            self.editor.set_osc_port(port);
+            if port == 0 || self.editor.osc.is_some() {
+                self.settings.osc_port = port;
+                self.settings.save();
             }
         }
         if let Some(port) = actions.remote_port {

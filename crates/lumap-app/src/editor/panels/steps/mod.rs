@@ -2,5 +2,7 @@
 //! one is on screen.
 
 pub mod content;
+pub mod controllers;
 pub mod map;
 pub mod setup;
+pub mod show;

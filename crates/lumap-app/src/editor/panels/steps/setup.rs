@@ -41,35 +41,6 @@ pub fn placement_label(output: &Output, monitors: &[MonitorInfo]) -> String {
     }
 }
 
-/// Puts a projector on a display (full size, at the display's origin), or back to a floating
-/// window.
-fn place(editor: &mut Editor, id: &str, monitor: Option<&MonitorInfo>) {
-    let id = id.to_string();
-    let target = monitor.map(|m| {
-        (
-            Placement {
-                monitor: m.name.clone(),
-                x: m.x,
-                y: m.y,
-            },
-            m.width,
-            m.height,
-        )
-    });
-    editor.edit(move |p| {
-        if let Some(o) = p.output_mut(&id) {
-            match target {
-                Some((placement, w, h)) => {
-                    o.placement = Some(placement);
-                    o.width = w;
-                    o.height = h;
-                }
-                None => o.placement = None,
-            }
-        }
-    });
-}
-
 /// The left panel in Setup: one card per projector.
 pub fn projector_list(
     ui: &mut egui::Ui,
@@ -242,7 +213,7 @@ pub fn projector_inspector(
             }
         });
     if let Some(target) = choice {
-        place(editor, id, target);
+        editor.place_output(id, target);
     }
     ui.horizontal(|ui| {
         let open = editor.open_outputs.contains(&id.to_string());

@@ -138,16 +138,13 @@ fn drag(h: &mut Harness<'static, LumapApp>, from: egui::Pos2, to: egui::Pos2) {
 #[test]
 fn panels_render_and_selection_drives_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
-    assert!(h.query_by_label("Projectors").is_some());
-    assert!(h.query_by_label("+ content").is_some());
-    assert!(
-        h.query_by_label("Show").is_some(),
-        "no selection shows the show inspector"
-    );
+    step(&mut h, "1 Setup");
+    assert!(h.query_by_label("+ projector").is_some());
     click(&mut h, "left");
     assert_eq!(h.state().editor.selection, Selection::Output("left".into()));
     assert!(h.query_by_label("Projector left").is_some());
+    step(&mut h, "2 Map");
+    click(&mut h, "right");
     click(&mut h, "logo");
     assert_eq!(
         h.state().editor.selection,
@@ -165,6 +162,12 @@ fn panels_render_and_selection_drives_the_inspector() {
     settle(&mut h);
     assert_eq!(h.state().editor.selected_surfaces().len(), 2);
     assert!(h.query_by_label("2 surfaces selected").is_some());
+    // With nothing selected, each step's inspector says where to start.
+    h.key_press(Key::Escape);
+    settle(&mut h);
+    assert!(h.query_by_label("Select a surface").is_some());
+    step(&mut h, "4 Show");
+    assert!(h.query_by_label("Control").is_some());
 }
 
 #[test]
@@ -299,9 +302,38 @@ fn surface_inspector_buttons_edit_the_project() {
 }
 
 #[test]
+fn the_show_name_keeps_what_is_typed_and_follows_undo() {
+    let mut h = harness(Editor::new(demo_project(), None));
+    let before = h.state().editor.project.name.clone();
+    let field = h.get_by_role_and_label(Role::TextInput, "Show");
+    field.focus();
+    field.type_text(" at the pier");
+    settle(&mut h);
+    assert_eq!(
+        h.state().editor.project.name,
+        before,
+        "nothing changes while typing"
+    );
+    h.key_press(Key::Enter);
+    settle(&mut h);
+    assert_eq!(
+        h.state().editor.project.name,
+        format!("{before} at the pier")
+    );
+    click(&mut h, "Undo");
+    assert_eq!(h.state().editor.project.name, before);
+    assert_eq!(
+        h.get_by_role_and_label(Role::TextInput, "Show").value(),
+        Some(before),
+        "the field shows the name again after undo"
+    );
+}
+
+#[test]
 fn inline_rename_through_the_inspector() {
     let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
+    step(&mut h, "2 Map");
+    click(&mut h, "right");
     click(&mut h, "logo");
     let field = h.get_by_role_and_label(Role::TextInput, "Name");
     field.focus();
@@ -429,94 +461,6 @@ fn output_inspector_places_and_opens_windows() {
     assert!(h.state().editor.project.output("left").unwrap().width > 1280);
     click(&mut h, "Delete projector");
     assert!(h.state().editor.project.output("left").is_none());
-}
-
-#[test]
-fn tree_adds_removes_and_offers_context_menus() {
-    let mut h = harness(Editor::new(demo_project(), None));
-    step(&mut h, "4 Show");
-    h.get_all_by_label("+ surface").next().unwrap().click();
-    settle(&mut h);
-    assert_eq!(h.state().editor.project.surfaces.len(), 4);
-    click(&mut h, "+ projector");
-    assert_eq!(h.state().editor.project.outputs.len(), 3);
-    click(&mut h, "+ content");
-    click(&mut h, "Pattern: Checker");
-    assert!(h
-        .state()
-        .editor
-        .project
-        .sources
-        .iter()
-        .any(|s| s.id == "pattern"));
-    h.state_mut()
-        .editor
-        .add_source(lumap_core::project::SourceKind::Solid { color: [1.0; 4] });
-    settle(&mut h);
-    let before = h.state().editor.project.sources.len();
-    h.get_all_by_label("×").last().unwrap().click();
-    settle(&mut h);
-    assert_eq!(h.state().editor.project.sources.len(), before - 1);
-    h.get_all_by_label("win").next().unwrap().click();
-    settle(&mut h);
-    assert_eq!(h.state().editor.open_outputs.len(), 1);
-    h.state_mut().editor.open_outputs.clear();
-    settle(&mut h);
-
-    // Surface context menu.
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Duplicate  (Ctrl+D)");
-    assert!(h.state().editor.project.surface("logo-copy").is_some());
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Lock  (L)");
-    assert!(h.state().editor.is_locked("logo"));
-    h.get_by_label("logo [locked]").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Unlock  (L)");
-    assert!(!h.state().editor.is_locked("logo"));
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Send to back");
-    assert_eq!(
-        h.state().editor.project.surfaces_for_output("right")[0].id,
-        "logo"
-    );
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Bring to front");
-    assert_eq!(
-        h.state()
-            .editor
-            .project
-            .surfaces_for_output("right")
-            .last()
-            .unwrap()
-            .id,
-        "logo"
-    );
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Reset warp to full frame");
-    assert_eq!(surface_warp(&h, "logo"), WarpKind::default());
-    h.get_by_label("logo").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Delete");
-    assert!(h.state().editor.project.surface("logo").is_none());
-
-    // Output context menu.
-    h.get_by_label("right").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Add surface");
-    h.get_by_label("right").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Identify projectors");
-    assert!(h.state().editor.identify_until.is_some());
-    h.get_by_label("right").click_secondary();
-    settle(&mut h);
-    click(&mut h, "Delete projector");
-    assert!(h.state().editor.project.output("right").is_none());
 }
 
 #[test]
@@ -751,6 +695,7 @@ fn snapping_locking_and_click_to_select_on_the_canvas() {
 
 mod content_tests;
 mod control_tests;
+mod golive_tests;
 mod looks_tests;
 mod map_tests;
 mod show_tests;
