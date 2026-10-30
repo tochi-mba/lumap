@@ -173,5 +173,5 @@ fn footer(ui: &mut egui::Ui, settings: &Settings, actions: &mut Actions, check: 
     });
     if check.checking || check.detail.contains("up to date") || check.detail.contains("Couldn't check") {
         ui.label(RichText::new(&check.detail).weak().small());
-    });
+    }
 }
