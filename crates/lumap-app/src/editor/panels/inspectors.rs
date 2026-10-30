@@ -1,13 +1,10 @@
 //! The inspector: outputs, surfaces, sources, the show.
 
-use super::super::{AlignOp, Editor, MonitorInfo, Selection};
+use super::super::{Editor, MonitorInfo, Selection};
 use super::shell::Step;
-use super::{describe, param_slider, param_toggle, rename_box, Actions, PanelState};
+use super::{describe, rename_box, Actions, PanelState};
 use eframe::egui::{self, Color32, RichText};
-use lumap_core::midimap::MidiMode;
-use lumap_core::params::ParamValue;
-use lumap_core::project::{BlendMode, GeneratorKind, SourceKind};
-use lumap_core::warp::{BezierMesh, WarpKind};
+use lumap_core::project::{GeneratorKind, SourceKind};
 
 /// Right-hand inspector for the selection.
 pub fn inspector(
@@ -25,7 +22,9 @@ pub fn inspector(
                 Selection::Output(id) => {
                     super::steps::setup::projector_inspector(ui, editor, &id, monitors, state);
                 }
-                Selection::Surface { id, mask } => surface_inspector(ui, editor, &id, mask, state),
+                Selection::Surface { id, mask } => {
+                    super::steps::map::surface_panel(ui, editor, &id, mask, state);
+                }
                 Selection::Source(id) => source_inspector(ui, editor, &id, state),
             });
         });
@@ -119,277 +118,6 @@ fn step_inspector(
             });
             super::control::control_section(ui, editor, state, actions);
         }
-    }
-}
-
-#[allow(clippy::too_many_lines)]
-fn surface_inspector(
-    ui: &mut egui::Ui,
-    editor: &mut Editor,
-    id: &str,
-    mask: Option<usize>,
-    state: &mut PanelState,
-) {
-    ui.heading(format!("Surface {id}"));
-    if rename_box(ui, editor, state, id) {
-        return;
-    }
-    let Some(surface) = editor.project.surface(id).cloned() else {
-        return;
-    };
-    super::looks::surface_section(ui, editor, id, state);
-    ui.horizontal(|ui| {
-        let mut locked = surface.locked;
-        if ui
-            .checkbox(&mut locked, "Locked")
-            .on_hover_text("No handles, no accidental drags (L)")
-            .changed()
-        {
-            editor.set_locked(id, locked);
-        }
-        if ui.button("Duplicate").on_hover_text("Ctrl+D").clicked() {
-            editor.duplicate_surface(id);
-        }
-        if ui
-            .button("MIDI learn opacity")
-            .on_hover_text("Move a fader to map it to this surface's opacity")
-            .clicked()
-        {
-            editor.arm_midi_learn(&format!("/surface/{id}/opacity"), MidiMode::Fader);
-        }
-        if ui
-            .button("Forward")
-            .on_hover_text("Draw this surface later (on top)")
-            .clicked()
-        {
-            editor.move_surface(id, 1);
-        }
-        if ui
-            .button("Backward")
-            .on_hover_text("Draw this surface earlier (underneath)")
-            .clicked()
-        {
-            editor.move_surface(id, -1);
-        }
-    });
-    ui.menu_button("Align", |ui| {
-        for (label, op) in [
-            ("Flip horizontal", AlignOp::FlipHorizontal),
-            ("Flip vertical", AlignOp::FlipVertical),
-            ("Rotate 90°", AlignOp::RotateQuarter),
-            ("Fit output", AlignOp::FitOutput),
-            ("Centre", AlignOp::Centre),
-            ("Match source aspect", AlignOp::MatchSourceAspect),
-        ] {
-            if ui.button(label).clicked() {
-                editor.align(id, op);
-                ui.close();
-            }
-        }
-    });
-    // Source.
-    let mut source = surface.source.clone();
-    egui::ComboBox::from_label("Source")
-        .selected_text(&source)
-        .show_ui(ui, |ui| {
-            for s in &editor.project.sources {
-                ui.selectable_value(&mut source, s.id.clone(), &s.id);
-            }
-        });
-    if source != surface.source {
-        let id = id.to_string();
-        editor.edit(move |p| {
-            if let Some(s) = p.surface_mut(&id) {
-                s.source = source;
-            }
-        });
-    }
-    param_toggle(ui, editor, "Visible", &format!("/surface/{id}/visible"));
-    param_slider(
-        ui,
-        editor,
-        "Opacity",
-        &format!("/surface/{id}/opacity"),
-        0.0..=1.0,
-    );
-    param_slider(
-        ui,
-        editor,
-        "Order (z)",
-        &format!("/surface/{id}/z"),
-        -10.0..=10.0,
-    );
-    let mut mode = surface.blend_mode;
-    egui::ComboBox::from_label("Blend mode")
-        .selected_text(format!("{mode:?}"))
-        .show_ui(ui, |ui| {
-            for m in [
-                BlendMode::Normal,
-                BlendMode::Add,
-                BlendMode::Multiply,
-                BlendMode::Screen,
-            ] {
-                ui.selectable_value(&mut mode, m, format!("{m:?}"));
-            }
-        });
-    if mode != surface.blend_mode {
-        let id = id.to_string();
-        editor.edit(move |p| {
-            if let Some(s) = p.surface_mut(&id) {
-                s.blend_mode = mode;
-            }
-        });
-    }
-    ui.separator();
-    ui.label("Crop: drag the box corners on the source preview");
-    crop_preview(ui, editor, state, id, &surface);
-    ui.separator();
-    ui.label("Warp");
-    match &surface.warp {
-        WarpKind::Quad(q) => {
-            ui.label(
-                RichText::new("Corner pin: drag the four handles. Shift-drag moves all.").weak(),
-            );
-            for (i, c) in q.corners.iter().enumerate() {
-                ui.horizontal(|ui| {
-                    ui.label(format!("corner {i}"));
-                    let (mut x, mut y) = (c.x, c.y);
-                    let rx = ui.add(egui::DragValue::new(&mut x).speed(0.001).fixed_decimals(4));
-                    let ry = ui.add(egui::DragValue::new(&mut y).speed(0.001).fixed_decimals(4));
-                    if rx.changed() {
-                        editor.set_param(
-                            &format!("/surface/{id}/corner/{i}/x"),
-                            ParamValue::Number(x),
-                        );
-                    }
-                    if ry.changed() {
-                        editor.set_param(
-                            &format!("/surface/{id}/corner/{i}/y"),
-                            ParamValue::Number(y),
-                        );
-                    }
-                    if rx.drag_stopped() || ry.drag_stopped() || rx.lost_focus() || ry.lost_focus()
-                    {
-                        editor.commit();
-                    }
-                });
-            }
-            if state.mesh_cols == 0 {
-                state.mesh_cols = 2;
-                state.mesh_rows = 2;
-            }
-            ui.horizontal(|ui| {
-                ui.add(
-                    egui::DragValue::new(&mut state.mesh_cols)
-                        .range(1..=BezierMesh::MAX_PATCHES)
-                        .prefix("cols "),
-                );
-                ui.add(
-                    egui::DragValue::new(&mut state.mesh_rows)
-                        .range(1..=BezierMesh::MAX_PATCHES)
-                        .prefix("rows "),
-                );
-                if ui.button("Convert to Bezier mesh").clicked() {
-                    match surface.warp.to_bezier(state.mesh_cols, state.mesh_rows) {
-                        Ok(b) => {
-                            editor.set_warp(id, WarpKind::Bezier(b));
-                            editor.commit();
-                        }
-                        Err(e) => state.error = Some(e.to_string()),
-                    }
-                }
-            });
-        }
-        WarpKind::Bezier(b) => {
-            ui.label(
-                RichText::new(format!(
-                    "Bezier mesh {}×{} patches: drag control points.",
-                    b.cols, b.rows
-                ))
-                .weak(),
-            );
-            if ui.button("Reset to flat mesh").clicked() {
-                if let Ok(flat) = BezierMesh::flat(b.cols, b.rows) {
-                    editor.set_warp(id, WarpKind::Bezier(flat));
-                    editor.commit();
-                }
-            }
-            if ui.button("Back to corner pin").clicked() {
-                editor.set_warp(id, WarpKind::default());
-                editor.commit();
-            }
-        }
-    }
-    if ui.button("Reset warp").clicked() {
-        editor.set_warp(id, WarpKind::default());
-        editor.commit();
-    }
-    ui.separator();
-    ui.horizontal(|ui| {
-        ui.label("Masks");
-        if ui.small_button("+ rectangle").clicked() {
-            editor.add_mask(id);
-        }
-    });
-    for (i, m) in surface.masks.iter().enumerate() {
-        let selected = mask == Some(i);
-        ui.horizontal(|ui| {
-            if ui
-                .selectable_label(
-                    selected,
-                    format!(
-                        "mask {i} ({} pts, {})",
-                        m.points.len(),
-                        if m.subtract { "hole" } else { "window" }
-                    ),
-                )
-                .clicked()
-            {
-                editor.selection = Selection::Surface {
-                    id: id.to_string(),
-                    mask: if selected { None } else { Some(i) },
-                };
-            }
-        });
-        if selected {
-            let mut edited = m.clone();
-            let mut changed = false;
-            let r = ui.add(egui::Slider::new(&mut edited.feather, 0.0..=0.3).text("feather"));
-            changed |= r.drag_stopped() || r.lost_focus();
-            changed |= ui
-                .checkbox(&mut edited.subtract, "hole (unchecked = window)")
-                .changed();
-            if ui.button("Add point").clicked() {
-                let last = edited.points.last().copied().unwrap_or_default();
-                let first = edited.points.first().copied().unwrap_or_default();
-                edited.points.push(last.lerp(first, 0.5));
-                changed = true;
-            }
-            if changed && edited != *m {
-                let mut masks = surface.masks.clone();
-                masks[i] = edited;
-                editor.set_masks(id, masks);
-                editor.commit();
-            }
-            if ui.button("Delete mask").clicked() {
-                editor.selection = Selection::Surface {
-                    id: id.to_string(),
-                    mask: Some(i),
-                };
-                editor.delete_selection();
-            }
-        }
-    }
-    ui.separator();
-    if ui.button("Delete surface").clicked() {
-        editor.selection = Selection::Surface {
-            id: id.to_string(),
-            mask: None,
-        };
-        editor.delete_selection();
-    }
-    if let Some(e) = &state.error {
-        ui.colored_label(crate::theme::LIVE, e);
     }
 }
 
@@ -571,7 +299,7 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
 }
 
 /// Source preview with a draggable crop box.
-fn crop_preview(
+pub(in crate::editor::panels) fn crop_preview(
     ui: &mut egui::Ui,
     editor: &mut Editor,
     state: &mut PanelState,
@@ -583,10 +311,12 @@ fn crop_preview(
         return;
     };
     let (tex, size) = state.thumbs.get(ui.ctx(), &surface.source, &frame);
-    let w = ui.available_width().min(280.0);
+    // A margin on the right keeps the corner handles clear of the panel's scrollbar.
+    let w = (ui.available_width() - 16.0).clamp(80.0, 280.0);
     let h = (w * size.1 as f32 / size.0.max(1) as f32).max(40.0);
     let (rect, response) =
         ui.allocate_exact_size(egui::Vec2::new(w, h), egui::Sense::click_and_drag());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, true, "Crop preview"));
     ui.painter().image(
         tex,
         rect,

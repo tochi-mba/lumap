@@ -455,18 +455,12 @@ fn source_inspector_transport_and_generator_controls() {
 fn crop_preview_drags_and_resets() {
     let mut h = harness(Editor::new(demo_project(), None));
     click(&mut h, "wall-right");
-    // The crop box of wall-right is full frame; find the preview by its caption and drag the
-    // bottom-right handle inward.
-    let caption = h.get_by_label_contains("double-click to reset");
-    let caption_rect = caption.rect();
-    // The preview sits just above the caption and is 280 px wide.
-    let preview = egui::Rect::from_min_size(
-        egui::Pos2::new(
-            caption_rect.min.x,
-            caption_rect.min.y - 280.0 * 1080.0 / 1920.0 - 4.0,
-        ),
-        egui::Vec2::new(280.0, 280.0 * 1080.0 / 1920.0),
-    );
+    click(&mut h, "Crop");
+    // wall-right uses the right part of its content; drag the crop box's bottom-right
+    // handle (the preview's corner) inward.
+    h.get_by_label("Crop preview").scroll_to_me();
+    settle(&mut h);
+    let preview = h.get_by_label("Crop preview").rect();
     let br = preview.max;
     drag(
         &mut h,

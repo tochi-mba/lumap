@@ -309,7 +309,7 @@ pub fn coach(
                             if let Some(first) =
                                 editor.project.outputs.first().map(|o| o.id.clone())
                             {
-                                if ui.button("Add surface").clicked() {
+                                if ui.button("Add your first surface").clicked() {
                                     editor.add_surface(&first);
                                 }
                             }
@@ -326,33 +326,23 @@ pub fn coach(
         });
 }
 
-/// The toggles above the canvas: grid, snap, handles on the wall, stage view, fit. On Setup's
-/// stage only the view toggles apply.
+/// The toolbar above the canvas: on Setup's stage only the stage toggle applies; everywhere
+/// else, the Map toolbar (projector tabs, surface tools, canvas toggles).
 pub fn canvas_toolbar(
     ui: &mut egui::Ui,
     editor: &mut Editor,
     canvas: &mut CanvasState,
     step: Step,
 ) {
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        if step == Step::Setup && canvas.stage {
+    if step == Step::Setup && canvas.stage {
+        ui.horizontal(|ui| {
+            ui.add_space(8.0);
             ui.toggle_value(&mut canvas.stage, "Stage view")
                 .on_hover_text("Every placed projector on your desktop (T)");
-            return;
-        }
-        ui.toggle_value(&mut canvas.show_grid, "Grid")
-            .on_hover_text("An alignment grid on the canvas (G)");
-        ui.toggle_value(&mut canvas.handles.snap, "Snap")
-            .on_hover_text("Snap corners to the grid, edges and centre (S)");
-        ui.toggle_value(&mut editor.edit_on_wall, "Edit on the wall")
-            .on_hover_text("Show the handles on the projectors too, and drag them there");
-        ui.toggle_value(&mut canvas.stage, "Stage view")
-            .on_hover_text("Every placed projector on your desktop (T)");
-        if ui.button("Fit view").on_hover_text("0").clicked() {
-            canvas.reset_view();
-        }
-    });
+        });
+        return;
+    }
+    super::steps::map::toolbar(ui, editor, canvas, step);
 }
 
 /// A message in the corner.
@@ -390,23 +380,31 @@ pub fn toasts(ctx: &egui::Context, editor: &Editor, state: &mut PanelState, now:
     if state.toasts.is_empty() && state.error.is_none() {
         return;
     }
+    // Information toasts never take a click: whatever is under them stays usable. The error
+    // toast has a Dismiss button, so it alone is interactive.
     egui::Area::new(egui::Id::unique("lumap-toasts"))
         .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-16.0, -40.0))
+        .interactable(false)
         .show(ctx, |ui| {
             ui.set_max_width(380.0);
             for t in &state.toasts {
                 crate::theme::toast_frame(false).show(ui, |ui| ui.label(&t.text));
                 ui.add_space(6.0);
             }
-            if let Some(e) = state.error.clone() {
+        });
+    if let Some(e) = state.error.clone() {
+        egui::Area::new(egui::Id::unique("lumap-error-toast"))
+            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 96.0))
+            .show(ctx, |ui| {
+                ui.set_max_width(480.0);
                 crate::theme::toast_frame(true).show(ui, |ui| {
                     ui.colored_label(crate::theme::LIVE, &e);
                     if ui.button("Dismiss").clicked() {
                         state.error = None;
                     }
                 });
-            }
-        });
+            });
+    }
     if !state.toasts.is_empty() {
         ctx.request_repaint_after(Duration::from_millis(500));
     }

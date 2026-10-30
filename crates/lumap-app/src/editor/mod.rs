@@ -550,15 +550,19 @@ impl LumapApp {
         if step == panels::shell::Step::Show {
             panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
         }
-        if step == panels::shell::Step::Setup {
-            panels::steps::setup::projector_list(
-                ui,
-                &mut self.editor,
-                &self.monitors,
-                &mut actions,
-            );
-        } else {
-            panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+        match step {
+            panels::shell::Step::Setup => {
+                panels::steps::setup::projector_list(
+                    ui,
+                    &mut self.editor,
+                    &self.monitors,
+                    &mut actions,
+                );
+            }
+            panels::shell::Step::Map => {
+                panels::steps::map::layers_panel(ui, &mut self.editor, &self.canvas);
+            }
+            _ => panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions),
         }
         panels::inspector(
             ui,
@@ -583,6 +587,9 @@ impl LumapApp {
                     canvas::show(ui, &mut self.editor, &mut self.canvas, self.surface_format);
                 }
             });
+        if step == panels::shell::Step::Map {
+            panels::steps::map::action_bar(ctx, &mut self.editor, &self.canvas);
+        }
         panels::settings_window(ctx, &mut self.panels, &self.settings, &mut actions);
         panels::dialogs(ctx, &mut self.editor, &mut self.panels, &mut actions);
         panels::shell::toasts(ctx, &self.editor, &mut self.panels, now);
