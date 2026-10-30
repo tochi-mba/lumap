@@ -14,6 +14,7 @@ mod handles;
 mod helpers;
 mod lab;
 mod live;
+mod monitors;
 mod outputs;
 mod panels;
 mod room;
@@ -65,7 +66,7 @@ pub struct Launch {
     pub lab: Option<u16>,
 }
 
-/// A monitor the OS reported at startup.
+/// A monitor currently reported by the OS.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MonitorInfo {
     /// OS name, e.g. `\\.\DISPLAY2`.
@@ -134,21 +135,7 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
                     render_state.device.clone(),
                     render_state.queue.clone(),
                 ));
-            let monitors = cc
-                .winit_window()
-                .map(|w| {
-                    w.available_monitors()
-                        .map(|m| MonitorInfo {
-                            name: m.name().unwrap_or_default(),
-                            x: m.position().x,
-                            y: m.position().y,
-                            width: m.size().width,
-                            height: m.size().height,
-                            scale: m.scale_factor(),
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
+            let monitors = cc.winit_window().map_or_else(Vec::new, |w| monitors::enumerate(w));
             let mut app = LumapApp::new(
                 editor,
                 &launch_for_app,
@@ -184,6 +171,7 @@ pub fn run(launch: &Launch) -> anyhow::Result<ExitCode> {
 pub struct LumapApp {
     editor: Editor,
     monitors: Vec<MonitorInfo>,
+    monitor_poll: monitors::Poller,
     surface_format: wgpu::TextureFormat,
     heartbeat: Heartbeat,
     _watchdog: Option<Watchdog>,
@@ -251,6 +239,7 @@ impl LumapApp {
         Self {
             editor,
             monitors,
+            monitor_poll: monitors::Poller::default(),
             surface_format,
             heartbeat,
             _watchdog: watchdog,
@@ -967,7 +956,13 @@ impl LumapApp {
 }
 
 impl eframe::App for LumapApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.monitor_poll.poll(
+            frame.winit_window().map(AsRef::as_ref),
+            &mut self.monitors,
+            Instant::now(),
+        );
         self.frame(ui);
+        ui.ctx().request_repaint_after(monitors::POLL_INTERVAL);
     }
 }
