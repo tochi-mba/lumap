@@ -550,7 +550,16 @@ impl LumapApp {
         if step == panels::shell::Step::Show {
             panels::cue_panel(ui, &mut self.editor, &mut self.panels, clock);
         }
-        panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+        if step == panels::shell::Step::Setup {
+            panels::steps::setup::projector_list(
+                ui,
+                &mut self.editor,
+                &self.monitors,
+                &mut actions,
+            );
+        } else {
+            panels::left_panel(ui, &mut self.editor, &mut self.panels, &mut actions);
+        }
         panels::inspector(
             ui,
             &mut self.editor,
@@ -561,7 +570,7 @@ impl LumapApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(crate::theme::CANVAS_BG))
             .show(ui, |ui| {
-                panels::shell::canvas_toolbar(ui, &mut self.editor, &mut self.canvas);
+                panels::shell::canvas_toolbar(ui, &mut self.editor, &mut self.canvas, step);
                 if self.canvas.stage {
                     stage::show(
                         ui,

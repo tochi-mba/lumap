@@ -152,6 +152,8 @@ pub struct PanelState {
     pub help: bool,
     /// Text for a new Spout sender name.
     pub spout_sender: String,
+    /// A projector size being typed or dragged: projector id, width, height.
+    pub size_edit: Option<(String, u32, u32)>,
     /// Mesh size for "convert to Bezier".
     pub mesh_cols: u32,
     /// Mesh size for "convert to Bezier".
@@ -201,6 +203,7 @@ impl Default for PanelState {
             status_seen: false,
             help: false,
             spout_sender: String::new(),
+            size_edit: None,
             mesh_cols: 2,
             mesh_rows: 2,
             error: None,
@@ -401,11 +404,11 @@ pub fn left_panel(
                             editor.toggle_output_window(id);
                             ui.close();
                         }
-                        if ui.button("Identify outputs").clicked() {
+                        if ui.button("Identify projectors").clicked() {
                             editor.identify(Instant::now());
                             ui.close();
                         }
-                        if ui.button("Delete output").clicked() {
+                        if ui.button("Delete projector").clicked() {
                             editor.selection = Selection::Output(id.clone());
                             editor.delete_selection();
                             ui.close();
@@ -558,7 +561,7 @@ fn describe(kind: &SourceKind) -> String {
 fn rename_box(ui: &mut egui::Ui, editor: &mut Editor, state: &mut PanelState, id: &str) -> bool {
     let mut renamed = false;
     ui.horizontal(|ui| {
-        let label = ui.label("Id");
+        let label = ui.label("Name");
         let editing = state.rename.as_ref().is_some_and(|(orig, _)| orig == id);
         let mut text = if editing {
             state
@@ -694,6 +697,7 @@ pub mod looks;
 mod settings;
 pub mod shell;
 mod start;
+pub mod steps;
 
 pub use control::cue_panel;
 pub use dialogs::dialogs;

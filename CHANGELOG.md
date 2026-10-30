@@ -18,8 +18,19 @@ All notable changes to lumap, a REX Technologies product, are documented here. T
   demo, open a show, recent shows, and *Try a look*. Menu ▸ Home returns to it.
 - App settings (start page, ffmpeg, updates) move to a Settings window; messages appear as
   toasts in the corner, and problems as a toast that stays until dismissed.
+- **Setup step**: projector cards (colour, size, where each one is, and pills for an open
+  window, an overlay or "off in show"), and one projector panel: a *Display* picker that puts
+  the projector on a display at full size or back to a floating window, window and in-show
+  toggles, Picture, Edge blending with *Suggest blends* and plainly named curves (Straight,
+  Smooth, Soft), Calibration chips with a *Gamma match* helper, and a *Precise* section for
+  size and position. The stage view is Setup's canvas.
 - Plain words: Projector, Surface and Content in the interface. Project files and OSC
   addresses keep `output`, `surface` and `source`.
+
+### Fixed
+
+- A projector's width and height can be dragged or typed again: the fields used to re-read
+  the size every frame, so a drag never accumulated.
 
 ## [0.4.0] - 2026-10-30
 
