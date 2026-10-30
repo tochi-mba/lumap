@@ -51,6 +51,7 @@ pub fn demo_project() -> Project {
                 color: ColorAdjust::default(),
                 placement: None,
                 overlay: None,
+                scan: None,
             },
             Output {
                 id: "right".into(),
@@ -61,6 +62,7 @@ pub fn demo_project() -> Project {
                 color: ColorAdjust::default(),
                 placement: None,
                 overlay: None,
+                scan: None,
             },
         ],
         surfaces: vec![

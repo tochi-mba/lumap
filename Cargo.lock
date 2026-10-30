@@ -2221,6 +2221,7 @@ dependencies = [
  "lumap-core",
  "lumap-render",
  "lumap-sources",
+ "lumap-vision",
  "predicates",
  "rfd",
  "serde",
@@ -2283,6 +2284,14 @@ dependencies = [
  "spout2-rs",
  "tempfile",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "lumap-vision"
+version = "0.5.1"
+dependencies = [
+ "lumap-core",
+ "proptest",
 ]
 
 [[package]]

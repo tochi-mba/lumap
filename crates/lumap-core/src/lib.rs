@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 
 pub mod blend;
+pub mod cammap;
 pub mod cues;
 pub mod geom;
 pub mod looks;

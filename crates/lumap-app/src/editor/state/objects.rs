@@ -74,6 +74,7 @@ impl Editor {
                 color: lumap_core::project::ColorAdjust::default(),
                 placement: None,
                 overlay: None,
+                scan: None,
             });
         });
         self.selection = Selection::Output(id);
@@ -475,6 +476,7 @@ impl Editor {
                         y,
                     }),
                     overlay: None,
+                    scan: None,
                 });
                 p.surfaces.push(Surface {
                     id: sid,

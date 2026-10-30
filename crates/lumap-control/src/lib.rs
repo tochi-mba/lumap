@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 pub mod feedback;
+pub mod lab;
 pub mod midi;
 pub mod web;
 

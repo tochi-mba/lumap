@@ -244,7 +244,11 @@ fn source_inspector(ui: &mut egui::Ui, editor: &mut Editor, id: &str, state: &mu
                 }
             });
         }
-        SourceKind::TestPattern { .. } | SourceKind::Spout { .. } => {}
+        SourceKind::TestPattern { .. }
+        | SourceKind::Spout { .. }
+        | SourceKind::Camera { .. }
+        | SourceKind::Room { .. }
+        | SourceKind::Paint { .. } => {}
     }
     ui.separator();
     let used = editor

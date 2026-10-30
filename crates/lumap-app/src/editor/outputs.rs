@@ -256,6 +256,7 @@ mod tests {
             color: lumap_core::project::ColorAdjust::default(),
             placement,
             overlay: None,
+            scan: None,
         }
     }
 
