@@ -2,7 +2,7 @@
 //!
 //! Steps: file-length check (no source file over 1000 lines), fmt check, clippy (all targets, all features, warnings denied), rustdoc, the website checks, cargo-deny,
 //! tests (nextest when installed, `cargo test` otherwise) and, when `cargo-llvm-cov` is
-//! installed, the same per-file 100% coverage gate CI enforces (see `coverage.rs`).
+//! installed, the same measured coverage baseline CI enforces (see `coverage.rs`).
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
