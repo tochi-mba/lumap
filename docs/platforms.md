@@ -20,7 +20,7 @@ Totals: windows: 23 supported, macos: 18 supported, linux: 18 supported.
 | OSC control and feedback | supported | supported | supported | `osc_patches_apply_live` |
 | MIDI learn and control | supported | supported | supported | `control_section_learns_midi_and_runs_feedback_and_remote` |
 | Phone remote over HTTP with a QR code | supported | supported | supported | `control_section_learns_midi_and_runs_feedback_and_remote` |
-| Cues with crossfades | supported | supported | supported | `cue_panel_stores_fires_updates_and_reorders` |
+| Cues with crossfades | supported | supported | supported | `cue_cards_store_go_update_rename_reorder_and_delete` |
 | Locked show mode, autosave, crash recovery | supported | supported | supported | `show_mode_locks_edits_and_double_escape_exits` |
 | Render-loop watchdog that relaunches the show | supported | supported | supported | `crates/lumap-app/src/watchdog.rs` |
 | Headless render, validate, migrate, new | supported | supported | supported | `render_uses_the_gpu_when_one_is_available` |
