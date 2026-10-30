@@ -497,7 +497,10 @@ pub const SHORTCUTS: &[(&str, &[(&str, &str)])] = &[
     (
         "2 Map",
         &[
-            ("Drag handle", "Move a corner, control point or cut-out point"),
+            (
+                "Drag handle",
+                "Move a corner, control point or cut-out point",
+            ),
             ("Shift+drag", "Move the whole surface or cut-out"),
             (
                 "Arrows",
