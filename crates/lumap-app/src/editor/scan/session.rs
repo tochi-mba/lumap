@@ -29,8 +29,14 @@ const FIRST_WAIT: Duration = Duration::from_millis(2500);
 /// Once the lag is known, a pattern the camera shows no change for (stripes finer than the
 /// camera can see) is photographed after this much more than the lag.
 const LAG_MARGIN: Duration = Duration::from_millis(250);
-/// The longest wait for the picture to hold still after it changed (auto-exposure settling).
-const STEADY_WAIT: Duration = Duration::from_millis(1200);
+/// The longest wait for the picture to hold still after it changed (auto-exposure settling: a
+/// phone's camera takes a couple of seconds after a big change in light).
+const STEADY_WAIT: Duration = Duration::from_millis(3000);
+/// Frames in a row that must agree before the picture counts as still.
+const STEADY_FRAMES: u32 = 2;
+/// How long the camera must have been sending pictures before the first pattern: a phone used
+/// as a webcam shows a loading spinner, then black, while its stream starts.
+const WARM_UP: Duration = Duration::from_millis(2500);
 /// How different in shape (1 - correlation) the camera's picture must become to count as the
 /// new pattern arriving. Auto-exposure makes the whole picture brighter or darker, which keeps
 /// the correlation near 1; a new stripe pattern moves where the light is.
@@ -149,6 +155,10 @@ pub struct ScanSession {
     lag: Option<Duration>,
     /// Each lag measured so far.
     lags: Vec<Duration>,
+    /// Frames in a row the picture has held still.
+    still: u32,
+    /// When the camera was first seen sending pictures in this scan.
+    live_since: Option<Instant>,
     workers: Vec<Receiver<WorkerResult>>,
     scans: Vec<ScanData>,
     drifts: Vec<DriftReport>,
@@ -204,6 +214,8 @@ impl ScanSession {
             changed_at: None,
             lag: None,
             lags: Vec::new(),
+            still: 0,
+            live_since: None,
             workers: Vec::new(),
             scans: Vec::new(),
             drifts: Vec::new(),
@@ -334,6 +346,15 @@ impl ScanSession {
             self.last_seen = seen;
             self.last_new_frame = now;
         }
+        if seen > 0 {
+            self.live_since.get_or_insert(now);
+        }
+        if self
+            .live_since
+            .is_none_or(|t| now.duration_since(t) < WARM_UP)
+        {
+            return;
+        }
         let Some(code) = &self.code else { return };
         let frames = code.frames().to_vec();
         if !self.shown {
@@ -347,6 +368,7 @@ impl ScanSession {
             self.reference = stream.latest().map(|f| thumbnail(&f));
             self.previous = None;
             self.changed_at = None;
+            self.still = 0;
             return;
         }
         if now.duration_since(self.shown_at) < SETTLE || seen <= self.collected_seen {
@@ -443,10 +465,12 @@ impl ScanSession {
             self.changed_at = Some(now);
             return Ready::Collect;
         }
-        let steady = self
+        let steady_now = self
             .previous
             .as_ref()
             .is_some_and(|p| difference(p, &small) < STEADY);
+        self.still = if steady_now { self.still + 1 } else { 0 };
+        let steady = self.still >= STEADY_FRAMES;
         self.previous = Some(small);
         let settled = self
             .changed_at

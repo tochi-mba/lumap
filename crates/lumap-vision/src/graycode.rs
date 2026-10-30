@@ -184,6 +184,29 @@ impl Decoder {
             .get(1)
             .and_then(Clone::clone)
             .unwrap_or_else(|| Gray::new(self.cw, self.ch));
+        // A pattern and its inverse each light half the projection, so they should be equally
+        // bright overall. A camera that changes its exposure between them (a phone streamed as a
+        // webcam does, all the time) makes one darker; scale each inverse to its pattern.
+        let means: Vec<f64> = self
+            .photos
+            .iter()
+            .map(|p| {
+                p.as_ref().map_or(0.0, |g| {
+                    g.data.iter().map(|&v| f64::from(v)).sum::<f64>() / g.data.len().max(1) as f64
+                })
+            })
+            .collect();
+        let gain = |at: usize| {
+            let (a, b) = (
+                means.get(at).copied().unwrap_or(0.0),
+                means.get(at + 1).copied().unwrap_or(0.0),
+            );
+            if a > 1.0 && b > 1.0 {
+                (a / b).clamp(0.25, 4.0)
+            } else {
+                1.0
+            }
+        };
         let mut proj = vec![[f32::NAN; 2]; self.cw as usize * self.ch as usize];
         let mut confidence = vec![0; proj.len()];
         let (mut valid, mut sum) = (0usize, 0.0);
@@ -215,6 +238,7 @@ impl Decoder {
                         .get(at + 1)
                         .and_then(Option::as_ref)
                         .map_or(0, |p| p.data[i]);
+                    let b = (f64::from(b) * gain(at)).round().clamp(0.0, 255.0) as u8;
                     at += 2;
                     if a.abs_diff(b) < need {
                         unknown = bit + 1;
