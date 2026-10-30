@@ -82,10 +82,16 @@ pub fn parse(json: &str) -> anyhow::Result<Vec<FileCoverage>> {
 
 /// Sum coverage across all non-excluded workspace files.
 pub fn totals(files: &[FileCoverage]) -> (Metric, Metric, Metric) {
-    let mut lines = Metric { count: 0, covered: 0 };
+    let mut lines = Metric {
+        count: 0,
+        covered: 0,
+    };
     let mut regions = lines;
     let mut branches = lines;
-    for f in files.iter().filter(|f| !EXCLUDED.contains(&f.path.as_str())) {
+    for f in files
+        .iter()
+        .filter(|f| !EXCLUDED.contains(&f.path.as_str()))
+    {
         lines.count += f.lines.count;
         lines.covered += f.lines.covered;
         regions.count += f.regions.count;
@@ -98,8 +104,7 @@ pub fn totals(files: &[FileCoverage]) -> (Metric, Metric, Metric) {
 
 fn below(metric: Metric, minimum_bps: u64) -> bool {
     metric.count == 0
-        || u128::from(metric.covered) * 10_000
-            < u128::from(minimum_bps) * u128::from(metric.count)
+        || u128::from(metric.covered) * 10_000 < u128::from(minimum_bps) * u128::from(metric.count)
 }
 
 /// Problems with the report: regression below baseline, insufficient instrumentation, or
@@ -228,7 +233,10 @@ mod tests {
                     covered: regions.0,
                     count: regions.1,
                 },
-                branches: Metric { covered: 0, count: 0 },
+                branches: Metric {
+                    covered: 0,
+                    count: 0,
+                },
             }]
         }
         let baseline = measured((20_831, 27_541), (34_000, 46_000));
