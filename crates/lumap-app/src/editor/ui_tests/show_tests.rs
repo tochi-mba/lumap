@@ -234,6 +234,52 @@ fn welcome_screen_creates_outputs_and_remembers_recent() {
     assert!(!h.state().panels.home);
 }
 
+#[test]
+fn connecting_and_disconnecting_a_projector_refreshes_home_without_restarting() {
+    let _settings = settings_guard();
+    let mut h = harness(Editor::new(lumap_core::project::Project::default(), None));
+    h.state_mut().panels.home = true;
+    h.state_mut().monitors.truncate(1);
+    settle(&mut h);
+
+    assert!(h.query_by_label("Create 1 projector(s)").is_none());
+    assert!(h.query_by_label("Welcome to lumap").is_some());
+    assert!(crate::editor::monitors::apply_snapshot(
+        &mut h.state_mut().monitors,
+        monitors()
+    ));
+    settle(&mut h);
+    click(&mut h, "Create 1 projector(s)");
+    assert_eq!(h.state().editor.project.outputs.len(), 1);
+    assert_eq!(
+        h.state().editor.project.outputs[0]
+            .placement
+            .as_ref()
+            .unwrap()
+            .monitor,
+        "DISPLAY2"
+    );
+
+    // Unplugging a projector must update the UI but must not delete its show.
+    h.state_mut().editor.open_outputs.clear();
+    h.state_mut().panels.home = true;
+    assert!(crate::editor::monitors::apply_snapshot(
+        &mut h.state_mut().monitors,
+        monitors()[..1].to_vec()
+    ));
+    settle(&mut h);
+    assert!(h.query_by_label("Create 1 projector(s)").is_none());
+    assert_eq!(h.state().editor.project.outputs.len(), 1);
+    assert_eq!(
+        h.state().editor.project.outputs[0]
+            .placement
+            .as_ref()
+            .unwrap()
+            .monitor,
+        "DISPLAY2"
+    );
+}
+
 #[derive(Debug)]
 struct TestDrop(PathBuf);
 

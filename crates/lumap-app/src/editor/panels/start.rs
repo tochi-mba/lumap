@@ -111,8 +111,8 @@ fn start_card(ui: &mut egui::Ui, monitors: &[MonitorInfo], actions: &mut Actions
         } else {
             ui.label(
                 RichText::new(
-                    "Only one display found. Plug in a projector and reopen lumap, or map on \
-                     this screen for now.",
+                    "Only one display found. Connect a projector and lumap will detect it \
+                     automatically. You can also map on this screen for now.",
                 )
                 .weak(),
             );
